@@ -1,8 +1,9 @@
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+from flask import Flask, request, jsonify
 
-# Load API key from .env
+# Load .env
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
 
@@ -12,10 +13,17 @@ if not api_key:
 # Configure Gemini
 genai.configure(api_key=api_key)
 
-# Create model
-model = genai.GenerativeModel("gemini-1.5-flash")
+# Create Flask app
+app = Flask(__name__)
 
-# Send message
-response = model.generate_content("Hii")
+@app.route("/")
+def home():
+    return "🚀 Gemini Chatbot is running on Render!"
 
-print("🤖 Model Reply:", response.text)
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.json
+    user_msg = data.get("message", "")
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(user_msg)
+    return jsonify({"reply": response.text})
