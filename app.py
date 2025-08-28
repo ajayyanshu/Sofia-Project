@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 # Set API key from environment variable
-genai.configure(api_key=os.getenv("AIzaSyDvLAK3y_jJP7GNvVrVHYv0Vz7LWviLXmw"))
+genai.configure(api_key=os.getenv("AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4"))
 
 @app.route("/")
 def index():
