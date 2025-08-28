@@ -1,4 +1,4 @@
 flask
-openai
+google-generativeai
 python-dotenv
 gunicorn
