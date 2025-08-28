@@ -1,26 +1,25 @@
-from flask import Flask, render_template, request, jsonify
-import google.generativeai as genai
 import os
+from dotenv import load_dotenv
+import google.generativeai as genai
 
-app = Flask(__name__)
+# Load API key
+load_dotenv()
+api_key = os.getenv("GOOGLE_API_KEY")
+print("API Key Loaded:", api_key is not None)   # Debug check
 
-# Set API key from environment variable
-genai.configure(api_key=os.getenv("AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4"))
+genai.configure(api_key=api_key)
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+# Create model
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.json
-    user_message = data.get("message")
+# Send message
+response = model.generate_content("Hii")
 
-    # Create Gemini model
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(user_message)
+# Debug print
+print("Full Response:", response)
 
-    return jsonify({"reply": response.text})
-
-if __name__ == "__main__":
-    app.run(debug=True)
+# Proper text output
+if response.candidates and response.candidates[0].content.parts:
+    print("Model Reply:", response.candidates[0].content.parts[0].text)
+else:
+    print("⚠️ No reply from model")
