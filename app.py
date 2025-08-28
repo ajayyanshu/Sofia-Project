@@ -4,7 +4,7 @@ import google.generativeai as genai
 
 # Load API key
 load_dotenv()
-api_key = os.getenv(""GOOGLE_API_KEY"")
+api_key = os.getenv("AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4")
 print("API Key Loaded:", api_key is not None)   # Debug check
 
 genai.configure(api_key=api_key)
