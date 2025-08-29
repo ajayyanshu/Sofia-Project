@@ -2,167 +2,121 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>College Chatbot</title>
+  <title>AI ChatBot</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fb;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f0f2f5; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      height: 100vh; 
     }
 
     .chat-container {
       width: 400px;
-      height: 600px;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .chat-header {
-      background: linear-gradient(90deg, #0061ff, #60efff);
-      color: white;
-      padding: 15px;
-      display: flex;
-      align-items: center;
-    }
-
-    .chat-header img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      margin-right: 10px;
-    }
-
-    .chat-body {
-      flex: 1;
-      padding: 15px;
-      overflow-y: auto;
-      background: #f0f2f7;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Message Common */
-    .msg {
-      margin: 10px 0;
-      padding: 12px 16px;
+      background: white;
       border-radius: 12px;
-      max-width: 80%;
-      word-wrap: break-word;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
       display: flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid #ccc;
+      flex-direction: column;
     }
 
-    /* Bot message */
-    .bot {
-      background: #e0eaff;
-      color: #333;
-      align-self: flex-start;
-    }
-
-    .bot::before {
-      content: "🤖";
-      font-size: 18px;
+    .chat-box {
+      padding: 15px;
+      height: 400px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
     /* User message */
-    .user {
-      background: #007bff;
-      color: white;
-      align-self: flex-end;
-      border: 1px solid #0056b3;
+    .message.user {
+      align-self: flex-start;
+      background: #e4e6eb;
+      color: black;
+      padding: 10px 14px;
+      border-radius: 15px 15px 15px 0;
+      max-width: 70%;
     }
 
-    /* Footer */
-    .chat-footer {
+    /* Bot message */
+    .message.bot {
+      align-self: flex-end;
+      background: #1877f2;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 15px 15px 0 15px;
+      max-width: 70%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bot-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .input-box {
       display: flex;
       border-top: 1px solid #ddd;
-      background: white;
     }
 
-    .chat-footer input {
+    .input-box input {
       flex: 1;
       border: none;
-      padding: 15px;
-      font-size: 16px;
+      padding: 12px;
       outline: none;
     }
 
-    .chat-footer button {
-      background: #007bff;
+    .input-box button {
       border: none;
+      background: #1877f2;
       color: white;
-      padding: 15px 20px;
+      padding: 12px 18px;
       cursor: pointer;
-      font-size: 16px;
-    }
-
-    .chat-footer button:hover {
-      background: #0056b3;
-    }
-
-    @media (max-width: 600px) {
-      body {
-        align-items: flex-start;
-      }
-      .chat-container {
-        width: 100%;
-        height: 100vh;
-        border-radius: 0;
-      }
     }
   </style>
 </head>
 <body>
   <div class="chat-container">
-    <div class="chat-header">
-      <img src="https://i.pravatar.cc/40" alt="Bot Avatar">
-      Chat with CollegeBot
+    <div class="chat-box" id="chatBox">
+      <div class="message user">Hi, my verification code expired!</div>
+      <div class="message bot"><img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" class="bot-icon"> Sure! Request a new code and check your email.</div>
     </div>
-    <div class="chat-body" id="chat-box">
-      <div class="msg bot">Hi 👋 How can I help you today?</div>
-    </div>
-    <div class="chat-footer">
-      <input type="text" id="message" placeholder="Type a message...">
-      <button onclick="sendMessage()">➤</button>
+    <div class="input-box">
+      <input type="text" id="userInput" placeholder="Type a message...">
+      <button onclick="sendMessage()">Send</button>
     </div>
   </div>
 
   <script>
-    async function sendMessage() {
-      const input = document.getElementById("message");
+    function sendMessage() {
+      const input = document.getElementById("userInput");
       const msg = input.value.trim();
-      if (!msg) return;
+      if (msg === "") return;
 
-      const chatBox = document.getElementById("chat-box");
+      const chatBox = document.getElementById("chatBox");
 
       // User message
-      chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
+      const userMsg = document.createElement("div");
+      userMsg.className = "message user";
+      userMsg.textContent = msg;
+      chatBox.appendChild(userMsg);
+
       input.value = "";
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      // Send to backend
-      const response = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
-      });
-
-      const data = await response.json();
 
       // Bot reply
-      chatBox.innerHTML += `<div class="msg bot">${data.reply}</div>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
+      setTimeout(() => {
+        const botMsg = document.createElement("div");
+        botMsg.className = "message bot";
+        botMsg.innerHTML = `<img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" class="bot-icon"> This is a sample AI reply to "${msg}"`;
+        chatBox.appendChild(botMsg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }, 800);
     }
   </script>
 </body>
