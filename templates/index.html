@@ -15,7 +15,6 @@
       height: 100vh;
     }
 
-    /* Chat Container */
     .chat-container {
       width: 400px;
       height: 600px;
@@ -27,7 +26,6 @@
       overflow: hidden;
     }
 
-    /* Chat Header */
     .chat-header {
       background: linear-gradient(90deg, #0061ff, #60efff);
       color: white;
@@ -43,14 +41,11 @@
       margin-right: 10px;
     }
 
-    /* Chat Body */
     .chat-body {
       flex: 1;
       padding: 15px;
       overflow-y: auto;
       background: #f0f2f7;
-      display: flex;
-      flex-direction: column;
     }
 
     .message {
@@ -59,7 +54,6 @@
       border-radius: 18px;
       display: inline-block;
       max-width: 80%;
-      word-wrap: break-word;
     }
 
     .bot-message {
@@ -74,11 +68,9 @@
       align-self: flex-end;
     }
 
-    /* Chat Footer */
     .chat-footer {
       display: flex;
       border-top: 1px solid #ddd;
-      background: white;
     }
 
     .chat-footer input {
@@ -86,7 +78,6 @@
       border: none;
       padding: 15px;
       font-size: 16px;
-      outline: none;
     }
 
     .chat-footer button {
@@ -101,70 +92,57 @@
     .chat-footer button:hover {
       background: #0056b3;
     }
-
-    /* ✅ Mobile Responsive */
-    @media (max-width: 600px) {
-      body {
-        align-items: flex-start;
-      }
-      .chat-container {
-        width: 100%;
-        height: 100vh;
-        border-radius: 0;
-      }
-    }
-
-    /* ✅ Tablet/Desktop */
-    @media (min-width: 601px) and (max-width: 1024px) {
-      .chat-container {
-        width: 80%;
-        height: 80vh;
-      }
-    }
   </style>
-</head>
 </head>
 <body>
   <div class="chat-container">
     <div class="chat-header">
       <img src="https://i.pravatar.cc/40" alt="Bot Avatar">
-      Chat with CollegeBot
+      <div>
+        <strong>Chat with CollegeBot</strong><br>
+        <small>We are online!</small>
+      </div>
     </div>
-    <div class="chat-body" id="chat-box">
-      <div class="msg bot">Hi 👋 How can I help you today?</div>
+
+    <div class="chat-body" id="chatbox">
+      <div class="message bot-message">Hi 👋 How can I help you today?</div>
     </div>
+
     <div class="chat-footer">
-      <input type="text" id="message" placeholder="Type a message...">
+      <input id="userInput" type="text" placeholder="Type a message...">
       <button onclick="sendMessage()">➤</button>
     </div>
   </div>
 
+  <script>
+    function sendMessage() {
+      let input = document.getElementById("userInput").value;
+      if (!input) return;
 
-  <<script>
-    async function sendMessage() {
-      const input = document.getElementById("message");
-      const msg = input.value.trim();
-      if (!msg) return;
+      let chatbox = document.getElementById("chatbox");
 
-      const chatBox = document.getElementById("chat-box");
+      // User message
+      let userDiv = document.createElement("div");
+      userDiv.className = "message user-message";
+      userDiv.innerText = input;
+      chatbox.appendChild(userDiv);
 
-      // User message bubble
-      chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
-      input.value = "";
-      chatBox.scrollTop = chatBox.scrollHeight;
+      document.getElementById("userInput").value = "";
 
       // Send to backend
-      const response = await fetch("/chat", {
+      fetch("/get", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
+        body: JSON.stringify({ message: input })
+      })
+      .then(res => res.json())
+      .then(data => {
+        let botDiv = document.createElement("div");
+        botDiv.className = "message bot-message";
+        botDiv.innerText = data.reply;
+        chatbox.appendChild(botDiv);
+        chatbox.scrollTop = chatbox.scrollHeight;
       });
-
-      const data = await response.json();
-
-      // Bot reply bubble
-      chatBox.innerHTML += `<div class="msg bot">${data.reply}</div>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
     }
   </script>
 </body>
