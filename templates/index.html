@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CollegeBot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>College Chatbot</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #f0f4ff, #d9e4ff);
+      background: #f5f7fb;
       margin: 0;
       display: flex;
       justify-content: center;
@@ -18,97 +19,75 @@
       width: 400px;
       height: 600px;
       background: #fff;
-      border-radius: 20px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      border: 2px solid #e3e8ff;
     }
 
     .chat-header {
-      background: linear-gradient(90deg, #4a6cf7, #60efff);
+      background: linear-gradient(90deg, #0061ff, #60efff);
       color: white;
-      padding: 18px;
+      padding: 15px;
       display: flex;
       align-items: center;
-      font-weight: bold;
-      font-size: 18px;
-      letter-spacing: 0.5px;
     }
 
     .chat-header img {
-      width: 45px;
-      height: 45px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      margin-right: 12px;
-      border: 2px solid #fff;
+      margin-right: 10px;
     }
 
     .chat-body {
       flex: 1;
       padding: 15px;
       overflow-y: auto;
-      background: #f7f9ff;
+      background: #f0f2f7;
       display: flex;
       flex-direction: column;
-    }
-
-    /* Scrollbar */
-    .chat-body::-webkit-scrollbar {
-      width: 6px;
-    }
-    .chat-body::-webkit-scrollbar-thumb {
-      background: #c5d0ff;
-      border-radius: 10px;
     }
 
     /* Message Common */
     .msg {
       margin: 10px 0;
       padding: 12px 16px;
-      border-radius: 16px;
+      border-radius: 12px;
       max-width: 80%;
       word-wrap: break-word;
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 15px;
-      line-height: 1.4;
-      animation: fadeIn 0.3s ease-in;
-    }
-
-    @keyframes fadeIn {
-      from {opacity: 0; transform: translateY(5px);}
-      to {opacity: 1; transform: translateY(0);}
+      border: 1px solid #ccc;
     }
 
     /* Bot message */
     .bot {
-      background: #e9efff;
+      background: #e0eaff;
       color: #333;
       align-self: flex-start;
-      border: 1px solid #ccd6ff;
     }
 
     .bot::before {
       content: "🤖";
-      font-size: 16px;
+      font-size: 18px;
     }
 
     /* User message */
     .user {
-      background: #4a6cf7;
+      background: #007bff;
       color: white;
       align-self: flex-end;
-      border: 1px solid #2f50d3;
+      border: 1px solid #0056b3;
     }
 
     /* Footer */
     .chat-footer {
       display: flex;
       border-top: 1px solid #ddd;
-      background: #fff;
+      background: white;
     }
 
     .chat-footer input {
@@ -117,21 +96,19 @@
       padding: 15px;
       font-size: 16px;
       outline: none;
-      border-radius: 0;
     }
 
     .chat-footer button {
-      background: #4a6cf7;
+      background: #007bff;
       border: none;
       color: white;
       padding: 15px 20px;
       cursor: pointer;
-      font-size: 18px;
-      transition: 0.2s;
+      font-size: 16px;
     }
 
     .chat-footer button:hover {
-      background: #2f50d3;
+      background: #0056b3;
     }
 
     @media (max-width: 600px) {
@@ -149,49 +126,44 @@
 <body>
   <div class="chat-container">
     <div class="chat-header">
-      <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" alt="Bot">
-      CollegeBot
+      <img src="https://i.pravatar.cc/40" alt="Bot Avatar">
+      Chat with CollegeBot
     </div>
-    <div class="chat-body" id="chat-body">
-      <div class="msg bot">Hi! I'm your CollegeBot. Ask me anything!</div>
+    <div class="chat-body" id="chat-box">
+      <div class="msg bot">Hi 👋 How can I help you today?</div>
     </div>
     <div class="chat-footer">
-      <input type="text" id="user-input" placeholder="Type a message...">
+      <input type="text" id="message" placeholder="Type a message...">
       <button onclick="sendMessage()">➤</button>
     </div>
   </div>
 
   <script>
-    function sendMessage() {
-      const input = document.getElementById("user-input");
-      const chatBody = document.getElementById("chat-body");
-      const message = input.value.trim();
+    async function sendMessage() {
+      const input = document.getElementById("message");
+      const msg = input.value.trim();
+      if (!msg) return;
 
-      if (message !== "") {
-        // User message
-        const userMsg = document.createElement("div");
-        userMsg.className = "msg user";
-        userMsg.textContent = message;
-        chatBody.appendChild(userMsg);
+      const chatBox = document.getElementById("chat-box");
 
-        // Auto bot reply
-        const botMsg = document.createElement("div");
-        botMsg.className = "msg bot";
-        botMsg.textContent = "You said: " + message;
-        setTimeout(() => chatBody.appendChild(botMsg), 500);
+      // User message
+      chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
+      input.value = "";
+      chatBox.scrollTop = chatBox.scrollHeight;
 
-        // Clear input
-        input.value = "";
-        chatBody.scrollTop = chatBody.scrollHeight;
-      }
+      // Send to backend
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg })
+      });
+
+      const data = await response.json();
+
+      // Bot reply
+      chatBox.innerHTML += `<div class="msg bot">${data.reply}</div>`;
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
-
-    // Enter key support
-    document.getElementById("user-input").addEventListener("keypress", function(e) {
-      if (e.key === "Enter") {
-        sendMessage();
-      }
-    });
   </script>
 </body>
 </html>
