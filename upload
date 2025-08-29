@@ -1,12 +1,46 @@
+from flask import Flask, request, jsonify
 import os
+from PIL import Image
+import fitz  # PyMuPDF
 
-# Ensure folder exists
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # agar nahi hai to bana de
+app = Flask(__name__)
 
-file = request.files.get("file")
-if file:
+# -----------------------------
+# Upload folder setup
+# -----------------------------
+UPLOAD_FOLDER = "collegeproject/upload"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # agar folder nahi hai to bana do
+
+# -----------------------------
+# File upload route
+# -----------------------------
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"reply": "No file uploaded."}), 400
+
+    # Save file
     filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)  # file uploads/ me save ho jayegi
-    reply = f"File saved as: {filepath}"
+    file.save(filepath)
 
+    # File type check
+    if file.filename.endswith(".pdf"):
+        doc = fitz.open(filepath)
+        text = "".join([page.get_text() for page in doc])
+        reply = f"📄 PDF saved as {filepath}. Extracted text preview:\n{text[:300]}..."
+
+    elif file.filename.endswith((".png", ".jpg", ".jpeg")):
+        image = Image.open(filepath)
+        reply = f"🖼️ Image saved as {filepath} ({image.size[0]}x{image.size[1]})."
+
+    else:
+        reply = f"File saved as {filepath} (Not processed yet)."
+
+    return jsonify({"reply": reply})
+
+# -----------------------------
+# Run Flask app
+# -----------------------------
+if __name__ == "__main__":
+    app.run(debug=True)
