@@ -16,10 +16,8 @@
     }
 
     .chat-container {
-      width: 100%;
-      max-width: 450px;
-      height: 100%;
-      max-height: 95vh;
+      width: 400px;
+      height: 600px;
       background: #fff;
       border-radius: 16px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.1);
@@ -52,7 +50,6 @@
       flex-direction: column;
     }
 
-    /* Message Common */
     .msg {
       margin: 10px 0;
       padding: 12px 16px;
@@ -65,7 +62,6 @@
       border: 1px solid #ccc;
     }
 
-    /* Bot message */
     .bot {
       background: #e0eaff;
       color: #333;
@@ -77,7 +73,6 @@
       font-size: 18px;
     }
 
-    /* User message */
     .user {
       background: #007bff;
       color: white;
@@ -85,44 +80,56 @@
       border: 1px solid #0056b3;
     }
 
-    /* Footer */
     .chat-footer {
       display: flex;
       border-top: 1px solid #ddd;
       background: white;
+      align-items: center;
+      padding: 5px;
+      gap: 5px;
     }
 
-    .chat-footer input {
+    .chat-footer input[type="text"] {
       flex: 1;
       border: none;
-      padding: 15px;
-      font-size: 16px;
+      padding: 12px;
+      font-size: 15px;
       outline: none;
+    }
+
+    .chat-footer input[type="file"] {
+      display: none;
+    }
+
+    .chat-footer label, 
+    .chat-footer button, 
+    .chat-footer .mic-btn {
+      background: #ddd;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+      font-size: 18px;
     }
 
     .chat-footer button {
       background: #007bff;
-      border: none;
       color: white;
-      padding: 15px 20px;
-      cursor: pointer;
-      font-size: 16px;
     }
 
     .chat-footer button:hover {
       background: #0056b3;
     }
 
-    /* Mobile full-screen */
+    .chat-footer .mic-btn.active {
+      background: red;
+      color: white;
+    }
+
     @media (max-width: 600px) {
-      body {
-        align-items: flex-start;
-      }
       .chat-container {
         width: 100%;
         height: 100vh;
-        max-width: none;
-        max-height: none;
         border-radius: 0;
       }
     }
@@ -139,35 +146,94 @@
     </div>
     <div class="chat-footer">
       <input type="text" id="message" placeholder="Type a message...">
+      <label for="fileUpload">📎</label>
+      <input type="file" id="fileUpload" accept="image/*,.pdf,.doc,.txt">
+      <button class="mic-btn" onclick="toggleMic()">🎤</button>
       <button onclick="sendMessage()">➤</button>
     </div>
   </div>
 
   <script>
+    const chatBox = document.getElementById("chat-box");
+    const input = document.getElementById("message");
+    const fileInput = document.getElementById("fileUpload");
+    let recognition;
+    let listening = false;
+
+    // Send text or file
     async function sendMessage() {
-      const input = document.getElementById("message");
-      const msg = input.value.trim();
-      if (!msg) return;
+      let msg = input.value.trim();
+      let file = fileInput.files[0];
+      if (!msg && !file) return;
 
-      const chatBox = document.getElementById("chat-box");
+      if (msg) {
+        chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
+      }
+      if (file) {
+        chatBox.innerHTML += `<div class="msg user">📂 ${file.name}</div>`;
+      }
 
-      // User message
-      chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
-      input.value = "";
       chatBox.scrollTop = chatBox.scrollHeight;
+      input.value = "";
+      fileInput.value = "";
 
-      // Send to backend
+      const formData = new FormData();
+      if (msg) formData.append("message", msg);
+      if (file) formData.append("file", file);
+
       const response = await fetch("/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
+        body: formData
       });
 
       const data = await response.json();
 
-      // Bot reply
       chatBox.innerHTML += `<div class="msg bot">${data.reply}</div>`;
       chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Optional: Speak bot reply aloud
+      const utter = new SpeechSynthesisUtterance(data.reply);
+      speechSynthesis.speak(utter);
+    }
+
+    // 🎤 Voice recognition
+    function toggleMic() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("Voice recognition not supported in this browser");
+        return;
+      }
+
+      if (!recognition) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          input.value = transcript;
+          sendMessage();
+        };
+
+        recognition.onerror = () => {
+          alert("Voice recognition error!");
+        };
+
+        recognition.onend = () => {
+          document.querySelector(".mic-btn").classList.remove("active");
+          listening = false;
+        };
+      }
+
+      if (!listening) {
+        recognition.start();
+        listening = true;
+        document.querySelector(".mic-btn").classList.add("active");
+      } else {
+        recognition.stop();
+        listening = false;
+        document.querySelector(".mic-btn").classList.remove("active");
+      }
     }
   </script>
 </body>
