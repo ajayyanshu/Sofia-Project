@@ -2,6 +2,13 @@ from flask import Flask, request, jsonify
 import fitz  # PyMuPDF for PDF
 from PIL import Image
 import io
+# app.py
+from flask import Flask, request, jsonify
+from PIL import Image  # ✅ Image processing ke liye
+
+app = Flask(__name__)
+
+# baaki code yahan
 
 app = Flask(__name__)
 
