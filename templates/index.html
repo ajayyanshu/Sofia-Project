@@ -171,10 +171,20 @@
         botDiv.innerText = data.reply;
         chatbox.appendChild(botDiv);
         chatbox.scrollTop = chatbox.scrollHeight;
-         fetch("https://college-project-tmv8.onrender.com//get", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message })
+        
+        fetch("https://college-project-tmv8.onrender.com//get", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: message })
+})
+.then(res => res.json())
+.then(data => {
+  addMessage("bot", data.reply);
+})
+.catch(err => {
+  addMessage("bot", "⚠️ Error: " + err.message);
+});
+
       });
     }
   </script>
