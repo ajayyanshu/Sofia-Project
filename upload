@@ -1,1 +1,12 @@
+import os
+
+# Ensure folder exists
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # agar nahi hai to bana de
+
+file = request.files.get("file")
+if file:
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(filepath)  # file uploads/ me save ho jayegi
+    reply = f"File saved as: {filepath}"
 
