@@ -101,29 +101,25 @@
       display: none;
     }
 
-    .chat-footer label, 
-    .chat-footer button, 
-    .chat-footer .mic-btn {
+    .chat-footer label {
       background: #ddd;
       padding: 10px;
       border-radius: 8px;
       cursor: pointer;
-      border: none;
-      font-size: 18px;
     }
 
     .chat-footer button {
       background: #007bff;
+      border: none;
       color: white;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 8px;
     }
 
     .chat-footer button:hover {
       background: #0056b3;
-    }
-
-    .chat-footer .mic-btn.active {
-      background: red;
-      color: white;
     }
 
     @media (max-width: 600px) {
@@ -148,24 +144,22 @@
       <input type="text" id="message" placeholder="Type a message...">
       <label for="fileUpload">📎</label>
       <input type="file" id="fileUpload" accept="image/*,.pdf,.doc,.txt">
-      <button class="mic-btn" onclick="toggleMic()">🎤</button>
       <button onclick="sendMessage()">➤</button>
     </div>
   </div>
 
   <script>
-    const chatBox = document.getElementById("chat-box");
-    const input = document.getElementById("message");
-    const fileInput = document.getElementById("fileUpload");
-    let recognition;
-    let listening = false;
-
-    // Send text or file
     async function sendMessage() {
+      const input = document.getElementById("message");
+      const fileInput = document.getElementById("fileUpload");
+      const chatBox = document.getElementById("chat-box");
+
       let msg = input.value.trim();
       let file = fileInput.files[0];
+
       if (!msg && !file) return;
 
+      // User message
       if (msg) {
         chatBox.innerHTML += `<div class="msg user">${msg}</div>`;
       }
@@ -177,10 +171,12 @@
       input.value = "";
       fileInput.value = "";
 
+      // Prepare formData for backend
       const formData = new FormData();
       if (msg) formData.append("message", msg);
       if (file) formData.append("file", file);
 
+      // Send to backend AI model
       const response = await fetch("/chat", {
         method: "POST",
         body: formData
@@ -188,52 +184,9 @@
 
       const data = await response.json();
 
+      // Bot reply
       chatBox.innerHTML += `<div class="msg bot">${data.reply}</div>`;
       chatBox.scrollTop = chatBox.scrollHeight;
-
-      // Optional: Speak bot reply aloud
-      const utter = new SpeechSynthesisUtterance(data.reply);
-      speechSynthesis.speak(utter);
-    }
-
-    // 🎤 Voice recognition
-    function toggleMic() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert("Voice recognition not supported in this browser");
-        return;
-      }
-
-      if (!recognition) {
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = "en-US";
-
-        recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
-          input.value = transcript;
-          sendMessage();
-        };
-
-        recognition.onerror = () => {
-          alert("Voice recognition error!");
-        };
-
-        recognition.onend = () => {
-          document.querySelector(".mic-btn").classList.remove("active");
-          listening = false;
-        };
-      }
-
-      if (!listening) {
-        recognition.start();
-        listening = true;
-        document.querySelector(".mic-btn").classList.add("active");
-      } else {
-        recognition.stop();
-        listening = false;
-        document.querySelector(".mic-btn").classList.remove("active");
-      }
     }
   </script>
 </body>
