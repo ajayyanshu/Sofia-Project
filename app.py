@@ -11,7 +11,7 @@ genai.configure(api_key=api_key)
 
 app = Flask(__name__)
 
-# Use Gemini model
+# Gemini model
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 @app.route("/")
@@ -20,13 +20,25 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_message = request.json.get("message")
+    try:
+        user_message = request.json.get("message")
+        if not user_message:
+            return jsonify({"reply": "⚠️ No message received"})
 
-    # Generate content
-    response = model.generate_content(user_message)
+        # Generate content
+        response = model.generate_content(user_message)
 
-    return jsonify({"reply": response.text})
+        # Agar Gemini ne kuch nahi diya
+        if not hasattr(response, "text") or response.text is None:
+            return jsonify({"reply": "⚠️ Gemini did not return a response"})
+
+        return jsonify({"reply": response.text})
+    except Exception as e:
+        # Error ko return bhi karo aur Render logs me print bhi
+        print("❌ Backend Error:", str(e))
+        return jsonify({"reply": f"❌ Error: {str(e)}"})
+        
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)
