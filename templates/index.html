@@ -39,6 +39,7 @@
       flex-direction: column;
       padding: 20px;
       position: relative;
+      height: 100vh;
     }
     .main h1 {
       font-size: 2rem;
@@ -56,6 +57,8 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      background: #fafafa;
+      border-radius: 10px;
     }
     .message {
       max-width: 70%;
@@ -75,6 +78,10 @@
       background: #f1f1f1;
       color: #333;
       border-bottom-left-radius: 5px;
+    }
+    .thinking {
+      font-style: italic;
+      color: gray;
     }
 
     /* Input Box */
@@ -134,6 +141,9 @@
         right: 15px;
         margin: 0;
       }
+      .chat-area {
+        margin-bottom: 70px; /* space for input */
+      }
     }
   </style>
 </head>
@@ -174,6 +184,7 @@
       msg.textContent = text;
       chatArea.appendChild(msg);
       chatArea.scrollTop = chatArea.scrollHeight;
+      return msg;
     }
 
     async function getAIResponse(prompt) {
@@ -200,14 +211,15 @@
       if (text !== "") {
         addMessage(text, "sent");
         userInput.value = "";
-        addMessage("⏳ Thinking...", "received");
+
+        // ⏳ Add "Thinking..." before AI response
+        const thinkingMsg = addMessage("⏳ Thinking...", "received thinking");
 
         const reply = await getAIResponse(text);
 
-        // remove "Thinking..." message
-        chatArea.removeChild(chatArea.lastChild);
-
-        addMessage("🤖 " + reply, "received");
+        // Replace with actual reply
+        thinkingMsg.textContent = "🤖 " + reply;
+        thinkingMsg.classList.remove("thinking");
       }
     });
 
