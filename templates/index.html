@@ -1,222 +1,506 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chatbot - Gemini Style</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #fdfdfd;
-      color: #333;
-      display: flex;
-      min-height: 100vh;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 70px;
-      height: 100%;
-      background: #f8f9fb;
-      border-right: 1px solid #eee;
-      padding: 20px 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      transition: width 0.3s ease;
-      overflow: hidden;
-    }
-    .sidebar.open { width: 200px; align-items: flex-start; padding-left: 15px; }
-    .sidebar-top { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
-    .sidebar.open .sidebar-top { align-items: flex-start; }
-    .sidebar a { text-decoration: none; color: #555; font-size: 20px; cursor: pointer; }
-
-    /* Main */
-    .main {
-      margin-left: 70px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      position: relative;
-      height: 100vh;
-      transition: margin-left 0.3s ease;
-    }
-    .main.shifted { margin-left: 200px; }
-
-    .main h1 {
-      font-size: 2rem;
-      color: #2a6cf4;
-      text-align: center;
-      margin-top: 50px;
-      margin-bottom: 20px;
-    }
-
-    /* Chat Area */
-    .chat-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #fafafa;
-      border-radius: 10px;
-    }
-    .message {
-      max-width: 70%;
-      padding: 12px 15px;
-      border-radius: 15px;
-      font-size: 15px;
-      line-height: 1.4;
-    }
-    .sent { align-self: flex-end; background: #2a6cf4; color: #fff; border-bottom-right-radius: 5px; }
-    .received { align-self: flex-start; background: #f1f1f1; color: #333; border-bottom-left-radius: 5px; }
-    .thinking { font-style: italic; color: gray; }
-
-    /* Input Box */
-    .chat-input {
-      display: flex;
-      align-items: center;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 25px;
-      padding: 10px 15px;
-      margin: 20px auto;
-      max-width: 700px;
-      width: 100%;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-    }
-    .chat-input input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 15px;
-      background: transparent;
-      padding: 6px;
-    }
-    .chat-input button {
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-size: 18px;
-      margin-left: 8px;
-      color: #2a6cf4;
-      transition: 0.2s;
-    }
-    .chat-input button:hover { color: #184ec7; }
-
-    /* Upgrade */
-    .upgrade {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: #2a6cf4;
-      color: #fff;
-      padding: 8px 18px;
-      border-radius: 20px;
-      text-decoration: none;
-      font-size: 14px;
-      transition: 0.3s ease;
-    }
-    .upgrade:hover { background: #184ec7; }
-
-    /* Mobile */
-    @media (max-width: 768px) {
-      body { flex-direction: column; }
-      .sidebar { flex-direction: row; width: 100%; height: 60px; border-right: none; border-bottom: 1px solid #eee; justify-content: space-between; }
-      .sidebar.open { width: 100%; height: auto; flex-direction: column; }
-      .sidebar-top { flex-direction: row; gap: 20px; }
-      .main { margin-left: 0; margin-top: 60px; height: calc(100vh - 60px); }
-      .chat-input { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; border-radius: 0; }
-      .chat-area { margin-bottom: 60px; }
-      .main.shifted { margin-left: 0; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Gemini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .full-height {
+            height: 100vh;
+            -webkit-overflow-scrolling: touch;
+        }
+        .message-bubble {
+            border-radius: 1rem;
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            white-space: pre-wrap;
+        }
+        .send-button-loading {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+    </style>
 </head>
-<body>
+<body class="bg-gray-100 text-gray-900 flex flex-col full-height overflow-hidden">
 
-  <!-- Sidebar -->
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-top"><a id="menuBtn">☰</a></div>
-    <a href="#">⚙️</a>
-  </div>
+    <!-- Main App Container (hidden by default) -->
+    <div id="app" class="flex flex-col h-full hidden">
+        
+        <!-- Top Nav Bar -->
+        <header class="bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0 relative z-10">
+            <!-- Left section: Gemini logo and model selector -->
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <div class="font-bold text-2xl flex items-center">
+                    <span class="text-indigo-600">Ge</span><span class="text-blue-500">mini</span>
+                </div>
+                <div class="relative inline-block text-left">
+                    <button type="button" class="inline-flex justify-center items-center rounded-lg px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        2.5 Flash
+                        <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Right section: Upgrade and Avatar -->
+            <div class="flex items-center space-x-4">
+                <button class="px-3 py-1 rounded-full text-sm font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                    Upgrade
+                </button>
+                <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.93 0 3.5 1.57 3.5 3.5S13.93 12 12 12s-3.5-1.57-3.5-3.5S10.07 5 12 5zm0 14.7c-2.97 0-6.1-1.46-6.1-2.92a2.95 2.95 0 016.1 0c0 1.46-3.13 2.92-6.1 2.92z"/>
+                    </svg>
+                </div>
+            </div>
+        </header>
 
-  <!-- Main -->
-  <div class="main" id="mainContent">
-    <a href="#" class="upgrade">Upgrade</a>
-    <h1>Hello, User </h1>
+        <!-- New Banner -->
+        <div id="new-banner" class="bg-yellow-500 text-yellow-900 text-sm md:text-base p-2 flex items-center justify-center space-x-2">
+            <span role="img" aria-label="party-popper">🎉</span>
+            <span>NEW! Try image editing with our best image model, Nano Banana</span>
+            <button id="close-banner" class="ml-auto text-yellow-900 opacity-75 hover:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
 
-    <!-- Chat Area -->
-    <div class="chat-area" id="chatArea"></div>
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-y-auto px-4 py-6 md:p-8 flex items-start justify-center">
+            <!-- Sidebar -->
+            <div class="w-16 h-full bg-gray-50 flex flex-col items-center py-4 space-y-4">
+                <button class="p-3 rounded-full hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.5-1.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM12.75 14.25a.75.75 0 01-.75-.75V8.25a.75.75 0 011.5 0v5.25a.75.75 0 01-.75.75z" />
+                    </svg>
+                </button>
+                <button id="logout-button" class="mt-auto p-3 rounded-full hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                </button>
+            </div>
 
-    <!-- Input -->
-    <div class="chat-input">
-      <input type="text" id="userInput" placeholder="Type a message...">
-      <button id="sendBtn" title="Send">➡️</button>
+            <!-- Content within flex container -->
+            <div class="flex-1 max-w-4xl mx-auto flex flex-col space-y-4 pb-4 px-4">
+                <div class="text-3xl text-center font-bold text-gray-800 my-10" id="user-greeting">Hello, User</div>
+                <div id="chat-container" class="flex flex-col space-y-4 chat-container-inner">
+                    <!-- Chat messages will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input Area -->
+        <div class="flex-shrink-0 bg-white px-4 py-3 md:p-6 border-t border-gray-200">
+            <div class="max-w-4xl mx-auto flex flex-col space-y-2">
+                <div class="flex items-center p-2 bg-gray-100 rounded-3xl shadow-sm border border-gray-200">
+                    <input type="file" id="file-input" class="hidden" accept="image/*, application/pdf">
+                    <button id="add-button" class="p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </button>
+                    <textarea id="chat-input" class="flex-1 resize-none bg-transparent text-gray-800 px-4 py-2 outline-none placeholder-gray-400 text-sm" placeholder="Ask Gemini..." rows="1"></textarea>
+                    <button id="voice-button" class="p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                    </button>
+                    <button id="send-button" class="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.491 12 59.768 59.768 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script>
-    const chatArea = document.getElementById("chatArea");
-    const userInput = document.getElementById("userInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const sidebar = document.getElementById("sidebar");
-    const menuBtn = document.getElementById("menuBtn");
-    const mainContent = document.getElementById("mainContent");
+    <!-- Auth Container -->
+    <div id="auth-screen" class="flex-1 flex items-center justify-center p-4 md:p-8">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full space-y-6 shadow-xl">
+            <div class="text-center">
+                <h2 id="auth-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Login</h2>
+                <p id="auth-subtitle" class="text-gray-500 text-sm md:text-base">Welcome back! Sign in to continue.</p>
+                <p class="text-xs text-red-500 mt-2">Note: This is a front-end simulation. Your session is not persistent.</p>
+            </div>
+            
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label for="email" class="text-sm font-medium text-gray-600">Email Address</label>
+                    <input type="email" id="email" class="w-full mt-1 bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base" placeholder="you@example.com" required>
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-medium text-gray-600">Password</label>
+                    <input type="password" id="password" class="w-full mt-1 bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base" placeholder="••••••••" required>
+                </div>
+                <button type="submit" id="auth-button" class="w-full bg-blue-500 text-white rounded-xl py-3 text-lg font-semibold hover:bg-blue-600 transition-colors duration-200">Login</button>
+            </form>
+            
+            <div class="text-center">
+                <p class="text-sm text-gray-500">
+                    Don't have an account? <a id="toggle-auth" href="#" class="text-blue-500 hover:underline">Sign up</a>
+                </p>
+            </div>
+        </div>
+    </div>
 
-    function addMessage(text, type) {
-      const msg = document.createElement("div");
-      msg.classList.add("message", type);
-      msg.textContent = text;
-      chatArea.appendChild(msg);
-      chatArea.scrollTop = chatArea.scrollHeight;
-      return msg;
-    }
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ✅ Call Flask backend instead of Google API directly
-    async function getAIResponse(prompt) {
-      try {
-        const response = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: prompt })
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const API_KEY = ""; // Automatically provided by the environment
+
+        let db, auth, userId = null;
+        let isAuthReady = false;
+        let isLoading = false;
+
+        // DOM elements
+        const app = document.getElementById('app');
+        const authScreen = document.getElementById('auth-screen');
+        const logoutButton = document.getElementById('logout-button');
+        const authForm = document.getElementById('auth-form');
+        const toggleAuthLink = document.getElementById('toggle-auth');
+        const authTitle = document.getElementById('auth-title');
+        const authSubtitle = document.getElementById('auth-subtitle');
+        const authButton = document.getElementById('auth-button');
+        const chatContainer = document.getElementById('chat-container');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const fileInput = document.getElementById('file-input');
+        const addButton = document.getElementById('add-button');
+        const userGreeting = document.getElementById('user-greeting');
+        const newBanner = document.getElementById('new-banner');
+        const closeBannerButton = document.getElementById('close-banner');
+
+        // Global state
+        let isLoginState = true;
+
+        // Helper function to show and hide loading state
+        function setLoading(state) {
+            isLoading = state;
+            sendButton.disabled = state;
+            if (state) {
+                sendButton.classList.add('send-button-loading');
+                chatInput.placeholder = 'GenAI is thinking...';
+            } else {
+                sendButton.classList.remove('send-button-loading');
+                chatInput.placeholder = 'Ask Gemini...';
+            }
+        }
+
+        // Function to render a new message
+        function renderMessage(messageData) {
+            const isUser = messageData.sender === userId;
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('flex', 'space-x-4', 'my-2');
+            
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+            
+            if (messageData.image) {
+                const imageElement = document.createElement('img');
+                imageElement.src = messageData.image;
+                imageElement.classList.add('rounded-xl', 'mb-2', 'max-w-full', 'h-auto');
+                messageBubble.appendChild(imageElement);
+            }
+            
+            const messageParagraph = document.createElement('p');
+            messageParagraph.classList.add('text-sm');
+            messageParagraph.textContent = messageData.text;
+            messageBubble.appendChild(messageParagraph);
+
+            if (isUser) {
+                messageDiv.classList.add('justify-end');
+                messageBubble.classList.add('bg-blue-500', 'text-white');
+            } else {
+                messageDiv.classList.add('justify-start');
+                messageBubble.classList.add('bg-gray-200', 'text-gray-800');
+            }
+            
+            messageDiv.appendChild(messageBubble);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Handle form submission
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            // In a real application, you would send this to a backend for authentication
+            // We are just simulating a successful login/signup here
+            localStorage.setItem('isLoggedIn', 'true');
+            const successMessage = isLoginState ? "Login successful!" : "Signup successful!";
+            authSubtitle.textContent = successMessage + " Redirecting...";
+            authButton.disabled = true;
+
+            setTimeout(() => {
+                checkAuth();
+            }, 1000);
         });
-        const data = await response.json();
-        return data.reply || "⚠️ No response from AI.";
-      } catch (error) {
-        return "❌ Error: " + error.message;
-      }
-    }
 
-    sendBtn.addEventListener("click", async () => {
-      const text = userInput.value.trim();
-      if (text !== "") {
-        addMessage(text, "sent");
-        userInput.value = "";
+        // Toggle between Login and Signup forms
+        toggleAuthLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginState = !isLoginState;
+            if (isLoginState) {
+                authTitle.textContent = 'Login';
+                authSubtitle.textContent = 'Welcome back! Sign in to continue.';
+                authButton.textContent = 'Login';
+                toggleAuthLink.textContent = 'Sign up';
+            } else {
+                authTitle.textContent = 'Sign up';
+                authSubtitle.textContent = 'Create an account to get started.';
+                authButton.textContent = 'Sign up';
+                toggleAuthLink.textContent = 'Login';
+            }
+        });
 
-        const thinkingMsg = addMessage("⏳ Thinking...", "received thinking");
-        const reply = await getAIResponse(text);
+        // Function to set up Firebase and listeners
+        async function setupFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length > 0) {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
 
-        thinkingMsg.textContent = "🤖 " + reply;
-        thinkingMsg.classList.remove("thinking");
-      }
-    });
+                    // Sign in with the provided token or anonymously
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
 
-    userInput.addEventListener("keypress", (e) => {
-      if(e.key === "Enter") sendBtn.click();
-    });
+                    // Listen for authentication state changes
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            isAuthReady = true;
+                            checkAuth();
+                            userGreeting.textContent = `Hello, ${userId.substring(0, 5)}...`;
+                            setupChatListener();
+                        } else {
+                            userId = null;
+                            isAuthReady = false;
+                        }
+                    });
+                } else {
+                    console.error("Firebase config is empty. Firebase will not be initialized.");
+                }
+            } catch (error) {
+                console.error("Error setting up Firebase:", error);
+            }
+        }
 
-    // ☰ Toggle Sidebar
-    menuBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("open");
-      mainContent.classList.toggle("shifted");
-    });
-  </script>
+        // Set up real-time listener for chat history
+        function setupChatListener() {
+            if (!isAuthReady) {
+                console.log("Authentication not ready, cannot set up chat listener.");
+                return;
+            }
+
+            const chatPath = `/artifacts/${appId}/users/${userId}/chat_history`;
+            const chatCollection = collection(db, chatPath);
+            const q = query(chatCollection, orderBy("timestamp"));
+
+            onSnapshot(q, (querySnapshot) => {
+                chatContainer.innerHTML = ''; // Clear existing messages
+                querySnapshot.forEach((doc) => {
+                    renderMessage(doc.data());
+                });
+            }, (error) => {
+                console.error("Error fetching chat history:", error);
+            });
+        }
+
+        // Check authentication status and show appropriate screen
+        function checkAuth() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+            if (isLoggedIn && isAuthReady) {
+                app.classList.remove('hidden');
+                authScreen.classList.add('hidden');
+                setupAppListeners();
+            } else {
+                app.classList.add('hidden');
+                authScreen.classList.remove('hidden');
+            }
+            // Reset auth form state
+            authForm.reset();
+            authButton.disabled = false;
+            authSubtitle.textContent = isLoginState ? 'Welcome back! Sign in to continue.' : 'Create an account to get started.';
+        }
+        
+        // New function to set up event listeners for the main app UI
+        function setupAppListeners() {
+            // Handle sending a message
+            sendButton.addEventListener('click', async () => {
+                if (isLoading) return;
+                const message = chatInput.value.trim();
+                const file = fileInput.files[0];
+                
+                if (message || file) {
+                    await sendMessageToGemini(message, file);
+                    chatInput.value = '';
+                    fileInput.value = '';
+                }
+            });
+            
+            // Handle sending message on Enter key press
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                    e.preventDefault();
+                    sendButton.click();
+                }
+            });
+
+            // Auto-resize the textarea
+            chatInput.addEventListener('input', () => {
+                chatInput.style.height = 'auto';
+                chatInput.style.height = chatInput.scrollHeight + 'px';
+            });
+
+            // Handle add button click for file selection
+            addButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // Handle file selection (new logic)
+            fileInput.addEventListener('change', async () => {
+                const file = fileInput.files[0];
+                if (file) {
+                    // Automatically send the message when a file is selected
+                    await sendMessageToGemini('', file);
+                    fileInput.value = ''; // Clear the file input for next time
+                }
+            });
+
+            // Handle close banner button click
+            closeBannerButton.addEventListener('click', () => {
+                newBanner.style.display = 'none';
+            });
+
+            // Handle logout
+            logoutButton.addEventListener('click', () => {
+                localStorage.removeItem('isLoggedIn');
+                location.reload(); // Reload to reset all state and listeners
+            });
+        }
+        
+        // --- Gemini API Integration ---
+        async function sendMessageToGemini(text, file) {
+            setLoading(true);
+            try {
+                const chatPath = `/artifacts/${appId}/users/${userId}/chat_history`;
+
+                const isPdf = file && file.type === 'application/pdf';
+
+                // Add user message to Firestore
+                await addDoc(collection(db, chatPath), {
+                    text: text || (isPdf ? `Attached a PDF: ${file.name}` : `Attached an image: ${file.name}`),
+                    sender: userId,
+                    timestamp: serverTimestamp(),
+                    ...(file && { image: URL.createObjectURL(file) }) // Use 'image' for simplicity of display logic
+                });
+
+                const parts = [{ text }];
+                if (file) {
+                    // For a real app, you would process the PDF content here.
+                    // For now, we'll just send a placeholder message for PDFs.
+                    if (isPdf) {
+                        parts.push({
+                            text: `[PDF file "${file.name}" was provided]`
+                        });
+                    } else {
+                        const base64Image = await new Promise(resolve => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result.split(',')[1]);
+                            reader.readAsDataURL(file);
+                        });
+                        parts.push({
+                            inlineData: {
+                                mimeType: file.type,
+                                data: base64Image
+                            }
+                        });
+                    }
+                }
+
+                const payload = {
+                    contents: [{ parts }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 200,
+                    },
+                    systemInstruction: {
+                        parts: [{ text: "You are a friendly and helpful AI assistant. Your purpose is to assist the user with their queries in a concise and clear manner." }]
+                    }
+                };
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const aiMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (aiMessage) {
+                    await addDoc(collection(db, chatPath), {
+                        text: aiMessage,
+                        sender: 'GenAI',
+                        timestamp: serverTimestamp()
+                    });
+                } else {
+                    await addDoc(collection(db, chatPath), {
+                        text: "Sorry, I couldn't generate a response. Please try again.",
+                        sender: 'GenAI',
+                        timestamp: serverTimestamp()
+                    });
+                }
+            } catch (e) {
+                console.error("Error sending message to Gemini or Firestore:", e);
+                await addDoc(collection(db, chatPath), {
+                    text: "An error occurred. Please check the console for details.",
+                    sender: 'GenAI',
+                    timestamp: serverTimestamp()
+                });
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFirebase();
+        });
+    </script>
+
 </body>
 </html>
