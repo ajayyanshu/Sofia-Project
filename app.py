@@ -1,44 +1,32 @@
-from flask import Flask, request, render_template, jsonify
-import google.generativeai as genai
-from dotenv import load_dotenv
 import os
+from flask import Flask, render_template, jsonify, request
+from dotenv import load_dotenv
 
-# Load .env
+# Load environment variables from a .env file
 load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY")
-
-genai.configure(api_key=api_key)
 
 app = Flask(__name__)
 
-# Gemini model
-model = genai.GenerativeModel("gemini-1.5-flash")
+# This route serves the main HTML file.
+# It passes the Firebase and Gemini API keys from environment variables to the HTML template.
+@app.route('/')
+def index():
+    firebase_config = {
+        "apiKey": os.environ.get("FIREBASE_API_KEY"),
+        "authDomain": os.environ.get("FIREBASE_AUTH_DOMAIN"),
+        "projectId": os.environ.get("FIREBASE_PROJECT_ID"),
+        "storageBucket": os.environ.get("FIREBASE_STORAGE_BUCKET"),
+        "messagingSenderId": os.environ.get("FIREBASE_MESSAGING_SENDER_ID"),
+        "appId": os.environ.get("FIREBASE_APP_ID"),
+    }
+    
+    # Get the Gemini API key from the environment
+    gemini_api_key = os.environ.get("GEMINI_API_KEY")
+    
+    return render_template('recreated_ui.html', 
+                           firebase_config=firebase_config,
+                           gemini_api_key=gemini_api_key)
 
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    try:
-        user_message = request.json.get("message")
-        if not user_message:
-            return jsonify({"reply": "⚠️ No message received"})
-
-        # Generate content
-        response = model.generate_content(user_message)
-
-        # Agar Gemini ne kuch nahi diya
-        if not hasattr(response, "text") or response.text is None:
-            return jsonify({"reply": "⚠️ Gemini did not return a response"})
-
-        return jsonify({"reply": response.text})
-    except Exception as e:
-        # Error ko return bhi karo aur Render logs me print bhi
-        print("❌ Backend Error:", str(e))
-        return jsonify({"reply": f"❌ Error: {str(e)}"})
-        
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+if __name__ == '__main__':
+    # You may need to change host to '0.0.0.0' for Render deployment.
+    app.run(host='127.0.0.1', port=5000, debug=True)
