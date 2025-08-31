@@ -1,154 +1,293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AI Chatbot</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chatbot - Gemini Style</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .sidebar {
-      width: 60px;
-      background: #fff;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 10px 0;
-    }
-    .sidebar a {
-      margin: 15px 0;
-      text-decoration: none;
-      font-size: 20px;
+      font-family: 'Segoe UI', sans-serif;
+      background: #fdfdfd;
       color: #333;
       display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 70px;
+      height: 100%;
+      background: #f8f9fb;
+      border-right: 1px solid #eee;
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      transition: background 0.2s;
+      justify-content: space-between;
+      transition: width 0.3s ease;
+      overflow: hidden;
+      z-index: 1000;
     }
-    .sidebar a:hover {
-      background: #f0f0f0;
+    .sidebar.open {
+      width: 200px;
+      align-items: flex-start;
+      padding-left: 15px;
     }
-    .chat-container {
+    .sidebar-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+    }
+    .sidebar.open .sidebar-top {
+      align-items: flex-start;
+    }
+    .sidebar a { text-decoration: none; color: #555; font-size: 20px; cursor: pointer; }
+
+    /* Overlay for mobile */
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      z-index: 900;
+    }
+    .overlay.active { display: block; }
+
+    /* Main */
+    .main {
+      margin-left: 70px;
       flex: 1;
       display: flex;
       flex-direction: column;
-      background: #f9f9f9;
+      padding: 20px;
+      position: relative;
+      height: 100vh;
+      transition: margin-left 0.3s ease;
     }
-    .chat-box {
-      flex: 1;
-      padding: 15px;
-      overflow-y: auto;
-    }
-    .message {
-      margin: 8px 0;
-      padding: 10px 14px;
-      border-radius: 12px;
-      max-width: 70%;
-      word-wrap: break-word;
-    }
-    .user {
-      background: #007bff;
-      color: #fff;
-      margin-left: auto;
-    }
-    .bot {
-      background: #e4e6eb;
-      color: #000;
-      margin-right: auto;
-    }
-    .input-container {
-      display: flex;
-      padding: 10px;
-      background: #fff;
-      border-top: 1px solid #ddd;
-    }
-    .input-container input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 20px;
-      outline: none;
-    }
-    .input-container button {
-      margin-left: 8px;
-      padding: 0 16px;
-      border: none;
-      background: #007bff;
-      color: #fff;
-      border-radius: 20px;
-      cursor: pointer;
-    }
-    .input-container button:hover {
-      background: #0056b3;
+    .main.shifted { margin-left: 200px; }
+
+    .main h1 {
+      font-size: 2rem;
+      color: #2a6cf4;
+      text-align: center;
+      margin-top: 50px;
+      margin-bottom: 20px;
     }
 
-    /* MOBILE FIX */
+    /* Chat Area */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #fafafa;
+      border-radius: 10px;
+    }
+    .message {
+      max-width: 70%;
+      padding: 12px 15px;
+      border-radius: 15px;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+    .sent {
+      align-self: flex-end;
+      background: #2a6cf4;
+      color: #fff;
+      border-bottom-right-radius: 5px;
+    }
+    .received {
+      align-self: flex-start;
+      background: #f1f1f1;
+      color: #333;
+      border-bottom-left-radius: 5px;
+    }
+    .thinking { font-style: italic; color: gray; }
+
+    /* Input Box */
+    .chat-input {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 25px;
+      padding: 10px 15px;
+      margin: 20px auto;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+    .chat-input input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      background: transparent;
+      padding: 6px;
+    }
+    .chat-input button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 18px;
+      margin-left: 8px;
+      color: #2a6cf4;
+      transition: 0.2s;
+    }
+    .chat-input button:hover { color: #184ec7; }
+
+    /* Upgrade */
+    .upgrade {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #2a6cf4;
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 14px;
+      transition: 0.3s ease;
+    }
+    .upgrade:hover { background: #184ec7; }
+
+    /* Mobile */
     @media (max-width: 768px) {
+      body { flex-direction: column; }
       .sidebar {
-        flex-direction: row;
-        height: 50px;
-        width: 100%;
-        justify-content: flex-start;
+        left: -250px;
+        width: 200px;
+        height: 100%;
+        flex-direction: column;
+        transition: left 0.3s ease;
       }
-      .sidebar a {
-        margin: 0 10px;
+      .sidebar.open { left: 0; }
+      .main { margin-left: 0; margin-top: 60px; height: calc(100vh - 60px); }
+      .chat-input {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        margin: 0; border-radius: 0;
       }
-      /* NEW: Setting icon right side */
-      .sidebar a:last-child {
-        margin-left: auto;
-      }
+      .chat-area { margin-bottom: 60px; }
+      .main.shifted { margin-left: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <a href="#">✏️</a>
-    <a href="#">📎</a>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <a id="menuBtn">☰</a>
+    </div>
     <a href="#">⚙️</a>
   </div>
-  <div class="chat-container">
-    <div class="chat-box" id="chat-box"></div>
-    <div class="input-container">
-      <input type="text" id="user-input" placeholder="Type a message..." />
-      <button onclick="sendMessage()">➤</button>
+
+  <!-- Overlay for mobile -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Main -->
+  <div class="main" id="mainContent">
+    <a href="#" class="upgrade">Upgrade</a>
+    <h1>Hello, User </h1>
+
+    <!-- Chat Area -->
+    <div class="chat-area" id="chatArea"></div>
+
+    <!-- Input -->
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Type a message...">
+      <input type="file" id="fileInput" style="display:none" />
+      <button id="fileBtn" title="Attach File">📎</button>
+      <button id="sendBtn" title="Send">➡️</button>
     </div>
   </div>
 
   <script>
-    function sendMessage() {
-      const input = document.getElementById("user-input");
-      const message = input.value.trim();
-      if (!message) return;
+    const API_KEY = "YOUR_GOOGLE_API_KEY"; 
+    const chatArea = document.getElementById("chatArea");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const fileBtn = document.getElementById("fileBtn");
+    const fileInput = document.getElementById("fileInput");
+    const sidebar = document.getElementById("sidebar");
+    const menuBtn = document.getElementById("menuBtn");
+    const mainContent = document.getElementById("mainContent");
+    const overlay = document.getElementById("overlay");
 
-      // User message
-      const chatBox = document.getElementById("chat-box");
-      const userMsg = document.createElement("div");
-      userMsg.className = "message user";
-      userMsg.innerText = message;
-      chatBox.appendChild(userMsg);
-
-      input.value = "";
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      // Bot response (dummy for now)
-      setTimeout(() => {
-        const botMsg = document.createElement("div");
-        botMsg.className = "message bot";
-        botMsg.innerText = "🤖 This is a dummy AI response.";
-        chatBox.appendChild(botMsg);
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }, 1000);
+    function addMessage(text, type) {
+      const msg = document.createElement("div");
+      msg.classList.add("message", type);
+      msg.textContent = text;
+      chatArea.appendChild(msg);
+      chatArea.scrollTop = chatArea.scrollHeight;
+      return msg;
     }
+
+    async function getAIResponse(prompt) {
+      try {
+        const response = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + API_KEY,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }]
+            })
+          }
+        );
+        const data = await response.json();
+        return data?.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ No response from AI.";
+      } catch (error) {
+        return "❌ Error: " + error.message;
+      }
+    }
+
+    sendBtn.addEventListener("click", async () => {
+      const text = userInput.value.trim();
+      if (text !== "") {
+        addMessage(text, "sent");
+        userInput.value = "";
+        const thinkingMsg = addMessage("⏳ Thinking...", "received thinking");
+        const reply = await getAIResponse(text);
+        thinkingMsg.textContent = "🤖 " + reply;
+        thinkingMsg.classList.remove("thinking");
+      }
+    });
+
+    userInput.addEventListener("keypress", (e) => {
+      if(e.key === "Enter") sendBtn.click();
+    });
+
+    fileBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        addMessage("📎 Uploaded: " + file.name, "sent");
+      }
+    });
+
+    // ☰ Toggle Sidebar
+    menuBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
+      mainContent.classList.toggle("shifted");
+      overlay.classList.toggle("active");
+    });
+
+    overlay.addEventListener("click", () => {
+      sidebar.classList.remove("open");
+      mainContent.classList.remove("shifted");
+      overlay.classList.remove("active");
+    });
   </script>
 </body>
 </html>
