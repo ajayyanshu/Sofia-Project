@@ -37,8 +37,8 @@
 </head>
 <body class="bg-gray-100 text-gray-900 flex flex-col full-height overflow-hidden">
 
-    <!-- Main App Container (hidden by default) -->
-    <div id="app" class="flex flex-col h-full hidden">
+    <!-- Main App Container -->
+    <div id="app" class="flex flex-col h-full">
         
         <!-- Top Nav Bar -->
         <header class="bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0 relative z-10">
@@ -93,6 +93,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.5-1.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM12.75 14.25a.75.75 0 01-.75-.75V8.25a.75.75 0 011.5 0v5.25a.75.75 0 01-.75.75z" />
                     </svg>
                 </button>
+                 <!-- New Summary Button -->
+                <button id="summary-button" class="p-3 rounded-full hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m-7 2h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </button>
                 <button id="logout-button" class="mt-auto p-3 rounded-full hover:bg-gray-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
@@ -134,46 +140,24 @@
             </div>
         </div>
     </div>
-
-    <!-- Auth Container -->
-    <div id="auth-screen" class="flex-1 flex items-center justify-center p-4 md:p-8">
-        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full space-y-6 shadow-xl">
-            <div class="text-center">
-                <h2 id="auth-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Login</h2>
-                <p id="auth-subtitle" class="text-gray-500 text-sm md:text-base">Welcome back! Sign in to continue.</p>
-                <p class="text-xs text-red-500 mt-2">Note: This is a front-end simulation. Your session is not persistent.</p>
-            </div>
-            
-            <form id="auth-form" class="space-y-4">
-                <div>
-                    <label for="email" class="text-sm font-medium text-gray-600">Email Address</label>
-                    <input type="email" id="email" class="w-full mt-1 bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base" placeholder="you@example.com" required>
-                </div>
-                <div>
-                    <label for="password" class="text-sm font-medium text-gray-600">Password</label>
-                    <input type="password" id="password" class="w-full mt-1 bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base" placeholder="••••••••" required>
-                </div>
-                <button type="submit" id="auth-button" class="w-full bg-blue-500 text-white rounded-xl py-3 text-lg font-semibold hover:bg-blue-600 transition-colors duration-200">Login</button>
-            </form>
-            
-            <div class="text-center">
-                <p class="text-sm text-gray-500">
-                    Don't have an account? <a id="toggle-auth" href="#" class="text-blue-500 hover:underline">Sign up</a>
-                </p>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Check for environment variables from Render, or use local if not found
+        const firebaseConfig = window.env ? {
+            apiKey: window.env.FIREBASE_API_KEY,
+            authDomain: window.env.FIREBASE_AUTH_DOMAIN,
+            projectId: window.env.FIREBASE_PROJECT_ID,
+            storageBucket: window.env.FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: window.env.FIREBASE_MESSAGING_SENDER_ID,
+            appId: window.env.FIREBASE_APP_ID
+        } : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
         
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         const API_KEY = ""; // Automatically provided by the environment
 
         let db, auth, userId = null;
@@ -182,13 +166,8 @@
 
         // DOM elements
         const app = document.getElementById('app');
-        const authScreen = document.getElementById('auth-screen');
         const logoutButton = document.getElementById('logout-button');
-        const authForm = document.getElementById('auth-form');
-        const toggleAuthLink = document.getElementById('toggle-auth');
-        const authTitle = document.getElementById('auth-title');
-        const authSubtitle = document.getElementById('auth-subtitle');
-        const authButton = document.getElementById('auth-button');
+        const summaryButton = document.getElementById('summary-button');
         const chatContainer = document.getElementById('chat-container');
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
@@ -197,9 +176,6 @@
         const userGreeting = document.getElementById('user-greeting');
         const newBanner = document.getElementById('new-banner');
         const closeBannerButton = document.getElementById('close-banner');
-
-        // Global state
-        let isLoginState = true;
 
         // Helper function to show and hide loading state
         function setLoading(state) {
@@ -241,49 +217,24 @@
             } else {
                 messageDiv.classList.add('justify-start');
                 messageBubble.classList.add('bg-gray-200', 'text-gray-800');
+                
+                // Add TTS button for AI messages
+                const ttsButton = document.createElement('button');
+                ttsButton.classList.add('ml-2', 'p-1', 'rounded-full', 'hover:bg-gray-300', 'text-gray-500', 'transition-colors');
+                ttsButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.444A1.25 1.25 0 0110 3.194v13.612a1.25 1.25 0 01-1.25 1.25h-.5a1.25 1.25 0 01-1.25-1.25v-1.156L3.933 16.5a1.25 1.25 0 01-1.25-1.25V4.75a1.25 1.25 0 011.25-1.25l3.242-2.156V.694a1.25 1.25 0 011.25-1.25h.5zM15 9.75a.75.75 0 100 1.5.75.75 0 000-1.5z" clip-rule="evenodd" /></svg>`;
+                ttsButton.onclick = () => playAudio(messageData.text);
+                messageBubble.appendChild(ttsButton);
             }
             
             messageDiv.appendChild(messageBubble);
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-
-        // Handle form submission
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            // In a real application, you would send this to a backend for authentication
-            // We are just simulating a successful login/signup here
-            localStorage.setItem('isLoggedIn', 'true');
-            const successMessage = isLoginState ? "Login successful!" : "Signup successful!";
-            authSubtitle.textContent = successMessage + " Redirecting...";
-            authButton.disabled = true;
-
-            setTimeout(() => {
-                checkAuth();
-            }, 1000);
-        });
-
-        // Toggle between Login and Signup forms
-        toggleAuthLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            isLoginState = !isLoginState;
-            if (isLoginState) {
-                authTitle.textContent = 'Login';
-                authSubtitle.textContent = 'Welcome back! Sign in to continue.';
-                authButton.textContent = 'Login';
-                toggleAuthLink.textContent = 'Sign up';
-            } else {
-                authTitle.textContent = 'Sign up';
-                authSubtitle.textContent = 'Create an account to get started.';
-                authButton.textContent = 'Sign up';
-                toggleAuthLink.textContent = 'Login';
-            }
-        });
-
+        
         // Function to set up Firebase and listeners
         async function setupFirebase() {
             try {
-                if (Object.keys(firebaseConfig).length > 0) {
+                if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
                     const app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     db = getFirestore(app);
@@ -300,7 +251,6 @@
                         if (user) {
                             userId = user.uid;
                             isAuthReady = true;
-                            checkAuth();
                             userGreeting.textContent = `Hello, ${userId.substring(0, 5)}...`;
                             setupChatListener();
                         } else {
@@ -310,9 +260,11 @@
                     });
                 } else {
                     console.error("Firebase config is empty. Firebase will not be initialized.");
+                    userGreeting.textContent = "Error: Firebase not initialized. Please run in a supported environment.";
                 }
             } catch (error) {
                 console.error("Error setting up Firebase:", error);
+                userGreeting.textContent = "Error: Firebase setup failed. Please check the console.";
             }
         }
 
@@ -335,23 +287,6 @@
             }, (error) => {
                 console.error("Error fetching chat history:", error);
             });
-        }
-
-        // Check authentication status and show appropriate screen
-        function checkAuth() {
-            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-            if (isLoggedIn && isAuthReady) {
-                app.classList.remove('hidden');
-                authScreen.classList.add('hidden');
-                setupAppListeners();
-            } else {
-                app.classList.add('hidden');
-                authScreen.classList.remove('hidden');
-            }
-            // Reset auth form state
-            authForm.reset();
-            authButton.disabled = false;
-            authSubtitle.textContent = isLoginState ? 'Welcome back! Sign in to continue.' : 'Create an account to get started.';
         }
         
         // New function to set up event listeners for the main app UI
@@ -405,8 +340,13 @@
 
             // Handle logout
             logoutButton.addEventListener('click', () => {
-                localStorage.removeItem('isLoggedIn');
-                location.reload(); // Reload to reset all state and listeners
+                // Since there is no persistent auth, we just reload the page
+                location.reload(); 
+            });
+
+            // Handle summary button click
+            summaryButton.addEventListener('click', async () => {
+                await summarizeConversation();
             });
         }
         
@@ -426,66 +366,73 @@
                     ...(file && { image: URL.createObjectURL(file) }) // Use 'image' for simplicity of display logic
                 });
 
-                const parts = [{ text }];
-                if (file) {
-                    // For a real app, you would process the PDF content here.
-                    // For now, we'll just send a placeholder message for PDFs.
-                    if (isPdf) {
-                        parts.push({
-                            text: `[PDF file "${file.name}" was provided]`
+                // Check for image generation request
+                const isImageGenerationRequest = text.toLowerCase().includes('generate an image of') || 
+                                                 text.toLowerCase().includes('create an image of');
+                
+                if (isImageGenerationRequest) {
+                    await generateImage(text);
+                } else {
+                    const parts = [{ text }];
+                    if (file) {
+                        if (isPdf) {
+                            parts.push({
+                                text: `[PDF file "${file.name}" was provided]`
+                            });
+                        } else {
+                            const base64Image = await new Promise(resolve => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result.split(',')[1]);
+                                reader.readAsDataURL(file);
+                            });
+                            parts.push({
+                                inlineData: {
+                                    mimeType: file.type,
+                                    data: base64Image
+                                }
+                            });
+                        }
+                    }
+
+                    const payload = {
+                        contents: [{ parts }],
+                        generationConfig: {
+                            temperature: 0.7,
+                            maxOutputTokens: 200,
+                        },
+                        systemInstruction: {
+                            parts: [{ text: "You are a friendly and helpful AI assistant. Your purpose is to assist the user with their queries in a concise and clear manner." }]
+                        }
+                    };
+
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    const aiMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (aiMessage) {
+                        await addDoc(collection(db, chatPath), {
+                            text: aiMessage,
+                            sender: 'GenAI',
+                            timestamp: serverTimestamp()
                         });
                     } else {
-                        const base64Image = await new Promise(resolve => {
-                            const reader = new FileReader();
-                            reader.onload = () => resolve(reader.result.split(',')[1]);
-                            reader.readAsDataURL(file);
-                        });
-                        parts.push({
-                            inlineData: {
-                                mimeType: file.type,
-                                data: base64Image
-                            }
+                        await addDoc(collection(db, chatPath), {
+                            text: "Sorry, I couldn't generate a response. Please try again.",
+                            sender: 'GenAI',
+                            timestamp: serverTimestamp()
                         });
                     }
-                }
-
-                const payload = {
-                    contents: [{ parts }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 200,
-                    },
-                    systemInstruction: {
-                        parts: [{ text: "You are a friendly and helpful AI assistant. Your purpose is to assist the user with their queries in a concise and clear manner." }]
-                    }
-                };
-
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                const aiMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (aiMessage) {
-                    await addDoc(collection(db, chatPath), {
-                        text: aiMessage,
-                        sender: 'GenAI',
-                        timestamp: serverTimestamp()
-                    });
-                } else {
-                    await addDoc(collection(db, chatPath), {
-                        text: "Sorry, I couldn't generate a response. Please try again.",
-                        sender: 'GenAI',
-                        timestamp: serverTimestamp()
-                    });
                 }
             } catch (e) {
                 console.error("Error sending message to Gemini or Firestore:", e);
+                const chatPath = `/artifacts/${appId}/users/${userId}/chat_history`;
                 await addDoc(collection(db, chatPath), {
                     text: "An error occurred. Please check the console for details.",
                     sender: 'GenAI',
@@ -495,11 +442,224 @@
                 setLoading(false);
             }
         }
+
+        async function generateImage(prompt) {
+            const chatPath = `/artifacts/${appId}/users/${userId}/chat_history`;
+            setLoading(true);
+            try {
+                const payload = {
+                    instances: { prompt: prompt },
+                    parameters: { "sampleCount": 1 }
+                };
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${API_KEY}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const imageData = result?.predictions?.[0]?.bytesBase64Encoded;
+
+                if (imageData) {
+                    const imageUrl = `data:image/png;base64,${imageData}`;
+                    await addDoc(collection(db, chatPath), {
+                        text: "Here is the image you requested.",
+                        image: imageUrl,
+                        sender: 'GenAI',
+                        timestamp: serverTimestamp()
+                    });
+                } else {
+                    await addDoc(collection(db, chatPath), {
+                        text: "Sorry, I couldn't generate an image. Please try again with a different prompt.",
+                        sender: 'GenAI',
+                        timestamp: serverTimestamp()
+                    });
+                }
+            } catch (e) {
+                console.error("Error generating image:", e);
+                await addDoc(collection(db, chatPath), {
+                    text: "An error occurred while generating the image.",
+                    sender: 'GenAI',
+                    timestamp: serverTimestamp()
+                });
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function summarizeConversation() {
+            setLoading(true);
+            try {
+                const chatPath = `/artifacts/${appId}/users/${userId}/chat_history`;
+                const q = query(collection(db, chatPath), orderBy("timestamp"));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                     await addDoc(collection(db, chatPath), {
+                        text: "There is no conversation to summarize.",
+                        sender: 'GenAI',
+                        timestamp: serverTimestamp()
+                    });
+                    setLoading(false);
+                    return;
+                }
+
+                const conversation = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const sender = data.sender === userId ? 'User' : 'AI';
+                    return `${sender}: ${data.text}`;
+                }).join('\n');
+
+                const summaryPrompt = `Please provide a concise summary of the following conversation:\n\n${conversation}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: summaryPrompt }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 200,
+                    },
+                    systemInstruction: {
+                        parts: [{ text: "You are a helpful AI assistant tasked with summarizing conversations. Provide a brief, neutral summary of the key points discussed." }]
+                    }
+                };
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const summaryText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                await addDoc(collection(db, chatPath), {
+                    text: summaryText || "Sorry, I couldn't generate a summary.",
+                    sender: 'GenAI',
+                    timestamp: serverTimestamp()
+                });
+
+            } catch (e) {
+                console.error("Error summarizing conversation:", e);
+                const chatPath = `/artifacts/${appId}/users/${userId}/chat_history`;
+                await addDoc(collection(db, chatPath), {
+                    text: "An error occurred while generating the summary.",
+                    sender: 'GenAI',
+                    timestamp: serverTimestamp()
+                });
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Helper function to convert PCM audio data to a playable WAV Blob
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2;
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+
+            const buffer = new ArrayBuffer(44 + pcmData.length * bytesPerSample);
+            const view = new DataView(buffer);
+
+            // WAV header
+            // RIFF chunk
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.length * bytesPerSample, true);
+            writeString(view, 8, 'WAVE');
+            // FMT chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM format
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bytesPerSample * 8, true);
+            // DATA chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmData.length * bytesPerSample, true);
+
+            // Write PCM data
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(44 + i * bytesPerSample, pcmData[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+        }
+
+        // Helper function to decode base64 to ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        async function playAudio(text) {
+            try {
+                const payload = {
+                    contents: [{ parts: [{ text: text }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" }
+                            }
+                        }
+                    },
+                    model: "gemini-2.5-flash-preview-tts"
+                };
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = new Int16Array(base64ToArrayBuffer(audioData));
+                    const wavBlob = pcmToWav(pcmData, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+
+                    audio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                    };
+                }
+            } catch (e) {
+                console.error("Error playing audio:", e);
+            }
+        }
         
         // Initial setup on page load
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
+            setupAppListeners();
         });
+
     </script>
 
 </body>
