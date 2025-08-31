@@ -23,7 +23,7 @@ def index():
     # Get the Gemini API key from the environment
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
     
-    return render_template('recreated_ui.html', 
+    return render_template('index.html', 
                            firebase_config=firebase_config,
                            gemini_api_key=gemini_api_key)
 
