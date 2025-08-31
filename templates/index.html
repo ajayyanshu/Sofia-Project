@@ -158,17 +158,22 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Check for environment variables from Render, or use local if not found
+        // --- IMPORTANT: ADD YOUR FIREBASE AND GEMINI API KEYS HERE FOR LOCAL TESTING ---
+        // For a deployed website, you should use environment variables from a backend server.
         const firebaseConfig = {
-  apiKey: "AIzaSyDOjKEHarti4SnDraefXWeNU2m_NmV4pWI",
-  authDomain: "fir-efc91.firebaseapp.com",
-  projectId: "fir-efc91",
-  storageBucket: "fir-efc91.firebasestorage.app",
-  messagingSenderId: "666715757996",
-  appId: "1:666715757996:web:daf0ac0b6050d0f36aae09"
-};
+            apiKey: "AIzaSyDOjKEHarti4SnDraefXWeNU2m_NmV4pWI",
+            authDomain: "fir-efc91.firebaseapp.com",
+            projectId: "fir-efc91",
+            storageBucket: "fir-efc91.firebasestorage.app",
+            messagingSenderId: "666715757996",
+            appId: "1:666715757996:web:daf0ac0b6050d0f36aae09"
+        };
+        
+        const API_KEY = "YOUR_GEMINI_API_KEY";
+        
+        // --- END OF API KEY SECTION ---
+        const appId = firebaseConfig.appId || 'default-app-id';
+        const initialAuthToken = null; // We are not using a token for local testing
 
         let db, auth, userId = null;
         let isAuthReady = false;
