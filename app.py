@@ -1,26 +1,22 @@
-from flask import Flask, render_template, request, jsonify
-import google.generativeai as genai
+from flask import Flask, request, jsonify
 import os
-from dotenv import load_dotenv
+import google.generativeai as genai
 
-load_dotenv()
+app = Flask(__name__)
 
-app = Flask(__name__)  # static folder is "static" by default
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-@app.route("/")
-def home():
-  return render_template("index.html")
+# Load API key (from environment variables in Render)
+api_key = os.getenv("GOOGLE_API_KEY")
+genai.configure(api_key=api_key)
 
 @app.route("/chat", methods=["POST"])
 def chat():
-  try:
-    user_msg = request.json.get("message", "")
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(user_msg)
-    return jsonify({"reply": response.text})
-  except Exception as e:
-    return jsonify({"reply": f"⚠️ Error: {str(e)}"})
-
-if __name__ == "__main__":
-  app.run(debug=True)
+    user_msg = request.json.get("message")
+    try:
+        response = genai.chat.create(
+            model="gpt-3.5-mini",
+            messages=[{"role": "user", "content": user_msg}]
+        )
+        # Send the AI reply back to frontend
+        return jsonify({"reply": response.last})
+    except Exception as e:
+        return jsonify({"reply": f"Error: {str(e)}"})
