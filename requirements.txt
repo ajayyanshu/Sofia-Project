@@ -4,3 +4,4 @@ google-generativeai
 python-dotenv
 PyMuPDF
 Pillow
+openai
