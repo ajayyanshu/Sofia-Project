@@ -27,12 +27,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: space-between; /* keep last item at bottom */
+      justify-content: space-between;
       transition: width 0.3s ease;
       overflow: hidden;
+      z-index: 1000;
     }
     .sidebar.open {
-      width: 200px; /* expand on click */
+      width: 200px;
       align-items: flex-start;
       padding-left: 15px;
     }
@@ -47,6 +48,17 @@
       align-items: flex-start;
     }
     .sidebar a { text-decoration: none; color: #555; font-size: 20px; cursor: pointer; }
+
+    /* Overlay for mobile */
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      z-index: 900;
+    }
+    .overlay.active { display: block; }
 
     /* Main */
     .main {
@@ -99,10 +111,7 @@
       color: #333;
       border-bottom-left-radius: 5px;
     }
-    .thinking {
-      font-style: italic;
-      color: gray;
-    }
+    .thinking { font-style: italic; color: gray; }
 
     /* Input Box */
     .chat-input {
@@ -154,17 +163,19 @@
     /* Mobile */
     @media (max-width: 768px) {
       body { flex-direction: column; }
-      .sidebar { flex-direction: row; width: 100%; height: 60px; border-right: none; border-bottom: 1px solid #eee; justify-content: space-between; }
-      .sidebar.open { width: 100%; height: auto; flex-direction: column; }
-      .sidebar-top { flex-direction: row; gap: 20px; }
+      .sidebar {
+        left: -250px;
+        width: 200px;
+        height: 100%;
+        flex-direction: column;
+        transition: left 0.3s ease;
+      }
+      .sidebar.open { left: 0; }
       .main { margin-left: 0; margin-top: 60px; height: calc(100vh - 60px); }
       .chat-input {
         position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        margin: 0;
-        border-radius: 0;
+        bottom: 0; left: 0; right: 0;
+        margin: 0; border-radius: 0;
       }
       .chat-area { margin-bottom: 60px; }
       .main.shifted { margin-left: 0; }
@@ -181,6 +192,9 @@
     <a href="#">⚙️</a>
   </div>
 
+  <!-- Overlay for mobile -->
+  <div class="overlay" id="overlay"></div>
+
   <!-- Main -->
   <div class="main" id="mainContent">
     <a href="#" class="upgrade">Upgrade</a>
@@ -192,11 +206,8 @@
     <!-- Input -->
     <div class="chat-input">
       <input type="text" id="userInput" placeholder="Type a message...">
-      
-      <!-- File upload (hidden input + label) -->
       <input type="file" id="fileInput" style="display:none" />
       <button id="fileBtn" title="Attach File">📎</button>
-      
       <button id="sendBtn" title="Send">➡️</button>
     </div>
   </div>
@@ -211,6 +222,7 @@
     const sidebar = document.getElementById("sidebar");
     const menuBtn = document.getElementById("menuBtn");
     const mainContent = document.getElementById("mainContent");
+    const overlay = document.getElementById("overlay");
 
     function addMessage(text, type) {
       const msg = document.createElement("div");
@@ -245,10 +257,8 @@
       if (text !== "") {
         addMessage(text, "sent");
         userInput.value = "";
-
         const thinkingMsg = addMessage("⏳ Thinking...", "received thinking");
         const reply = await getAIResponse(text);
-
         thinkingMsg.textContent = "🤖 " + reply;
         thinkingMsg.classList.remove("thinking");
       }
@@ -259,7 +269,6 @@
     });
 
     fileBtn.addEventListener("click", () => fileInput.click());
-
     fileInput.addEventListener("change", () => {
       if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
@@ -271,6 +280,13 @@
     menuBtn.addEventListener("click", () => {
       sidebar.classList.toggle("open");
       mainContent.classList.toggle("shifted");
+      overlay.classList.toggle("active");
+    });
+
+    overlay.addEventListener("click", () => {
+      sidebar.classList.remove("open");
+      mainContent.classList.remove("shifted");
+      overlay.classList.remove("active");
     });
   </script>
 </body>
