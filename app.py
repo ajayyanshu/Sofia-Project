@@ -11,6 +11,9 @@ genai.configure(api_key=api_key)
 
 app = Flask(__name__)
 
+# Use Gemini model
+model = genai.GenerativeModel("gemini-1.5-flash")
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -18,11 +21,11 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat():
     user_message = request.json.get("message")
-    response = genai.chat.create(
-        model="chat-bison-001",
-        messages=[{"author": "user", "content": user_message}]
-    )
-    return jsonify({"reply": response.last["content"]["text"]})
+
+    # Generate content
+    response = model.generate_content(user_message)
+
+    return jsonify({"reply": response.text})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
