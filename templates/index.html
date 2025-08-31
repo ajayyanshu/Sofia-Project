@@ -161,17 +161,14 @@
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         // Check for environment variables from Render, or use local if not found
-        const firebaseConfig = window.env ? {
-            apiKey: window.env.FIREBASE_API_KEY,
-            authDomain: window.env.FIREBASE_AUTH_DOMAIN,
-            projectId: window.env.FIREBASE_PROJECT_ID,
-            storageBucket: window.env.FIREBASE_STORAGE_BUCKET,
-            messagingSenderId: window.env.env.FIREBASE_MESSAGING_SENDER_ID,
-            appId: window.env.FIREBASE_APP_ID
-        } : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
-        
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const API_KEY = ""; // Automatically provided by the environment
+        const firebaseConfig = {
+  apiKey: "AIzaSyDOjKEHarti4SnDraefXWeNU2m_NmV4pWI",
+  authDomain: "fir-efc91.firebaseapp.com",
+  projectId: "fir-efc91",
+  storageBucket: "fir-efc91.firebasestorage.app",
+  messagingSenderId: "666715757996",
+  appId: "1:666715757996:web:daf0ac0b6050d0f36aae09"
+};
 
         let db, auth, userId = null;
         let isAuthReady = false;
