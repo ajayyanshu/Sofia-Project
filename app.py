@@ -1,27 +1,60 @@
-from flask import Flask, request, jsonify
-import os
-import google.generativeai as genai
-from dotenv import load_dotenv
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f0f0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
 
-load_dotenv()
+.chat-container {
+  width: 350px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-app = Flask(__name__)
+.chat-box {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+}
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+.user-msg {
+  text-align: right;
+  margin: 5px;
+  background: #d1f7c4;
+  padding: 8px;
+  border-radius: 8px;
+}
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.json
-    user_msg = data.get("message", "")
-    try:
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(user_msg)
-        return jsonify({"reply": response.text})
-    except Exception as e:
-        return jsonify({"reply": f"⚠️ Error: {str(e)}"})
+.ai-msg {
+  text-align: left;
+  margin: 5px;
+  background: #e6e6e6;
+  padding: 8px;
+  border-radius: 8px;
+}
 
+.input-box {
+  display: flex;
+  border-top: 1px solid #ccc;
+}
 
-@app.route("/")   # 👈 homepage so that server test ho
-def home():
-    return "✅ Flask server running"
+.input-box input {
+  flex: 1;
+  border: none;
+  padding: 10px;
+}
 
+.input-box button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+}
