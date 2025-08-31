@@ -2,174 +2,276 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chat App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chatbot - Gemini Style</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
+      background: #fdfdfd;
+      color: #333;
       display: flex;
-      height: 100vh;
-      overflow: hidden;
+      min-height: 100vh;
     }
+
     /* Sidebar */
     .sidebar {
-      width: 220px;
-      background: #f7f9fc;
-      padding: 15px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 70px;
+      height: 100%;
+      background: #f8f9fb;
+      border-right: 1px solid #eee;
+      padding: 20px 10px;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: space-between; /* keep last item at bottom */
+      transition: width 0.3s ease;
+      overflow: hidden;
+    }
+    .sidebar.open {
+      width: 200px; /* expand on click */
+      align-items: flex-start;
+      padding-left: 15px;
+    }
+    .sidebar-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       gap: 20px;
-      border-right: 1px solid #ddd;
-      transition: transform 0.3s ease;
+      width: 100%;
     }
-    .sidebar.hidden {
-      transform: translateX(-100%);
+    .sidebar.open .sidebar-top {
+      align-items: flex-start;
     }
-    .icon {
-      font-size: 22px;
-      cursor: pointer;
-    }
+    .sidebar a { text-decoration: none; color: #555; font-size: 20px; cursor: pointer; }
 
-    /* Chat container */
-    .chat-container {
+    /* Main */
+    .main {
+      margin-left: 70px;
       flex: 1;
       display: flex;
       flex-direction: column;
-      background: #fff;
+      padding: 20px;
+      position: relative;
+      height: 100vh;
+      transition: margin-left 0.3s ease;
     }
-    .chat-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 15px;
-      background: #f1f3f6;
-      border-bottom: 1px solid #ddd;
+    .main.shifted { margin-left: 200px; }
+
+    .main h1 {
+      font-size: 2rem;
+      color: #2a6cf4;
+      text-align: center;
+      margin-top: 50px;
+      margin-bottom: 20px;
     }
-    .hamburger {
-      font-size: 24px;
-      cursor: pointer;
-      display: none;
-    }
-    .chat-box {
+
+    /* Chat Area */
+    .chat-area {
       flex: 1;
       overflow-y: auto;
-      padding: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #fafafa;
+      border-radius: 10px;
     }
     .message {
-      margin: 5px 0;
-      padding: 10px;
-      border-radius: 10px;
-      max-width: 80%;
+      max-width: 70%;
+      padding: 12px 15px;
+      border-radius: 15px;
+      font-size: 15px;
+      line-height: 1.4;
     }
-    .user {
-      background: #d1e7ff;
+    .sent {
       align-self: flex-end;
+      background: #2a6cf4;
+      color: #fff;
+      border-bottom-right-radius: 5px;
     }
-    .bot {
-      background: #f1f1f1;
+    .received {
       align-self: flex-start;
+      background: #f1f1f1;
+      color: #333;
+      border-bottom-left-radius: 5px;
     }
-    .input-container {
-      display: flex;
-      padding: 10px;
-      border-top: 1px solid #ddd;
-    }
-    input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 20px;
-      outline: none;
-    }
-    button {
-      margin-left: 10px;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 20px;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
+    .thinking {
+      font-style: italic;
+      color: gray;
     }
 
-    /* Mobile responsive */
-    @media(max-width: 768px) {
-      .sidebar {
-        position: absolute;
-        height: 100%;
-        z-index: 10;
-        top: 0;
+    /* Input Box */
+    .chat-input {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 25px;
+      padding: 10px 15px;
+      margin: 20px auto;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+    .chat-input input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      background: transparent;
+      padding: 6px;
+    }
+    .chat-input button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 18px;
+      margin-left: 8px;
+      color: #2a6cf4;
+      transition: 0.2s;
+    }
+    .chat-input button:hover { color: #184ec7; }
+
+    /* Upgrade */
+    .upgrade {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #2a6cf4;
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 14px;
+      transition: 0.3s ease;
+    }
+    .upgrade:hover { background: #184ec7; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      .sidebar { flex-direction: row; width: 100%; height: 60px; border-right: none; border-bottom: 1px solid #eee; justify-content: space-between; }
+      .sidebar.open { width: 100%; height: auto; flex-direction: column; }
+      .sidebar-top { flex-direction: row; gap: 20px; }
+      .main { margin-left: 0; margin-top: 60px; height: calc(100vh - 60px); }
+      .chat-input {
+        position: fixed;
+        bottom: 0;
         left: 0;
+        right: 0;
+        margin: 0;
+        border-radius: 0;
       }
-      .hamburger {
-        display: block;
-      }
+      .chat-area { margin-bottom: 60px; }
+      .main.shifted { margin-left: 0; }
     }
   </style>
 </head>
 <body>
+
   <!-- Sidebar -->
-  <div class="sidebar hidden" id="sidebar">
-    <span class="icon">✏️</span>
-    <span class="icon">⚙️</span>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <a id="menuBtn">☰</a>
+    </div>
+    <a href="#">⚙️</a>
   </div>
 
-  <!-- Chat -->
-  <div class="chat-container">
-    <div class="chat-header">
-      <span class="hamburger" onclick="toggleSidebar()">☰</span>
-      <h3>Hello, User</h3>
-    </div>
-    <div class="chat-box" id="chatBox"></div>
-    <div class="input-container">
+  <!-- Main -->
+  <div class="main" id="mainContent">
+    <a href="#" class="upgrade">Upgrade</a>
+    <h1>Hello, User </h1>
+
+    <!-- Chat Area -->
+    <div class="chat-area" id="chatArea"></div>
+
+    <!-- Input -->
+    <div class="chat-input">
       <input type="text" id="userInput" placeholder="Type a message...">
-      <button onclick="sendMessage()">Send</button>
+      
+      <!-- File upload (hidden input + label) -->
+      <input type="file" id="fileInput" style="display:none" />
+      <button id="fileBtn" title="Attach File">📎</button>
+      
+      <button id="sendBtn" title="Send">➡️</button>
     </div>
   </div>
 
   <script>
-    const chatBox = document.getElementById('chatBox');
-    const userInput = document.getElementById('userInput');
+    const API_KEY = "YOUR_GOOGLE_API_KEY"; 
+    const chatArea = document.getElementById("chatArea");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const fileBtn = document.getElementById("fileBtn");
+    const fileInput = document.getElementById("fileInput");
+    const sidebar = document.getElementById("sidebar");
+    const menuBtn = document.getElementById("menuBtn");
+    const mainContent = document.getElementById("mainContent");
 
-    // Load chat history from localStorage
-    window.onload = () => {
-      let history = JSON.parse(localStorage.getItem('chatHistory')) || [];
-      history.forEach(msg => addMessage(msg.text, msg.sender));
-    };
-
-    function addMessage(text, sender) {
-      const msg = document.createElement('div');
-      msg.classList.add('message', sender);
+    function addMessage(text, type) {
+      const msg = document.createElement("div");
+      msg.classList.add("message", type);
       msg.textContent = text;
-      chatBox.appendChild(msg);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      chatArea.appendChild(msg);
+      chatArea.scrollTop = chatArea.scrollHeight;
+      return msg;
     }
 
-    function sendMessage() {
-      let text = userInput.value.trim();
-      if (text === '') return;
-
-      addMessage(text, 'user');
-      saveMessage(text, 'user');
-      userInput.value = '';
-
-      // Bot thinking...
-      setTimeout(() => {
-        let reply = "🤖 Thinking... " + text;
-        addMessage(reply, 'bot');
-        saveMessage(reply, 'bot');
-      }, 1000);
+    async function getAIResponse(prompt) {
+      try {
+        const response = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + API_KEY,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }]
+            })
+          }
+        );
+        const data = await response.json();
+        return data?.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ No response from AI.";
+      } catch (error) {
+        return "❌ Error: " + error.message;
+      }
     }
 
-    function saveMessage(text, sender) {
-      let history = JSON.parse(localStorage.getItem('chatHistory')) || [];
-      history.push({ text, sender });
-      localStorage.setItem('chatHistory', JSON.stringify(history));
-    }
+    sendBtn.addEventListener("click", async () => {
+      const text = userInput.value.trim();
+      if (text !== "") {
+        addMessage(text, "sent");
+        userInput.value = "";
 
-    function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('hidden');
-    }
+        const thinkingMsg = addMessage("⏳ Thinking...", "received thinking");
+        const reply = await getAIResponse(text);
+
+        thinkingMsg.textContent = "🤖 " + reply;
+        thinkingMsg.classList.remove("thinking");
+      }
+    });
+
+    userInput.addEventListener("keypress", (e) => {
+      if(e.key === "Enter") sendBtn.click();
+    });
+
+    fileBtn.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        addMessage("📎 Uploaded: " + file.name, "sent");
+      }
+    });
+
+    // ☰ Toggle Sidebar
+    menuBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
+      mainContent.classList.toggle("shifted");
+    });
   </script>
 </body>
 </html>
