@@ -1,21 +1,493 @@
-import os
-from flask import Flask, render_template
-from dotenv import load_dotenv
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Gemini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .full-height {
+            height: 100vh;
+            -webkit-overflow-scrolling: touch;
+        }
+        .message-bubble {
+            border-radius: 1rem;
+            max-width: 85%; /* Increased for mobile view */
+            padding: 0.75rem 1rem;
+            white-space: pre-wrap;
+        }
+        .send-button-loading {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+        /* Mobile-first adjustments for small screens */
+        .chat-container-inner {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        .message-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .message-text {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 flex flex-col full-height overflow-hidden">
 
-# Load environment variables from .env file
-load_dotenv()
+    <!-- Main App Container -->
+    <div id="app" class="flex flex-col h-full">
+        
+        <!-- Top Nav Bar -->
+        <header class="bg-white border-b border-gray-200 p-3 md:p-4 flex items-center justify-between flex-shrink-0 relative z-10">
+            <!-- Left section: Gemini logo and model selector -->
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <div class="font-bold text-lg md:text-2xl flex items-center">
+                    <span class="text-indigo-600">Ge</span><span class="text-blue-500">mini</span>
+                </div>
+                <div class="relative inline-block text-left">
+                    <button type="button" class="inline-flex justify-center items-center rounded-lg px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        2.5 Flash
+                        <svg class="-mr-1 ml-1 md:ml-2 h-4 w-4 md:h-5 md:w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Right section: Upgrade and Avatar -->
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <button class="px-2 py-1 rounded-full text-xs md:text-sm font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 md:h-4 md:w-4 inline-block -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                    Upgrade
+                </button>
+                <div class="h-6 w-6 md:h-8 md:w-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold text-xs md:text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-6 md:w-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.93 0 3.5 1.57 3.5 3.5S13.93 12 12 12s-3.5-1.57-3.5-3.5S10.07 5 12 5zm0 14.7c-2.97 0-6.1-1.46-6.1-2.92a2.95 2.95 0 016.1 0c0 1.46-3.13 2.92-6.1 2.92z"/>
+                    </svg>
+                </div>
+            </div>
+        </header>
 
-app = Flask(__name__, template_folder='templates')
+        <!-- New Banner -->
+        <div id="new-banner" class="bg-yellow-500 text-yellow-900 text-xs md:text-sm p-1 md:p-2 flex items-center justify-center space-x-2">
+            <span role="img" aria-label="party-popper">🎉</span>
+            <span>NEW! Try image editing with our best image model, Nano Banana</span>
+            <button id="close-banner" class="ml-auto text-yellow-900 opacity-75 hover:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+            </button>
+        </div>
 
-@app.route('/')
-def home():
-    # Retrieve the API key from the environment variables
-    gemini_api_key = os.getenv("GOOGLE_API_KEY")
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-y-auto px-2 py-4 md:p-8 flex items-start justify-center">
+            <!-- Sidebar -->
+            <div class="w-12 md:w-16 h-full bg-gray-50 flex flex-col items-center py-4 space-y-2 md:space-y-4">
+                <button class="p-2 md:p-3 rounded-full hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.5-1.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM12.75 14.25a.75.75 0 01-.75-.75V8.25a.75.75 0 011.5 0v5.25a.75.75 0 01-.75.75z" />
+                    </svg>
+                </button>
+            </div>
 
-    # Pass the API key to the HTML template
-    return render_template('recreated_ui.html', gemini_api_key=gemini_api_key)
+            <!-- Content within flex container -->
+            <div class="flex-1 max-w-4xl mx-auto flex flex-col space-y-4 pb-4 px-2 md:px-4">
+                <div class="text-xl md:text-3xl text-center font-bold text-gray-800 my-5 md:my-10" id="user-greeting">Hello, User</div>
+                <div id="chat-container" class="flex flex-col space-y-4 chat-container-inner">
+                    <!-- Chat messages will be dynamically added here -->
+                </div>
+            </div>
+        </div>
 
-if __name__ == '__main__':
-    # Use environment variable for port if available, otherwise default to 5000
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+        <!-- Chat Input Area -->
+        <div class="flex-shrink-0 bg-white px-2 py-2 md:px-4 md:py-3 border-t border-gray-200">
+            <div class="max-w-4xl mx-auto flex flex-col space-y-2">
+                <div class="flex items-center p-2 bg-gray-100 rounded-3xl shadow-sm border border-gray-200">
+                    <input type="file" id="file-input" class="hidden" accept="image/*, application/pdf">
+                    <button id="add-button" class="p-1 md:p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </button>
+                    <textarea id="chat-input" class="flex-1 resize-none bg-transparent text-gray-800 px-2 md:px-4 py-1 md:py-2 outline-none placeholder-gray-400 text-sm" placeholder="Ask Gemini..." rows="1"></textarea>
+                    <button id="voice-button" class="p-1 md:p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                    </button>
+                    <button id="send-button" class="bg-blue-600 text-white p-2 md:p-2 rounded-full hover:bg-blue-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.491 12 59.768 59.768 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_KEY = "{{ gemini_api_key }}";
+        
+        let isLoading = false;
+        
+        // DOM elements
+        const app = document.getElementById('app');
+        const chatContainer = document.getElementById('chat-container');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const fileInput = document.getElementById('file-input');
+        const addButton = document.getElementById('add-button');
+        const newBanner = document.getElementById('new-banner');
+        const closeBannerButton = document.getElementById('close-banner');
+        const userGreeting = document.getElementById('user-greeting');
+        
+        // Helper function to show and hide loading state
+        function setLoading(state) {
+            isLoading = state;
+            sendButton.disabled = state;
+            if (state) {
+                sendButton.classList.add('send-button-loading');
+                chatInput.placeholder = 'GenAI is thinking...';
+            } else {
+                sendButton.classList.remove('send-button-loading');
+                chatInput.placeholder = 'Ask Gemini...';
+            }
+        }
+        
+        // Function to render a new message
+        function renderMessage(messageData, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('flex', 'space-x-2', 'md:space-x-4', 'my-2');
+            
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+            
+            if (messageData.image) {
+                const imageElement = document.createElement('img');
+                imageElement.src = messageData.image;
+                imageElement.classList.add('rounded-xl', 'mb-2', 'max-w-full', 'h-auto');
+                messageBubble.appendChild(imageElement);
+            }
+            
+            const messageParagraph = document.createElement('p');
+            messageParagraph.classList.add('text-sm');
+            messageParagraph.textContent = messageData.text;
+            messageBubble.appendChild(messageParagraph);
+        
+            if (isUser) {
+                messageDiv.classList.add('justify-end');
+                messageBubble.classList.add('bg-blue-500', 'text-white');
+            } else {
+                messageDiv.classList.add('justify-start');
+                messageBubble.classList.add('bg-gray-200', 'text-gray-800');
+                
+                // Add TTS button for AI messages
+                const ttsButton = document.createElement('button');
+                ttsButton.classList.add('ml-2', 'p-1', 'rounded-full', 'hover:bg-gray-300', 'text-gray-500', 'transition-colors');
+                ttsButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.444A1.25 1.25 0 0110 3.194v13.612a1.25 1.25 0 01-1.25 1.25h-.5a1.25 1.25 0 01-1.25-1.25v-1.156L3.933 16.5a1.25 1.25 0 01-1.25-1.25V4.75a1.25 1.25 0 011.25-1.25l3.242-2.156V.694a1.25 1.25 0 011.25-1.25h.5zM15 9.75a.75.75 0 100 1.5.75.75 0 000-1.5z" clip-rule="evenodd" /></svg>`;
+                ttsButton.onclick = () => playAudio(messageData.text);
+                messageBubble.appendChild(ttsButton);
+            }
+            
+            messageDiv.appendChild(messageBubble);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // --- Gemini API Integration ---
+        async function sendMessageToGemini(text, file) {
+            if (!API_KEY || API_KEY === "") {
+                const errorMessage = { text: "Gemini API key is not set. Please add your key to the `app.py` file and deploy." };
+                renderMessage(errorMessage, false);
+                return;
+            }
+        
+            setLoading(true);
+            
+            const isPdf = file && file.type === 'application/pdf';
+            const userMessage = text || (isPdf ? `Attached a PDF: ${file.name}` : `Attached an image: ${file.name}`);
+            
+            const messageData = {
+                text: userMessage,
+                image: file ? URL.createObjectURL(file) : null
+            }
+            renderMessage(messageData, true);
+        
+            try {
+                // Check for image generation request
+                const isImageGenerationRequest = text.toLowerCase().includes('generate an image of') || 
+                                                 text.toLowerCase().includes('create an image of');
+                
+                if (isImageGenerationRequest) {
+                    await generateImage(text);
+                } else {
+                    const parts = [{ text }];
+                    if (file) {
+                        if (isPdf) {
+                            parts.push({
+                                text: `[PDF file "${file.name}" was provided]`
+                            });
+                        } else {
+                            const base64Image = await new Promise(resolve => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result.split(',')[1]);
+                                reader.readAsDataURL(file);
+                            });
+                            parts.push({
+                                inlineData: {
+                                    mimeType: file.type,
+                                    data: base64Image
+                                }
+                            });
+                        }
+                    }
+        
+                    const payload = {
+                        contents: [{ parts }],
+                        generationConfig: {
+                            temperature: 0.7,
+                            maxOutputTokens: 200,
+                        },
+                        systemInstruction: {
+                            parts: [{ text: "You are a friendly and helpful AI assistant. Your purpose is to assist the user with their queries in a concise and clear manner." }]
+                        }
+                    };
+        
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+        
+                    const result = await response.json();
+                    const aiMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+                    const aiMessageData = {
+                        text: aiMessage || "Sorry, I couldn't generate a response. Please try again."
+                    };
+                    renderMessage(aiMessageData, false);
+        
+                }
+            } catch (e) {
+                console.error("Error sending message to Gemini:", e);
+                const aiErrorData = {
+                    text: "An error occurred. Please check the console for details."
+                };
+                renderMessage(aiErrorData, false);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function generateImage(prompt) {
+            setLoading(true);
+            try {
+                const payload = {
+                    instances: { prompt: prompt },
+                    parameters: { "sampleCount": 1 }
+                };
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${API_KEY}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+        
+                const result = await response.json();
+                const imageData = result?.predictions?.[0]?.bytesBase64Encoded;
+        
+                if (imageData) {
+                    const imageUrl = `data:image/png;base64,${imageData}`;
+                    const aiMessageData = {
+                        text: "Here is the image you requested.",
+                        image: imageUrl
+                    };
+                    renderMessage(aiMessageData, false);
+                } else {
+                    const aiErrorData = {
+                        text: "Sorry, I couldn't generate an image. Please try again with a different prompt."
+                    };
+                    renderMessage(aiErrorData, false);
+                }
+            } catch (e) {
+                console.error("Error generating image:", e);
+                const aiErrorData = {
+                    text: "An error occurred while generating the image."
+                };
+                renderMessage(aiErrorData, false);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function playAudio(text) {
+            try {
+                const payload = {
+                    contents: [{ parts: [{ text: text }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" }
+                            }
+                        }
+                    },
+                    model: "gemini-2.5-flash-preview-tts"
+                };
+        
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+        
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = new Int16Array(base64ToArrayBuffer(audioData));
+                    const wavBlob = pcmToWav(pcmData, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+        
+                    audio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                    };
+                }
+            } catch (e) {
+                console.error("Error playing audio:", e);
+            }
+        }
+        
+        // Helper function to convert PCM audio data to a playable WAV Blob
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2;
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+        
+            const buffer = new ArrayBuffer(44 + pcmData.length * bytesPerSample);
+            const view = new DataView(buffer);
+        
+            // WAV header
+            // RIFF chunk
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.length * bytesPerSample, true);
+            writeString(view, 8, 'WAVE');
+            // FMT chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM format
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bytesPerSample * 8, true);
+            // DATA chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmData.length * bytesPerSample, true);
+        
+            // Write PCM data
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(44 + i * bytesPerSample, pcmData[i], true);
+            }
+        
+            return new Blob([view], { type: 'audio/wav' });
+        
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+        }
+        
+        // Helper function to decode base64 to ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+             // Handle sending a message
+            sendButton.addEventListener('click', async () => {
+                if (isLoading) return;
+                const message = chatInput.value.trim();
+                const file = fileInput.files[0];
+                
+                if (message || file) {
+                    await sendMessageToGemini(message, file);
+                    chatInput.value = '';
+                    fileInput.value = '';
+                }
+            });
+            
+            // Handle sending message on Enter key press
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                    e.preventDefault();
+                    sendButton.click();
+                }
+            });
+        
+            // Auto-resize the textarea
+            chatInput.addEventListener('input', () => {
+                chatInput.style.height = 'auto';
+                chatInput.style.height = chatInput.scrollHeight + 'px';
+            });
+        
+            // Handle add button click for file selection
+            addButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+        
+            // Handle file selection (new logic)
+            fileInput.addEventListener('change', async () => {
+                const file = fileInput.files[0];
+                if (file) {
+                    // Automatically send the message when a file is selected
+                    await sendMessageToGemini('', file);
+                    fileInput.value = ''; // Clear the file input for next time
+                }
+            });
+        
+            // Handle close banner button click
+            closeBannerButton.addEventListener('click', () => {
+                newBanner.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
