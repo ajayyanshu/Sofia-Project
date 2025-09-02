@@ -33,37 +33,6 @@
                 transform: scale(1.1);
             }
         }
-
-        /* Typing animation styles */
-        .typing-indicator span {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: #9ca3af;
-            border-radius: 50%;
-            opacity: 0;
-            animation: typing 1s infinite;
-        }
-
-        .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes typing {
-            0% {
-                opacity: 0;
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0;
-            }
-        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 flex flex-col full-height overflow-hidden">
@@ -107,6 +76,15 @@
                 <div class="text-xl md:text-3xl text-center font-bold text-gray-800 my-5 md:my-10" id="user-greeting">Hello, User</div>
                 <div id="chat-container" class="flex flex-col space-y-4 chat-container-inner">
                     <!-- Chat messages will be dynamically added here -->
+                    <div id="typing-indicator" class="flex items-center space-x-2 hidden">
+                        <div class="message-bubble bg-gray-200">
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -140,7 +118,9 @@
         const API_KEY = "{{ gemini_api_key }}";
         
         let isLoading = false;
-        
+        const maxRetries = 3;
+        const initialBackoff = 1000; // 1 second
+
         // DOM elements
         const app = document.getElementById('app');
         const chatContainer = document.getElementById('chat-container');
@@ -149,8 +129,8 @@
         const fileInput = document.getElementById('file-input');
         const addButton = document.getElementById('add-button');
         const userGreeting = document.getElementById('user-greeting');
-        const summarizeButton = document.getElementById('summarize-button');
-        
+        const typingIndicator = document.getElementById('typing-indicator');
+
         // Helper function to show and hide loading state
         function setLoading(state) {
             isLoading = state;
@@ -158,9 +138,11 @@
             if (state) {
                 sendButton.classList.add('send-button-loading');
                 chatInput.placeholder = 'AI Chatbot is thinking...';
+                typingIndicator.classList.remove('hidden');
             } else {
                 sendButton.classList.remove('send-button-loading');
                 chatInput.placeholder = 'Ask AI Chatbot...';
+                typingIndicator.classList.add('hidden');
             }
         }
         
@@ -204,7 +186,7 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         
-        // --- Gemini API Integration ---
+        // --- Gemini API Integration with Exponential Backoff ---
         async function sendMessageToGemini(text, file) {
             if (!API_KEY || API_KEY === "") {
                 const errorMessage = { text: "AI Chatbot API key is not set. Please add your key to the `app.py` file and deploy." };
@@ -223,71 +205,81 @@
             }
             renderMessage(messageData, true);
         
-            try {
-                // Check for image generation request
-                const isImageGenerationRequest = text.toLowerCase().includes('generate an image of') || 
-                                                 text.toLowerCase().includes('create an image of');
-                
-                if (isImageGenerationRequest) {
-                    await generateImage(text);
-                } else {
-                    const parts = [{ text }];
-                    if (file) {
-                        if (isPdf) {
-                            parts.push({
-                                text: `[PDF file "${file.name}" was provided]`
-                            });
-                        } else {
-                            const base64Image = await new Promise(resolve => {
-                                const reader = new FileReader();
-                                reader.onload = () => resolve(reader.result.split(',')[1]);
-                                reader.readAsDataURL(file);
-                            });
-                            parts.push({
-                                inlineData: {
-                                    mimeType: file.type,
-                                    data: base64Image
-                                }
-                            });
-                        }
-                    }
-        
-                    const payload = {
-                        contents: [{ parts }],
-                        generationConfig: {
-                            temperature: 0.7,
-                            maxOutputTokens: 200,
-                        },
-                        systemInstruction: {
-                            parts: [{ text: "You are a friendly and helpful AI assistant. Your purpose is to assist the user with their queries in a concise and clear manner." }]
-                        }
-                    };
-        
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+            let retries = 0;
+            while (retries < maxRetries) {
+                try {
+                    // Check for image generation request
+                    const isImageGenerationRequest = text.toLowerCase().includes('generate an image of') || 
+                                                     text.toLowerCase().includes('create an image of');
                     
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-        
-                    const result = await response.json();
-                    const aiMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-                    const aiMessageData = {
-                        text: aiMessage || "Sorry, I couldn't generate a response. Please try again."
-                    };
-                    renderMessage(aiMessageData, false);
-        
+                    if (isImageGenerationRequest) {
+                        await generateImage(text);
+                    } else {
+                        const parts = [{ text }];
+                        if (file) {
+                            if (isPdf) {
+                                parts.push({
+                                    text: `[PDF file "${file.name}" was provided]`
+                                });
+                            } else {
+                                const base64Image = await new Promise(resolve => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                                    reader.readAsDataURL(file);
+                                });
+                                parts.push({
+                                    inlineData: {
+                                        mimeType: file.type,
+                                        data: base64Image
+                                    }
+                                });
+                            }
+                        }
+            
+                        const payload = {
+                            contents: [{ parts }],
+                            generationConfig: {
+                                temperature: 0.7,
+                                maxOutputTokens: 200,
+                            },
+                            // I've removed the systemInstruction here to avoid potential conflicts.
+                            // The model's behavior is now handled by the user prompt.
+                        };
+            
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+                        
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+            
+                        if (!response.ok) {
+                            throw new Error(`API call failed with status: ${response.status}`);
+                        }
+            
+                        const result = await response.json();
+                        const aiMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+                        const aiMessageData = {
+                            text: aiMessage || "Sorry, I couldn't generate a response. Please try again."
+                        };
+                        renderMessage(aiMessageData, false);
+                    }
+                    return; // Exit the loop on success
+                } catch (e) {
+                    console.error(`Attempt ${retries + 1} failed:`, e);
+                    retries++;
+                    if (retries < maxRetries) {
+                        const backoffTime = initialBackoff * Math.pow(2, retries - 1);
+                        await new Promise(res => setTimeout(res, backoffTime));
+                    } else {
+                        const aiErrorData = {
+                            text: "An error occurred after multiple retries. Please check your network connection and try again."
+                        };
+                        renderMessage(aiErrorData, false);
+                    }
                 }
-            } catch (e) {
-                console.error("Error sending message to Gemini:", e);
-                const aiErrorData = {
-                    text: "An error occurred. Please check the console for details."
-                };
-                renderMessage(aiErrorData, false);
-            } finally {
-                setLoading(false);
             }
         }
         
