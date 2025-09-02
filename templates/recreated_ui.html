@@ -37,37 +37,8 @@
 </head>
 <body class="bg-gray-100 text-gray-900 flex flex-col full-height overflow-hidden">
 
-    <!-- Auth Container -->
-    <div id="auth-screen" class="flex-1 flex items-center justify-center p-4 md:p-8">
-        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full space-y-6 shadow-xl">
-            <div class="text-center">
-                <h2 id="auth-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Login</h2>
-                <p id="auth-subtitle" class="text-gray-500 text-sm md:text-base">Welcome back! Sign in to continue.</p>
-                <p class="text-xs text-red-500 mt-2">Note: This is a front-end simulation. Your session is not persistent.</p>
-            </div>
-            
-            <form id="auth-form" class="space-y-4">
-                <div>
-                    <label for="email" class="text-sm font-medium text-gray-600">Email Address</label>
-                    <input type="email" id="email" class="w-full mt-1 bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base" placeholder="you@example.com" required>
-                </div>
-                <div>
-                    <label for="password" class="text-sm font-medium text-gray-600">Password</label>
-                    <input type="password" id="password" class="w-full mt-1 bg-gray-100 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base" placeholder="••••••••" required>
-                </div>
-                <button type="submit" id="auth-button" class="w-full bg-blue-500 text-white rounded-xl py-3 text-lg font-semibold hover:bg-blue-600 transition-colors duration-200">Login</button>
-            </form>
-            
-            <div class="text-center">
-                <p class="text-sm text-gray-500">
-                    Don't have an account? <a id="toggle-auth" href="#" class="text-blue-500 hover:underline">Sign up</a>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main App Container (hidden by default) -->
-    <div id="app" class="flex flex-col h-full bg-white hidden">
+    <!-- Main App Container -->
+    <div id="app" class="flex flex-col h-full bg-white">
         
         <!-- Top Nav Bar -->
         <header class="bg-white border-b border-gray-200 p-3 md:p-4 flex items-center justify-between flex-shrink-0 relative z-10">
@@ -94,18 +65,6 @@
                     </svg>
                     Upgrade
                 </button>
-                <div class="relative inline-block text-left">
-                    <button id="user-menu-button" class="p-2 md:p-3 rounded-full hover:bg-gray-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A7 7 0 0112 15a7 7 0 016.879 2.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </button>
-                    <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
-                        <button id="logout-button" class="block px-4 py-2 text-sm text-gray-700 w-full text-left hover:bg-gray-100" role="menuitem">
-                            Sign Out
-                        </button>
-                    </div>
-                </div>
             </div>
         </header>
 
