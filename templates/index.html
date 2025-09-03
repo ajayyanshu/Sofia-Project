@@ -37,15 +37,23 @@
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 0.5rem;
-            max-width: fit-content; /* Adjust max-width to fit content */
+            max-width: fit-content;
         }
         .ai-message {
             background-color: #e5e7eb;
             color: #1f2937;
             align-self: flex-start;
             border-bottom-left-radius: 0.5rem;
-            width: fit-content; /* Ensure the bubble fits the content */
-            max-width: 75%; /* Maintain a maximum width */
+            width: fit-content;
+            max-width: 75%;
+        }
+        .system-message {
+            background-color: #fca5a5;
+            color: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.5rem;
+            width: fit-content;
+            max-width: 75%;
         }
         .floating-action-button {
             transition: transform 0.2s ease-in-out;
@@ -84,9 +92,20 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, onSnapshot, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // IMPORTANT: Replace these values with your own Firebase project configuration
+        const myFirebaseConfig = {
+          apiKey: "AIzaSyDOjKEHarti4SnDraefXWeNU2m_NmV4pWI",
+          authDomain: "fir-efc91.firebaseapp.com",
+          projectId: "fir-efc91",
+          storageBucket: "fir-efc91.firebasestorage.app",
+          messagingSenderId: "666715757996",
+          appId: "1:666715757996:web:846ab37ecb3d34336aae09"
+        };
+        const myAppId = myFirebaseConfig.appId;
+
         // Global variables for Firebase
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : myAppId;
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify(myFirebaseConfig));
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth, userId;
@@ -177,6 +196,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                 </button>
+                <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
                 <!-- 4. Read YouTube video and write the txt -->
                 <button id="youtube-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="YouTube transcript">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,7 +284,7 @@
             writeString(view, 0, 'RIFF');
             view.setUint32(4, 36 + pcm16.length * 2, true);
             writeString(view, 8, 'WAVE');
-            writeString(view, 12, 'fmt ');
+            view.setUint32(12, 'fmt ');
             view.setUint32(16, 16, true);
             view.setUint16(20, 1, true); // PCM format
             view.setUint16(22, 1, true); // Mono
@@ -297,7 +317,13 @@
             const dropdownButton = document.getElementById('dropdown-button');
             const dropdownMenu = document.getElementById('model-dropdown-menu');
             const currentModelName = document.getElementById('current-model-name');
+            const fileUploadBtn = document.getElementById('file-upload-btn');
+            const fileInput = document.getElementById('file-input');
+            const searchBtn = document.getElementById('search-btn');
+            const youtubeBtn = document.getElementById('youtube-btn');
+            
             let currentModel = 'gemini';
+            const API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
 
             const db = window.db;
             const userId = window.userId;
@@ -325,7 +351,7 @@
                 messageBubble.classList.add('message-bubble');
                 if (sender === 'user') {
                     messageBubble.classList.add('user-message', 'ml-auto');
-                } else {
+                } else if (sender === 'ai') {
                     messageBubble.classList.add('ai-message', 'mr-auto');
                     // Add TTS button to AI messages
                     const ttsBtn = document.createElement('button');
@@ -338,33 +364,27 @@
                     `;
                     ttsBtn.onclick = () => speakText(text);
                     messageBubble.appendChild(ttsBtn);
+                } else if (sender === 'system') {
+                    messageBubble.classList.add('system-message', 'mr-auto');
                 }
                 chatContainer.appendChild(messageBubble);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
 
-            // --- 1. Voice input/output (TTS) ---
+            // --- Text-to-Speech (TTS) with Gemini API ---
             async function speakText(text) {
-                const apiKey = ""; // Leave as-is
+                const apiKey = "";
                 const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=" + apiKey;
-
                 const payload = {
-                    contents: [{
-                        parts: [{ text: text }]
-                    }],
+                    contents: [{ parts: [{ text: text }] }],
                     generationConfig: {
                         responseModalities: ["AUDIO"],
-                        speechConfig: {
-                            voiceConfig: {
-                                prebuiltVoiceConfig: { voiceName: "Kore" }
-                            }
-                        }
+                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
                     },
                     model: "gemini-2.5-flash-preview-tts"
                 };
 
                 let audio = new Audio();
-
                 try {
                     const response = await fetch(apiUrl, {
                         method: 'POST',
@@ -392,78 +412,93 @@
                 }
             }
             
-            // --- 2. Send Message and Task Automation Placeholder ---
-            sendBtn.addEventListener('click', async () => {
-                const message = messageInput.value.trim();
-                if (message) {
-                    // Hide the welcome message and show the chat container
-                    if (welcomeMessageContainer) {
-                        welcomeMessageContainer.classList.add('hidden');
-                        chatContainer.classList.remove('hidden');
-                    }
-                    
-                    addMessage(message, 'user');
-                    messageInput.value = '';
+            // --- Send Message & Gemini API Call ---
+            async function sendMessage(text, isVision = false, base64Image = null) {
+                if (!text && !base64Image) return;
 
-                    // Display 'AI is typing...' message
-                    const typingIndicator = document.createElement('div');
-                    typingIndicator.textContent = 'AI is typing...';
-                    typingIndicator.classList.add('ai-message', 'mr-auto', 'typing-indicator');
-                    chatContainer.appendChild(typingIndicator);
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-                    try {
-                        // Send the message to the server for processing
-                        await fetch(window.location.origin + '/send-message', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                userId: userId,
-                                appId: appId,
-                                text: message,
-                                sender: 'user'
-                            })
-                        }).catch(error => {
-                            console.error('Error sending message to server:', error);
-                            addMessage("Error: Could not send message to the server. Please check your backend deployment.", 'ai');
-                        });
-                    } catch (error) {
-                        console.error('Error sending message to server:', error);
-                    }
-
-
-                    // Simulate AI thinking and then respond
-                    setTimeout(() => {
-                        // Remove typing indicator
-                        typingIndicator.remove();
-                        
-                        // Placeholder for AI response logic
-                        let aiResponse;
-                        if (message.toLowerCase().includes('set reminder')) {
-                            aiResponse = "I can't set a real reminder yet, but I've noted your request. This would require a backend service and external APIs.";
-                        } else if (message.toLowerCase().includes('send email')) {
-                            aiResponse = "I can't send a real email yet. This feature would need a secure backend with email service integration.";
-                        } else {
-                            // This is where a call to a model API would go, using the 'currentModel' variable.
-                            aiResponse = `You are using the '${currentModel}' model. You typed: '${message}'`;
-                        }
-
-                        // Add AI's actual response
-                        addMessage(aiResponse, 'ai');
-                        speakText(aiResponse);
-                    }, 1000);
+                if (welcomeMessageContainer) {
+                    welcomeMessageContainer.classList.add('hidden');
+                    chatContainer.classList.remove('hidden');
                 }
-            });
+                
+                addMessage(text, 'user');
+                messageInput.value = '';
 
+                const typingIndicator = document.createElement('div');
+                typingIndicator.textContent = 'AI is typing...';
+                typingIndicator.classList.add('ai-message', 'mr-auto', 'typing-indicator');
+                chatContainer.appendChild(typingIndicator);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                const apiUrl = window.location.origin + '/chat'; // Corrected URL
+                const payload = {
+                    userId: userId,
+                    appId: appId,
+                    text: text,
+                    sender: 'user',
+                    model: currentModel,
+                    apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
+                    isVision: isVision,
+                    image: base64Image
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Server returned an error: ${response.status} - ${errorText}`);
+                    }
+
+                    const result = await response.json();
+                    typingIndicator.remove();
+                    
+                    addMessage(result.response, 'ai');
+                    speakText(result.response);
+                } catch (error) {
+                    console.error('Error sending message to server:', error);
+                    typingIndicator.remove();
+                    addMessage(`Error: Could not send message. Please ensure your backend server is running and configured correctly. Details: ${error.message}`, 'system');
+                }
+            }
+            
+            // Event Listeners for various buttons
+            sendBtn.addEventListener('click', () => sendMessage(messageInput.value.trim()));
             messageInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    sendBtn.click();
+                    sendMessage(messageInput.value.trim());
                 }
             });
 
-            // --- Voice-to-Text Feature (already there) ---
+            // --- ✨Image Understanding with Gemini Vision ---
+            fileUploadBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const base64Image = e.target.result.split(',')[1];
+                    addMessage("Analyzing image...", 'system');
+                    await sendMessage("Analyze this image.", true, base64Image);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            // --- ✨Live Data Search with Gemini Grounding ---
+            searchBtn.addEventListener('click', () => {
+                const prompt = messageInput.value.trim();
+                if (prompt) {
+                    addMessage(`Searching the web for "${prompt}"...`, 'system');
+                    sendMessage(prompt);
+                }
+            });
+            
+            // --- Voice-to-Text Feature ---
             let recognition;
             if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -491,7 +526,6 @@
 
             // --- Dashboard and Analytics ---
             dashboardBtn.addEventListener('click', () => {
-                console.log("Dashboard button clicked!");
                 dashboardModal.style.display = 'flex';
                 userIdDisplay.textContent = userId;
                 updateDashboard();
@@ -501,28 +535,31 @@
                 dashboardModal.style.display = 'none';
             });
             
-            // 3. Dashboard with analytics
             async function updateDashboard() {
-                const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
-                const q = query(messagesRef);
+                try {
+                    const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
+                    const q = query(messagesRef);
 
-                // Live update of message count
-                onSnapshot(q, (snapshot) => {
-                    const messages = [];
-                    snapshot.forEach(doc => messages.push(doc.data()));
-                    totalMessagesDisplay.textContent = messages.length;
-                    
-                    // 4. Sentiment analysis
-                    if (messages.length > 0) {
-                        const lastMessage = messages[messages.length - 1].text;
-                        analyzeSentiment(lastMessage);
-                    } else {
-                        lastSentimentDisplay.textContent = 'N/A';
-                    }
-                });
+                    onSnapshot(q, (snapshot) => {
+                        const messages = [];
+                        snapshot.forEach(doc => messages.push(doc.data()));
+                        totalMessagesDisplay.textContent = messages.length;
+                        
+                        if (messages.length > 0) {
+                            const lastMessage = messages[messages.length - 1].text;
+                            analyzeSentiment(lastMessage);
+                        } else {
+                            lastSentimentDisplay.textContent = 'N/A';
+                        }
+                    });
+                } catch (e) {
+                    console.error("Error in updateDashboard:", e);
+                    totalMessagesDisplay.textContent = 'Error';
+                    lastSentimentDisplay.textContent = 'Error';
+                }
             }
 
-            // 4. Sentiment Analysis using LLM API
+            // --- Sentiment Analysis using LLM API ---
             async function analyzeSentiment(text) {
                 const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
@@ -553,17 +590,8 @@
             }
 
             // Other placeholder features
-            const fileUploadBtn = document.getElementById('file-upload-btn');
-            fileUploadBtn.addEventListener('click', () => {
-                addMessage("This feature requires a backend service to handle file uploads and analysis. Currently, this is a placeholder.", 'ai');
-            });
-            const youtubeBtn = document.getElementById('youtube-btn');
             youtubeBtn.addEventListener('click', () => {
                 addMessage("This feature requires a backend service to access the YouTube API and a text transcription model.", 'ai');
-            });
-            const searchBtn = document.getElementById('search-btn');
-            searchBtn.addEventListener('click', () => {
-                addMessage("This feature requires a live data search API and a backend service to handle queries.", 'ai');
             });
         });
     </script>
