@@ -414,7 +414,7 @@
 
                     try {
                         // Send the message to the server for processing
-                        await fetch('/send-message', {
+                        await fetch(window.location.origin + '/send-message', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -425,6 +425,9 @@
                                 text: message,
                                 sender: 'user'
                             })
+                        }).catch(error => {
+                            console.error('Error sending message to server:', error);
+                            addMessage("Error: Could not send message to the server. Please check your backend deployment.", 'ai');
                         });
                     } catch (error) {
                         console.error('Error sending message to server:', error);
@@ -443,6 +446,7 @@
                         } else if (message.toLowerCase().includes('send email')) {
                             aiResponse = "I can't send a real email yet. This feature would need a secure backend with email service integration.";
                         } else {
+                            // This is where a call to a model API would go, using the 'currentModel' variable.
                             aiResponse = `You are using the '${currentModel}' model. You typed: '${message}'`;
                         }
 
@@ -487,6 +491,7 @@
 
             // --- Dashboard and Analytics ---
             dashboardBtn.addEventListener('click', () => {
+                console.log("Dashboard button clicked!");
                 dashboardModal.style.display = 'flex';
                 userIdDisplay.textContent = userId;
                 updateDashboard();
