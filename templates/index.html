@@ -237,8 +237,8 @@
     </div>
 
     <script type="module">
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+        // Firebase SDKs are imported in the HTML.
+        
         // Helper function to convert base64 to ArrayBuffer
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
@@ -412,13 +412,24 @@
                     chatContainer.appendChild(typingIndicator);
                     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                    // Log the message to Firestore for analytics
-                    const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
-                    await addDoc(messagesRef, {
-                        text: message,
-                        timestamp: new Date(),
-                        sender: 'user',
-                    });
+                    try {
+                        // Send the message to the server for processing
+                        await fetch('/send-message', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                userId: userId,
+                                appId: appId,
+                                text: message,
+                                sender: 'user'
+                            })
+                        });
+                    } catch (error) {
+                        console.error('Error sending message to server:', error);
+                    }
+
 
                     // Simulate AI thinking and then respond
                     setTimeout(() => {
