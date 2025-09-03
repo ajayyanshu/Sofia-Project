@@ -3,330 +3,355 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with AI Chatbot</title>
+    <title>AI Chatbot with Full Features</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            background-color: #f8fafc;
         }
-        .full-height {
-            height: 100vh;
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1rem;
             -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .chat-container::-webkit-scrollbar {
+            display: none;
         }
         .message-bubble {
-            border-radius: 1rem;
-            max-width: 85%;
-            padding: 0.75rem 1rem;
-            white-space: pre-wrap;
+            max-width: 75%;
+            padding: 0.75rem 1.25rem;
+            border-radius: 1.5rem;
+            margin-bottom: 0.75rem;
+            word-wrap: break-word;
         }
-        .send-button-loading {
-            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .user-message {
+            background-color: #3b82f6;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.5rem;
+            max-width: fit-content; /* Adjust max-width to fit content */
         }
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.1);
-            }
+        .ai-message {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.5rem;
+            width: fit-content; /* Ensure the bubble fits the content */
+            max-width: 75%; /* Maintain a maximum width */
+        }
+        .floating-action-button {
+            transition: transform 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .floating-action-button:hover {
+            transform: scale(1.05);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 20;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 flex flex-col full-height overflow-hidden">
+<body class="flex flex-col min-h-screen">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, onSnapshot, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <!-- Main App Container -->
-    <div id="app" class="flex flex-col h-full bg-white">
-        
-        <!-- Top Nav Bar -->
-        <header class="bg-white border-b border-gray-200 p-3 md:p-4 flex items-center justify-between flex-shrink-0 relative z-10">
-            <!-- Left section: AI Chatbot logo and model selector -->
-            <div class="flex items-center space-x-2 md:space-x-4">
-                <div class="font-bold text-lg md:text-2xl flex items-center">
-                    <span class="text-indigo-600">AI</span> <span class="text-blue-500">Chatbot</span>
-                </div>
-                <div class="relative inline-block text-left md:block hidden">
-                    <button type="button" class="inline-flex justify-center items-center rounded-lg px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        2.5 Flash
-                        <svg class="-mr-1 ml-1 md:ml-2 h-4 w-4 md:h-5 md:w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Right section -->
-            <div class="flex items-center space-x-2 md:space-x-4">
-                <button class="px-2 py-1 rounded-full text-xs md:text-sm font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors duration-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 md:h-4 md:w-4 inline-block -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+        // Global variables for Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, userId;
+        window.firebaseInitialized = false;
+
+        async function initFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        window.db = db;
+                        window.auth = auth;
+                        window.userId = userId;
+                        window.appId = appId;
+                        window.firebaseInitialized = true;
+                        console.log("Firebase initialized. User ID:", userId);
+                        // Trigger a custom event to let the rest of the script know Firebase is ready
+                        document.dispatchEvent(new CustomEvent('firebase-ready'));
+                    } else {
+                        console.log("User is signed out.");
+                        // Handle sign-out state if necessary
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+            }
+        }
+        initFirebase();
+    </script>
+
+    <!-- Top Nav Bar - Fixed at the top -->
+    <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
+        <div class="flex items-center space-x-2">
+            <span class="font-bold text-xl text-indigo-600">AIChatbot</span>
+            <div class="relative inline-block text-left">
+                <button id="dropdown-button" class="inline-flex justify-center w-full rounded-md px-4 py-2 bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+                    <span id="current-model-name">Gemini</span>
+                    <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
-                    Upgrade
                 </button>
-            </div>
-        </header>
-
-        <!-- Main Content Area -->
-        <div class="flex-1 overflow-y-auto px-2 py-4 md:p-8 flex items-start justify-center">
-
-            <!-- Content within flex container -->
-            <div class="flex-1 max-w-4xl mx-auto flex flex-col space-y-4 pb-4 px-2 md:px-4">
-                <div class="text-xl md:text-3xl text-center font-bold text-gray-800 my-5 md:my-10" id="user-greeting">Hello, User</div>
-                <div id="chat-container" class="flex flex-col space-y-4 chat-container-inner">
-                    <!-- Chat messages will be dynamically added here -->
-                    <div id="typing-indicator" class="flex items-center space-x-2 hidden">
-                        <div class="message-bubble bg-gray-200">
-                            <div class="typing-indicator">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                            </div>
-                        </div>
+                <div id="model-dropdown-menu" class="origin-top-right absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden">
+                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="dropdown-button">
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem" data-model="gemini">Gemini</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem" data-model="my-ai-model">My AI Model</a>
                     </div>
                 </div>
             </div>
         </div>
+        <div class="flex items-center space-x-4">
+            <button id="dashboard-btn" class="flex items-center space-x-2 text-indigo-600 font-medium py-2 px-4 rounded-full border border-indigo-600 hover:bg-indigo-50 transition-colors">
+                <span>Dashboard</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3v18h18" />
+                    <path d="M18.75 12.75l-5.69-5.69a1.5 1.5 0 0 0-2.12 0L5.25 15" />
+                </svg>
+            </button>
+        </div>
+    </header>
 
-        <!-- Chat Input Area -->
-        <div class="fixed bottom-0 left-0 right-0 bg-white px-2 py-2 md:px-4 md:py-3 border-t border-gray-200">
-            <div class="max-w-4xl mx-auto flex flex-col space-y-2">
-                <div class="flex items-center p-2 bg-gray-100 rounded-3xl shadow-sm border border-gray-200">
-                    <input type="file" id="file-input" class="hidden" accept="image/*, application/pdf">
-                    <button id="add-button" class="p-1 md:p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                    </button>
-                    <textarea id="chat-input" class="flex-1 resize-none bg-transparent text-gray-800 px-2 md:px-4 py-1 md:py-2 outline-none placeholder-gray-400 text-sm" placeholder="Ask AI Chatbot..." rows="1"></textarea>
-                    <button id="voice-button" class="p-1 md:p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                    </button>
-                    <button id="send-button" class="bg-blue-600 text-white p-2 md:p-2 rounded-full hover:bg-blue-700 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.491 12 59.768 59.768 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                        </svg>
-                    </button>
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col pt-20 pb-24 bg-white">
+        <div id="welcome-message-container" class="flex-1 flex items-center justify-center p-4 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">Hello, User</h1>
+        </div>
+        <div id="chat-container" class="flex-1 flex-col overflow-y-auto w-full px-4 sm:px-6 hidden">
+        </div>
+    </main>
+
+    <!-- Input Box at the bottom -->
+    <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
+        <div class="w-full max-w-3xl flex items-center bg-white rounded-3xl border border-gray-300 shadow-lg px-4 py-2">
+            <!-- File and Live Data Buttons -->
+            <div class="flex space-x-2 mr-2">
+                <!-- 1. Image, PDF or document read -->
+                <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Upload file">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </button>
+                <!-- 4. Read YouTube video and write the txt -->
+                <button id="youtube-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="YouTube transcript">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M9 17.25v1.063c0 .285.127.558.348.749.221.192.51.298.81.298.563 0 1.02-.457 1.02-1.02V17.25h1.564c.264 0 .52-.106.708-.295.188-.189.294-.442.294-.706V9.75h-3v7.5zM12 2a10 10 0 100 20 10 10 0 000-20z" />
+                    </svg>
+                </button>
+                <!-- 6. Live data search integration -->
+                <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Live search">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+            </div>
+            
+            <input id="message-input" type="text" placeholder="Ask AI Chatbot...." class="flex-1 px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot">
+            
+            <!-- 3. Change mic icon & 5. User to talk to AI chatbot -->
+            <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Start voice input">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+            </button>
+            
+            <!-- 2. Send message -->
+            <button id="send-btn" class="ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button" aria-label="Send message">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform rotate-45 -mt-1 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Analytics Dashboard Modal -->
+    <div id="dashboard-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Chatbot Analytics Dashboard</h2>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 transition-colors">&times;</button>
+            </div>
+            <div class="bg-gray-100 p-4 rounded-lg mb-4">
+                <p class="text-gray-600 text-sm">Your unique user ID:</p>
+                <code id="user-id-display" class="font-mono text-sm text-gray-700 block mt-1 break-all">Loading...</code>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-indigo-100 p-4 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-indigo-800">Total Messages</h3>
+                    <p id="total-messages" class="text-4xl font-bold text-indigo-600 mt-2">0</p>
+                </div>
+                <div class="bg-yellow-100 p-4 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-yellow-800">Last Message Sentiment</h3>
+                    <p id="last-sentiment" class="text-2xl font-bold text-yellow-600 mt-2">N/A</p>
                 </div>
             </div>
         </div>
     </div>
-    <script>
-        const API_KEY = "{{ gemini_api_key }}";
-        
-        let isLoading = false;
-        const maxRetries = 3;
-        const initialBackoff = 1000; // 1 second
 
-        // DOM elements
-        const app = document.getElementById('app');
-        const chatContainer = document.getElementById('chat-container');
-        const chatInput = document.getElementById('chat-input');
-        const sendButton = document.getElementById('send-button');
-        const fileInput = document.getElementById('file-input');
-        const addButton = document.getElementById('add-button');
-        const userGreeting = document.getElementById('user-greeting');
-        const typingIndicator = document.getElementById('typing-indicator');
+    <script type="module">
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Helper function to show and hide loading state
-        function setLoading(state) {
-            isLoading = state;
-            sendButton.disabled = state;
-            if (state) {
-                sendButton.classList.add('send-button-loading');
-                chatInput.placeholder = 'AI Chatbot is thinking...';
-                typingIndicator.classList.remove('hidden');
-            } else {
-                sendButton.classList.remove('send-button-loading');
-                chatInput.placeholder = 'Ask AI Chatbot...';
-                typingIndicator.classList.add('hidden');
+        // Helper function to convert base64 to ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
-        }
-        
-        // Function to render a new message
-        function renderMessage(messageData, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('flex', 'space-x-2', 'md:space-x-4', 'my-2');
-            
-            const messageBubble = document.createElement('div');
-            messageBubble.classList.add('message-bubble');
-            
-            if (messageData.image) {
-                const imageElement = document.createElement('img');
-                imageElement.src = messageData.image;
-                imageElement.classList.add('rounded-xl', 'mb-2', 'max-w-full', 'h-auto');
-                messageBubble.appendChild(imageElement);
-            }
-            
-            const messageParagraph = document.createElement('p');
-            messageParagraph.classList.add('text-sm');
-            messageParagraph.textContent = messageData.text;
-            messageBubble.appendChild(messageParagraph);
-        
-            if (isUser) {
-                messageDiv.classList.add('justify-end');
-                messageBubble.classList.add('bg-blue-500', 'text-white');
-            } else {
-                messageDiv.classList.add('justify-start');
-                messageBubble.classList.add('bg-gray-200', 'text-gray-800');
-                
-                // Add TTS button for AI messages
-                const ttsButton = document.createElement('button');
-                ttsButton.classList.add('ml-2', 'p-1', 'rounded-full', 'hover:bg-gray-300', 'text-gray-500', 'transition-colors');
-                ttsButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.444A1.25 1.25 0 0110 3.194v13.612a1.25 1.25 0 01-1.25 1.25h-.5a1.25 1.25 0 01-1.25-1.25v-1.156L3.933 16.5a1.25 1.25 0 01-1.25-1.25V4.75a1.25 1.25 0 011.25-1.25l3.242-2.156V.694a1.25 1.25 0 011.25-1.25h.5zM15 9.75a.75.75 0 100 1.5.75.75 0 000-1.5z" clip-rule="evenodd" /></svg>`;
-                ttsButton.onclick = () => playAudio(messageData.text);
-                messageBubble.appendChild(ttsButton);
-            }
-            
-            messageDiv.appendChild(messageBubble);
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return bytes.buffer;
         }
 
-        // --- Gemini API Integration with Exponential Backoff ---
-        async function sendMessageToGemini(text, file) {
-            if (!API_KEY || API_KEY === "") {
-                const errorMessage = { text: "AI Chatbot API key is not set. Please add your key to the `app.py` file and deploy." };
-                renderMessage(errorMessage, false);
-                return;
-            }
-        
-            setLoading(true);
-            
-            const isPdf = file && file.type === 'application/pdf';
-            const userMessage = text || (isPdf ? `Attached a PDF: ${file.name}` : `Attached an image: ${file.name}`);
-            
-            const messageData = {
-                text: userMessage,
-                image: file ? URL.createObjectURL(file) : null
-            }
-            renderMessage(messageData, true);
-        
-            let retries = 0;
-            while (retries < maxRetries) {
-                try {
-                    // Check for image generation request
-                    const isImageGenerationRequest = text.toLowerCase().includes('generate an image of') || 
-                                                     text.toLowerCase().includes('create an image of');
-                    
-                    if (isImageGenerationRequest) {
-                        await generateImage(text);
-                    } else {
-                        const parts = [{ text }];
-                        if (file) {
-                            if (isPdf) {
-                                parts.push({
-                                    text: `[PDF file "${file.name}" was provided]`
-                                });
-                            } else {
-                                const base64Image = await new Promise(resolve => {
-                                    const reader = new FileReader();
-                                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                                    reader.readAsDataURL(file);
-                                });
-                                parts.push({
-                                    inlineData: {
-                                        mimeType: file.type,
-                                        data: base64Image
-                                    }
-                                });
-                            }
-                        }
-            
-                        const payload = {
-                            contents: [{ parts }],
-                            generationConfig: {
-                                temperature: 0.7,
-                                maxOutputTokens: 200,
-                            },
-                        };
-            
-                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
-                        
-                        const response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-            
-                        if (!response.ok) {
-                            throw new Error(`API call failed with status: ${response.status}`);
-                        }
-            
-                        const result = await response.json();
-                        const aiMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-            
-                        const aiMessageData = {
-                            text: aiMessage || "Sorry, I couldn't generate a response. Please try again."
-                        };
-                        renderMessage(aiMessageData, false);
-                    }
-                    return; // Exit the loop on success
-                } catch (e) {
-                    console.error(`Attempt ${retries + 1} failed:`, e);
-                    retries++;
-                    if (retries < maxRetries) {
-                        const backoffTime = initialBackoff * Math.pow(2, retries - 1);
-                        await new Promise(res => setTimeout(res, backoffTime));
-                    } else {
-                        const aiErrorData = {
-                            text: "An error occurred after multiple retries. Please check your network connection and try again."
-                        };
-                        renderMessage(aiErrorData, false);
-                    }
+        // Helper function to convert PCM audio to WAV format
+        function pcmToWav(pcmData, sampleRate) {
+            const pcm16 = new Int16Array(pcmData);
+            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+            const view = new DataView(buffer);
+            const writeString = (view, offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
                 }
+            };
+            
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcm16.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM format
+            view.setUint16(22, 1, true); // Mono
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcm16.length * 2, true);
+            
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(44 + i * 2, pcm16[i], true);
             }
+            
+            return new Blob([view], { type: 'audio/wav' });
         }
-        
-        async function generateImage(prompt) {
-            setLoading(true);
-            try {
-                const payload = {
-                    instances: { prompt: prompt },
-                    parameters: { "sampleCount": 1 }
-                };
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${API_KEY}`;
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+
+        document.addEventListener('firebase-ready', () => {
+            const chatContainer = document.getElementById('chat-container');
+            const welcomeMessageContainer = document.getElementById('welcome-message-container');
+            const messageInput = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-btn');
+            const micBtn = document.getElementById('mic-btn');
+            const dashboardBtn = document.getElementById('dashboard-btn');
+            const dashboardModal = document.getElementById('dashboard-modal');
+            const closeDashboardModalBtn = document.getElementById('close-modal-btn');
+            const userIdDisplay = document.getElementById('user-id-display');
+            const totalMessagesDisplay = document.getElementById('total-messages');
+            const lastSentimentDisplay = document.getElementById('last-sentiment');
+            const dropdownButton = document.getElementById('dropdown-button');
+            const dropdownMenu = document.getElementById('model-dropdown-menu');
+            const currentModelName = document.getElementById('current-model-name');
+            let currentModel = 'gemini';
+
+            const db = window.db;
+            const userId = window.userId;
+            const appId = window.appId;
+
+            // Toggle dropdown menu
+            dropdownButton.addEventListener('click', () => {
+                dropdownMenu.classList.toggle('hidden');
+            });
+            
+            dropdownMenu.querySelectorAll('a').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    currentModel = e.target.getAttribute('data-model');
+                    currentModelName.textContent = e.target.textContent;
+                    dropdownMenu.classList.add('hidden');
+                    console.log("Switched to model:", currentModel);
                 });
-        
-                const result = await response.json();
-                const imageData = result?.predictions?.[0]?.bytesBase64Encoded;
-        
-                if (imageData) {
-                    const imageUrl = `data:image/png;base64,${imageData}`;
-                    const aiMessageData = {
-                        text: "Here is the image you requested.",
-                        image: imageUrl
-                    };
-                    renderMessage(aiMessageData, false);
+            });
+
+            // --- Function to add message to chat history ---
+            function addMessage(text, sender) {
+                const messageBubble = document.createElement('div');
+                messageBubble.textContent = text;
+                messageBubble.classList.add('message-bubble');
+                if (sender === 'user') {
+                    messageBubble.classList.add('user-message', 'ml-auto');
                 } else {
-                    const aiErrorData = {
-                        text: "Sorry, I couldn't generate an image. Please try again with a different prompt."
-                    };
-                    renderMessage(aiErrorData, false);
+                    messageBubble.classList.add('ai-message', 'mr-auto');
+                    // Add TTS button to AI messages
+                    const ttsBtn = document.createElement('button');
+                    ttsBtn.classList.add('tts-btn', 'ml-2', 'h-4', 'w-4', 'inline-block');
+                    ttsBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                    `;
+                    ttsBtn.onclick = () => speakText(text);
+                    messageBubble.appendChild(ttsBtn);
                 }
-            } catch (e) {
-                console.error("Error generating image:", e);
-                const aiErrorData = {
-                    text: "An error occurred while generating the image."
-                };
-                renderMessage(aiErrorData, false);
-            } finally {
-                setLoading(false);
+                chatContainer.appendChild(messageBubble);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
             }
-        }
-        
-        async function playAudio(text) {
-            try {
+
+            // --- 1. Voice input/output (TTS) ---
+            async function speakText(text) {
+                const apiKey = ""; // Leave as-is
+                const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=" + apiKey;
+
                 const payload = {
-                    contents: [{ parts: [{ text: text }] }],
+                    contents: [{
+                        parts: [{ text: text }]
+                    }],
                     generationConfig: {
                         responseModalities: ["AUDIO"],
                         speechConfig: {
@@ -337,133 +362,192 @@
                     },
                     model: "gemini-2.5-flash-preview-tts"
                 };
-        
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-        
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
-                    const pcmData = new Int16Array(base64ToArrayBuffer(audioData));
-                    const wavBlob = pcmToWav(pcmData, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
+
+                let audio = new Audio();
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    const audioData = part?.inlineData?.data;
+                    const mimeType = part?.inlineData?.mimeType;
+
+                    if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                        const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                        const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+                        const pcmData = base64ToArrayBuffer(audioData);
+                        const wavBlob = pcmToWav(pcmData, sampleRate);
+                        const audioUrl = URL.createObjectURL(wavBlob);
+                        audio.src = audioUrl;
+                        audio.play();
+                    } else {
+                        console.error("Audio data not found or invalid format:", result);
+                    }
+                } catch (error) {
+                    console.error("Error with TTS API:", error);
+                }
+            }
+            
+            // --- 2. Send Message and Task Automation Placeholder ---
+            sendBtn.addEventListener('click', async () => {
+                const message = messageInput.value.trim();
+                if (message) {
+                    // Hide the welcome message and show the chat container
+                    if (welcomeMessageContainer) {
+                        welcomeMessageContainer.classList.add('hidden');
+                        chatContainer.classList.remove('hidden');
+                    }
                     
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-        
-                    audio.onended = () => {
-                        URL.revokeObjectURL(audioUrl);
-                    };
+                    addMessage(message, 'user');
+                    messageInput.value = '';
+
+                    // Display 'AI is typing...' message
+                    const typingIndicator = document.createElement('div');
+                    typingIndicator.textContent = 'AI is typing...';
+                    typingIndicator.classList.add('ai-message', 'mr-auto', 'typing-indicator');
+                    chatContainer.appendChild(typingIndicator);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                    // Log the message to Firestore for analytics
+                    const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
+                    await addDoc(messagesRef, {
+                        text: message,
+                        timestamp: new Date(),
+                        sender: 'user',
+                    });
+
+                    // Simulate AI thinking and then respond
+                    setTimeout(() => {
+                        // Remove typing indicator
+                        typingIndicator.remove();
+                        
+                        // Placeholder for AI response logic
+                        let aiResponse;
+                        if (message.toLowerCase().includes('set reminder')) {
+                            aiResponse = "I can't set a real reminder yet, but I've noted your request. This would require a backend service and external APIs.";
+                        } else if (message.toLowerCase().includes('send email')) {
+                            aiResponse = "I can't send a real email yet. This feature would need a secure backend with email service integration.";
+                        } else {
+                            aiResponse = `You are using the '${currentModel}' model. You typed: '${message}'`;
+                        }
+
+                        // Add AI's actual response
+                        addMessage(aiResponse, 'ai');
+                        speakText(aiResponse);
+                    }, 1000);
                 }
-            } catch (e) {
-                console.error("Error playing audio:", e);
-            }
-        }
-        
-        // Helper function to convert PCM audio data to a playable WAV Blob
-        function pcmToWav(pcmData, sampleRate) {
-            const numChannels = 1;
-            const bytesPerSample = 2;
-            const blockAlign = numChannels * bytesPerSample;
-            const byteRate = sampleRate * blockAlign;
-        
-            const buffer = new ArrayBuffer(44 + pcmData.length * bytesPerSample);
-            const view = new DataView(buffer);
-        
-            // WAV header
-            // RIFF chunk
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + pcmData.length * bytesPerSample, true);
-            writeString(view, 8, 'WAVE');
-            // FMT chunk
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // PCM format
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, byteRate, true);
-            view.setUint16(32, blockAlign, true);
-            view.setUint16(34, bytesPerSample * 8, true);
-            // DATA chunk
-            writeString(view, 36, 'data');
-            view.setUint32(40, pcmData.length * bytesPerSample, true);
-        
-            // Write PCM data
-            for (let i = 0; i < pcmData.length; i++) {
-                view.setInt16(44 + i * bytesPerSample, pcmData[i], true);
-            }
-        
-            return new Blob([view], { type: 'audio/wav' });
-        
-            function writeString(view, offset, string) {
-                for (let i = 0; i < string.length; i++) {
-                    view.setUint8(offset + i, string.charCodeAt(i));
+            });
+
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendBtn.click();
                 }
-            }
-        }
-        
-        // Helper function to decode base64 to ArrayBuffer
-        function base64ToArrayBuffer(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-        
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', () => {
-             // Handle sending a message
-            sendButton.addEventListener('click', async () => {
-                if (isLoading) return;
-                const message = chatInput.value.trim();
-                const file = fileInput.files[0];
+            });
+
+            // --- Voice-to-Text Feature (already there) ---
+            let recognition;
+            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = 'en-US';
                 
-                if (message || file) {
-                    await sendMessageToGemini(message, file);
-                    chatInput.value = '';
-                    fileInput.value = '';
-                }
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    messageInput.value = transcript;
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                };
+
+                micBtn.addEventListener('click', () => {
+                    addMessage('Listening...', 'ai');
+                    recognition.start();
+                });
+            } else {
+                micBtn.style.display = 'none';
+                console.warn('Speech Recognition API is not supported in this browser.');
+            }
+
+            // --- Dashboard and Analytics ---
+            dashboardBtn.addEventListener('click', () => {
+                dashboardModal.style.display = 'flex';
+                userIdDisplay.textContent = userId;
+                updateDashboard();
+            });
+
+            closeDashboardModalBtn.addEventListener('click', () => {
+                dashboardModal.style.display = 'none';
             });
             
-            // Handle sending message on Enter key press
-            chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
-                    e.preventDefault();
-                    sendButton.click();
+            // 3. Dashboard with analytics
+            async function updateDashboard() {
+                const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
+                const q = query(messagesRef);
+
+                // Live update of message count
+                onSnapshot(q, (snapshot) => {
+                    const messages = [];
+                    snapshot.forEach(doc => messages.push(doc.data()));
+                    totalMessagesDisplay.textContent = messages.length;
+                    
+                    // 4. Sentiment analysis
+                    if (messages.length > 0) {
+                        const lastMessage = messages[messages.length - 1].text;
+                        analyzeSentiment(lastMessage);
+                    } else {
+                        lastSentimentDisplay.textContent = 'N/A';
+                    }
+                });
+            }
+
+            // 4. Sentiment Analysis using LLM API
+            async function analyzeSentiment(text) {
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const systemPrompt = "Analyze the sentiment of the following text and provide a single word answer: 'Positive', 'Negative', or 'Neutral'.";
+                const userQuery = text;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    const sentiment = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    lastSentimentDisplay.textContent = sentiment || 'N/A';
+                } catch (error) {
+                    console.error("Error analyzing sentiment:", error);
+                    lastSentimentDisplay.textContent = 'Error';
                 }
+            }
+
+            // Other placeholder features
+            const fileUploadBtn = document.getElementById('file-upload-btn');
+            fileUploadBtn.addEventListener('click', () => {
+                addMessage("This feature requires a backend service to handle file uploads and analysis. Currently, this is a placeholder.", 'ai');
             });
-        
-            // Auto-resize the textarea
-            chatInput.addEventListener('input', () => {
-                chatInput.style.height = 'auto';
-                chatInput.style.height = chatInput.scrollHeight + 'px';
+            const youtubeBtn = document.getElementById('youtube-btn');
+            youtubeBtn.addEventListener('click', () => {
+                addMessage("This feature requires a backend service to access the YouTube API and a text transcription model.", 'ai');
             });
-        
-            // Handle add button click for file selection
-            addButton.addEventListener('click', () => {
-                fileInput.click();
-            });
-        
-            // Handle file selection (new logic)
-            fileInput.addEventListener('change', async () => {
-                const file = fileInput.files[0];
-                if (file) {
-                    // Automatically send the message when a file is selected
-                    await sendMessageToGemini('', file);
-                    fileInput.value = ''; // Clear the file input for next time
-                }
+            const searchBtn = document.getElementById('search-btn');
+            searchBtn.addEventListener('click', () => {
+                addMessage("This feature requires a live data search API and a backend service to handle queries.", 'ai');
             });
         });
     </script>
