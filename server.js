@@ -6,17 +6,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.use(express.static(path.join(__dirname)));
 
 app.post('/chat', (req, res) => {
     const userMessage = req.body.text;
     console.log(`Received message from frontend: ${userMessage}`);
 
-    // This is a placeholder for your actual Gemini API call
+    // Placeholder for your actual Gemini API call
     const aiResponse = `You are using the '${req.body.model}' model. You typed: '${userMessage}'`;
 
     res.json({ response: aiResponse });
