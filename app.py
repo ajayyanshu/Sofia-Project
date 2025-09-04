@@ -3,11 +3,14 @@ from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 import re
+from google.generativeai import GenerativeModel, GroundingConfig
+from google.generativeai.types import Tool
+from google.generativeai.types.tool import Function as ToolFunction
+
+# Placeholder for user data (in a real app, this would be a database)
+user_profiles = {}
 
 app = Flask(__name__, template_folder='templates')
-
-# Place your YouTube API key here
-YOUTUBE_API_KEY = "AIzaSyBWMoLPnKlg_hCV2huRc2LlUYYLDXKCsYE"
 
 @app.route('/')
 def home():
@@ -32,7 +35,17 @@ def chat():
         api_key = request.json.get('apiKey')
         is_vision = request.json.get('isVision')
         image_data = request.json.get('image')
+        user_id = request.json.get('userId')
         
+        # User personalization logic
+        if user_id not in user_profiles:
+            user_profiles[user_id] = {
+                'name': 'User',  # In a real app, you would get the user's name
+                'history': []
+            }
+        
+        user_profile = user_profiles[user_id]
+
         genai.configure(api_key=api_key)
         
         # Check for YouTube URL in the message
@@ -45,6 +58,9 @@ def chat():
             model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(prompt)
             ai_response = response.text
+            
+            user_profile['history'].append({'role': 'user', 'parts': [{'text': user_message}]})
+            user_profile['history'].append({'role': 'model', 'parts': [{'text': ai_response}]})
             return jsonify({'response': ai_response})
         
         # Handle live data search
@@ -64,11 +80,18 @@ def chat():
             vision_model = genai.GenerativeModel('gemini-1.5-flash')
             response = vision_model.generate_content(['Describe the image.', image])
             ai_response = response.text
+            
+            user_profile['history'].append({'role': 'user', 'parts': [{'text': user_message}]})
+            user_profile['history'].append({'role': 'model', 'parts': [{'text': ai_response}]})
             return jsonify({'response': ai_response})
 
         model = genai.GenerativeModel('gemini-1.5-flash', tools=tools)
-        response = model.generate_content(user_message)
+        chat_session = model.start_chat(history=user_profile['history'])
+        response = chat_session.send_message(user_message)
         ai_response = response.text
+        
+        user_profile['history'].append({'role': 'user', 'parts': [{'text': user_message}]})
+        user_profile['history'].append({'role': 'model', 'parts': [{'text': ai_response}]})
         
         return jsonify({'response': ai_response})
     except Exception as e:
