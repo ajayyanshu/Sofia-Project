@@ -62,91 +62,9 @@
         .floating-action-button:hover {
             transform: scale(1.05);
         }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 20;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, onSnapshot, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // IMPORTANT: Replace these values with your own Firebase project configuration
-        const myFirebaseConfig = {
-          apiKey: "AIzaSyDOjKEHarti4SnDraefXWeNU2m_NmV4pWI",
-          authDomain: "fir-efc91.firebaseapp.com",
-          projectId: "fir-efc91",
-          storageBucket: "fir-efc91.firebasestorage.app",
-          messagingSenderId: "666715757996",
-          appId: "1:666715757996:web:846ab37ecb3d34336aae09"
-        };
-        const myAppId = myFirebaseConfig.appId;
-
-        // Global variables for Firebase
-        const appId = typeof __app_id !== 'undefined' ? __app_id : myAppId;
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify(myFirebaseConfig));
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        let db, auth, userId;
-        window.firebaseInitialized = false;
-
-        async function initFirebase() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        window.db = db;
-                        window.auth = auth;
-                        window.userId = userId;
-                        window.appId = appId;
-                        window.firebaseInitialized = true;
-                        console.log("Firebase initialized. User ID:", userId);
-                        // Trigger a custom event to let the rest of the script know Firebase is ready
-                        document.dispatchEvent(new CustomEvent('firebase-ready'));
-                    } else {
-                        console.log("User is signed out.");
-                        // Handle sign-out state if necessary
-                    }
-                });
-            } catch (error) {
-                console.error("Error initializing Firebase:", error);
-            }
-        }
-        initFirebase();
-    </script>
-
-    <!-- Top Nav Bar - Fixed at the top -->
     <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
         <div class="flex items-center space-x-2">
             <span class="font-bold text-xl text-indigo-600">AIChatbot</span>
@@ -165,18 +83,8 @@
                 </div>
             </div>
         </div>
-        <div class="flex items-center space-x-4">
-            <button id="dashboard-btn" class="flex items-center space-x-2 text-indigo-600 font-medium py-2 px-4 rounded-full border border-indigo-600 hover:bg-indigo-50 transition-colors">
-                <span>Dashboard</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 3v18h18" />
-                    <path d="M18.75 12.75l-5.69-5.69a1.5 1.5 0 0 0-2.12 0L5.25 15" />
-                </svg>
-            </button>
-        </div>
     </header>
 
-    <!-- Main Content Area -->
     <main class="flex-1 flex flex-col pt-20 pb-24 bg-white">
         <div id="welcome-message-container" class="flex-1 flex items-center justify-center p-4 text-center">
             <h1 class="text-4xl font-bold text-gray-800">Hello, User</h1>
@@ -185,25 +93,20 @@
         </div>
     </main>
 
-    <!-- Input Box at the bottom -->
     <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
         <div class="w-full max-w-3xl flex items-center bg-white rounded-3xl border border-gray-300 shadow-lg px-4 py-2">
-            <!-- File and Live Data Buttons -->
             <div class="flex space-x-2 mr-2">
-                <!-- 1. Image, PDF or document read -->
                 <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Upload file">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                 </button>
                 <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
-                <!-- 4. Read YouTube video and write the txt -->
                 <button id="youtube-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="YouTube transcript">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path d="M9 17.25v1.063c0 .285.127.558.348.749.221.192.51.298.81.298.563 0 1.02-.457 1.02-1.02V17.25h1.564c.264 0 .52-.106.708-.295.188-.189.294-.442.294-.706V9.75h-3v7.5zM12 2a10 10 0 100 20 10 10 0 000-20z" />
                     </svg>
                 </button>
-                <!-- 6. Live data search integration -->
                 <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Live search">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -213,7 +116,6 @@
             
             <input id="message-input" type="text" placeholder="Ask AI Chatbot...." class="flex-1 px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot">
             
-            <!-- 3. Change mic icon & 5. User to talk to AI chatbot -->
             <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Start voice input">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -223,7 +125,6 @@
                 </svg>
             </button>
             
-            <!-- 2. Send message -->
             <button id="send-btn" class="ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button" aria-label="Send message">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform rotate-45 -mt-1 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -232,36 +133,7 @@
         </div>
     </footer>
 
-    <!-- Analytics Dashboard Modal -->
-    <div id="dashboard-modal" class="modal">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-gray-800">Chatbot Analytics Dashboard</h2>
-                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 transition-colors">&times;</button>
-            </div>
-            <div class="bg-gray-100 p-4 rounded-lg mb-4">
-                <p class="text-gray-600 text-sm">Your unique user ID:</p>
-                <code id="user-id-display" class="font-mono text-sm text-gray-700 block mt-1 break-all">Loading...</code>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-indigo-100 p-4 rounded-lg shadow-sm">
-                    <h3 class="text-lg font-semibold text-indigo-800">Total Messages</h3>
-                    <p id="total-messages" class="text-4xl font-bold text-indigo-600 mt-2">0</p>
-                </div>
-                <div class="bg-yellow-100 p-4 rounded-lg shadow-sm">
-                    <h3 class="text-lg font-semibold text-yellow-800">Last Message Sentiment</h3>
-                    <p id="last-sentiment" class="text-2xl font-bold text-yellow-600 mt-2">N/A</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
-        import { getFirestore, collection, query, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase SDKs are imported in the HTML.
-        
-        // Helper function to convert base64 to ArrayBuffer
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -272,7 +144,6 @@
             return bytes.buffer;
         }
 
-        // Helper function to convert PCM audio to WAV format
         function pcmToWav(pcmData, sampleRate) {
             const pcm16 = new Int16Array(pcmData);
             const buffer = new ArrayBuffer(44 + pcm16.length * 2);
@@ -288,8 +159,8 @@
             writeString(view, 8, 'WAVE');
             view.setUint32(12, 16, true);
             view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // PCM format
-            view.setUint16(22, 1, true); // Mono
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
             view.setUint32(24, sampleRate, true);
             view.setUint32(28, sampleRate * 2, true);
             view.setUint16(32, 2, true);
@@ -304,297 +175,212 @@
             return new Blob([view], { type: 'audio/wav' });
         }
 
-        document.addEventListener('firebase-ready', () => {
-            const chatContainer = document.getElementById('chat-container');
-            const welcomeMessageContainer = document.getElementById('welcome-message-container');
-            const messageInput = document.getElementById('message-input');
-            const sendBtn = document.getElementById('send-btn');
-            const micBtn = document.getElementById('mic-btn');
-            const dashboardBtn = document.getElementById('dashboard-btn');
-            const dashboardModal = document.getElementById('dashboard-modal');
-            const closeDashboardModalBtn = document.getElementById('close-modal-btn');
-            const userIdDisplay = document.getElementById('user-id-display');
-            const totalMessagesDisplay = document.getElementById('total-messages');
-            const lastSentimentDisplay = document.getElementById('last-sentiment');
-            const dropdownButton = document.getElementById('dropdown-button');
-            const dropdownMenu = document.getElementById('model-dropdown-menu');
-            const currentModelName = document.getElementById('current-model-name');
-            const fileUploadBtn = document.getElementById('file-upload-btn');
-            const fileInput = document.getElementById('file-input');
-            const searchBtn = document.getElementById('search-btn');
-            const youtubeBtn = document.getElementById('youtube-btn');
-            
-            let currentModel = 'gemini';
-            const API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
+        const chatContainer = document.getElementById('chat-container');
+        const welcomeMessageContainer = document.getElementById('welcome-message-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const dropdownButton = document.getElementById('dropdown-button');
+        const dropdownMenu = document.getElementById('model-dropdown-menu');
+        const currentModelName = document.getElementById('current-model-name');
+        const fileUploadBtn = document.getElementById('file-upload-btn');
+        const fileInput = document.getElementById('file-input');
+        const searchBtn = document.getElementById('search-btn');
+        const youtubeBtn = document.getElementById('youtube-btn');
+        
+        let currentModel = 'gemini';
+        const API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
 
-            const db = window.db;
-            const userId = window.userId;
-            const appId = window.appId;
-
-            // Toggle dropdown menu
-            dropdownButton.addEventListener('click', () => {
-                dropdownMenu.classList.toggle('hidden');
+        dropdownButton.addEventListener('click', () => {
+            dropdownMenu.classList.toggle('hidden');
+        });
+        
+        dropdownMenu.querySelectorAll('a').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentModel = e.target.getAttribute('data-model');
+                currentModelName.textContent = e.target.textContent;
+                dropdownMenu.classList.add('hidden');
+                console.log("Switched to model:", currentModel);
             });
-            
-            dropdownMenu.querySelectorAll('a').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    currentModel = e.target.getAttribute('data-model');
-                    currentModelName.textContent = e.target.textContent;
-                    dropdownMenu.classList.add('hidden');
-                    console.log("Switched to model:", currentModel);
+        });
+
+        function addMessage(text, sender) {
+            const messageBubble = document.createElement('div');
+            messageBubble.textContent = text;
+            messageBubble.classList.add('message-bubble');
+            if (sender === 'user') {
+                messageBubble.classList.add('user-message', 'ml-auto');
+            } else if (sender === 'ai') {
+                messageBubble.classList.add('ai-message', 'mr-auto');
+                const ttsBtn = document.createElement('button');
+                ttsBtn.classList.add('tts-btn', 'ml-2', 'h-4', 'w-4', 'inline-block');
+                ttsBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                `;
+                ttsBtn.onclick = () => speakText(text);
+                messageBubble.appendChild(ttsBtn);
+            } else if (sender === 'system') {
+                messageBubble.classList.add('system-message', 'mr-auto');
+            }
+            chatContainer.appendChild(messageBubble);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function speakText(text) {
+            const apiKey = "";
+            const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=" + apiKey;
+            const payload = {
+                contents: [{ parts: [{ text: text }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            let audio = new Audio();
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
-            });
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
 
-            // --- Function to add message to chat history ---
-            function addMessage(text, sender) {
-                const messageBubble = document.createElement('div');
-                messageBubble.textContent = text;
-                messageBubble.classList.add('message-bubble');
-                if (sender === 'user') {
-                    messageBubble.classList.add('user-message', 'ml-auto');
-                } else if (sender === 'ai') {
-                    messageBubble.classList.add('ai-message', 'mr-auto');
-                    // Add TTS button to AI messages
-                    const ttsBtn = document.createElement('button');
-                    ttsBtn.classList.add('tts-btn', 'ml-2', 'h-4', 'w-4', 'inline-block');
-                    ttsBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                    `;
-                    ttsBtn.onclick = () => speakText(text);
-                    messageBubble.appendChild(ttsBtn);
-                } else if (sender === 'system') {
-                    messageBubble.classList.add('system-message', 'mr-auto');
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const wavBlob = pcmToWav(pcmData, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    audio.src = audioUrl;
+                    audio.play();
+                } else {
+                    console.error("Audio data not found or invalid format:", result);
                 }
-                chatContainer.appendChild(messageBubble);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } catch (error) {
+                console.error("Error with TTS API:", error);
             }
+        }
+        
+        async function sendMessage(text, isVision = false, base64Image = null) {
+            const messageText = text.trim();
+            if (!messageText) return;
 
-            // --- Text-to-Speech (TTS) with Gemini API ---
-            async function speakText(text) {
-                const apiKey = "";
-                const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=" + apiKey;
-                const payload = {
-                    contents: [{ parts: [{ text: text }] }],
-                    generationConfig: {
-                        responseModalities: ["AUDIO"],
-                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
-                    },
-                    model: "gemini-2.5-flash-preview-tts"
-                };
-
-                let audio = new Audio();
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await response.json();
-                    const part = result?.candidates?.[0]?.content?.parts?.[0];
-                    const audioData = part?.inlineData?.data;
-                    const mimeType = part?.inlineData?.mimeType;
-
-                    if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                        const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                        const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
-                        const pcmData = base64ToArrayBuffer(audioData);
-                        const wavBlob = pcmToWav(pcmData, sampleRate);
-                        const audioUrl = URL.createObjectURL(wavBlob);
-                        audio.src = audioUrl;
-                        audio.play();
-                    } else {
-                        console.error("Audio data not found or invalid format:", result);
-                    }
-                } catch (error) {
-                    console.error("Error with TTS API:", error);
-                }
+            if (welcomeMessageContainer) {
+                welcomeMessageContainer.classList.add('hidden');
+                chatContainer.classList.remove('hidden');
             }
             
-            // --- Send Message & Gemini API Call ---
-            async function sendMessage(text, isVision = false, base64Image = null) {
-                if (!text && !base64Image) return;
+            addMessage(messageText, 'user');
+            messageInput.value = '';
 
-                if (welcomeMessageContainer) {
-                    welcomeMessageContainer.classList.add('hidden');
-                    chatContainer.classList.remove('hidden');
-                }
-                
-                addMessage(text, 'user');
-                messageInput.value = '';
+            const typingIndicator = document.createElement('div');
+            typingIndicator.textContent = 'AI is typing...';
+            typingIndicator.classList.add('ai-message', 'mr-auto', 'typing-indicator');
+            chatContainer.appendChild(typingIndicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                const typingIndicator = document.createElement('div');
-                typingIndicator.textContent = 'AI is typing...';
-                typingIndicator.classList.add('ai-message', 'mr-auto', 'typing-indicator');
-                chatContainer.appendChild(typingIndicator);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-
-                const apiUrl = '/send-message';
-                const payload = {
-                    userId: userId,
-                    appId: appId,
-                    text: text,
-                    sender: 'user',
-                    model: currentModel,
-                    apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
-                    isVision: isVision,
-                    image: base64Image
-                };
-
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Server responded with status ${response.status}: ${errorText}`);
-                    }
-
-                    const result = await response.json();
-                    typingIndicator.remove();
-                    
-                    addMessage(result.response, 'ai');
-                    speakText(result.response);
-                } catch (error) {
-                    console.error('Error sending message to server:', error);
-                    typingIndicator.remove();
-                    addMessage(`Error: ${error.message}. Please check your backend deployment.`, 'system');
-                }
-            }
+            const apiUrl = window.location.origin + '/chat';
+            const payload = {
+                text: messageText,
+                model: currentModel,
+                apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
+                isVision: isVision,
+                image: base64Image
+            };
             
-            // Event Listeners for various buttons
-            sendBtn.addEventListener('click', () => sendMessage(messageInput.value.trim()));
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage(messageInput.value.trim());
-                }
-            });
+            console.log("Sending message payload:", payload);
 
-            // --- ✨Image Understanding with Gemini Vision ---
-            fileUploadBtn.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', async (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const base64Image = e.target.result.split(',')[1];
-                    addMessage("Analyzing image...", 'system');
-                    await sendMessage("Analyze this image.", true, base64Image);
-                };
-                reader.readAsDataURL(file);
-            });
-            
-            // --- ✨Live Data Search with Gemini Grounding ---
-            searchBtn.addEventListener('click', () => {
-                const prompt = messageInput.value.trim();
-                if (prompt) {
-                    addMessage(`Searching the web for "${prompt}"...`, 'system');
-                    sendMessage(prompt);
-                }
-            });
-            
-            // --- Voice-to-Text Feature ---
-            let recognition;
-            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
-                recognition.continuous = false;
-                recognition.lang = 'en-US';
-                
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    messageInput.value = transcript;
-                };
-
-                recognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
-                };
-
-                micBtn.addEventListener('click', () => {
-                    addMessage('Listening...', 'ai');
-                    recognition.start();
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
-            } else {
-                micBtn.style.display = 'none';
-                console.warn('Speech Recognition API is not supported in this browser.');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server responded with status ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                typingIndicator.remove();
+                
+                addMessage(result.response, 'ai');
+                speakText(result.response);
+            } catch (error) {
+                console.error('Error sending message to server:', error);
+                typingIndicator.remove();
+                addMessage(`Error: ${error.message}. Please check your backend deployment.`, 'system');
             }
+        }
+        
+        sendBtn.addEventListener('click', () => {
+            sendMessage(messageInput.value.trim());
+        });
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage(messageInput.value.trim());
+            }
+        });
 
-            // --- Dashboard and Analytics ---
-            dashboardBtn.addEventListener('click', () => {
-                dashboardModal.style.display = 'flex';
-                userIdDisplay.textContent = userId;
-                updateDashboard();
-            });
+        fileUploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
 
-            closeDashboardModalBtn.addEventListener('click', () => {
-                dashboardModal.style.display = 'none';
-            });
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64Image = e.target.result.split(',')[1];
+                addMessage("Analyzing image...", 'system');
+                await sendMessage("Analyze this image.", true, base64Image);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        searchBtn.addEventListener('click', () => {
+            const prompt = messageInput.value.trim();
+            if (prompt) {
+                addMessage(`Searching the web for "${prompt}"...`, 'system');
+                sendMessage(prompt);
+            }
+        });
+        
+        let recognition;
+        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
             
-            async function updateDashboard() {
-                try {
-                    const messagesRef = collection(window.db, `artifacts/${window.appId}/users/${window.userId}/messages`);
-                    const q = query(messagesRef);
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+            };
 
-                    onSnapshot(q, (snapshot) => {
-                        const messages = [];
-                        snapshot.forEach(doc => messages.push(doc.data()));
-                        totalMessagesDisplay.textContent = messages.length;
-                        
-                        if (messages.length > 0) {
-                            const lastMessage = messages[messages.length - 1].text;
-                            analyzeSentiment(lastMessage);
-                        } else {
-                            lastSentimentDisplay.textContent = 'N/A';
-                        }
-                    });
-                } catch (e) {
-                    console.error("Error in updateDashboard:", e);
-                    totalMessagesDisplay.textContent = 'Error';
-                    lastSentimentDisplay.textContent = 'Error';
-                }
-            }
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+            };
 
-            // --- Sentiment Analysis using LLM API ---
-            async function analyzeSentiment(text) {
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-                const systemPrompt = "Analyze the sentiment of the following text and provide a single word answer: 'Positive', 'Negative', or 'Neutral'.";
-                const userQuery = text;
-
-                const payload = {
-                    contents: [{ parts: [{ text: userQuery }] }],
-                    systemInstruction: {
-                        parts: [{ text: systemPrompt }]
-                    },
-                };
-
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await response.json();
-                    const sentiment = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                    lastSentimentDisplay.textContent = sentiment || 'N/A';
-                } catch (error) {
-                    console.error("Error analyzing sentiment:", error);
-                    lastSentimentDisplay.textContent = 'Error';
-                }
-            }
-
-            // Other placeholder features
-            youtubeBtn.addEventListener('click', () => {
-                addMessage("This feature requires a backend service to access the YouTube API and a text transcription model.", 'ai');
+            micBtn.addEventListener('click', () => {
+                addMessage('Listening...', 'ai');
+                recognition.start();
             });
+        } else {
+            micBtn.style.display = 'none';
+            console.warn('Speech Recognition API is not supported in this browser.');
+        }
+
+        youtubeBtn.addEventListener('click', () => {
+            addMessage("This feature requires a backend service to access the YouTube API and a text transcription model.", 'ai');
         });
     </script>
 </body>
