@@ -1,16 +1,27 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// Serve static files from the root directory
-app.use(express.static(path.join(__dirname)));
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Catch-all route to serve the index.html file
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+app.post('/chat', (req, res) => {
+    const userMessage = req.body.text;
+    console.log(`Received message from frontend: ${userMessage}`);
+
+    // This is a placeholder for your actual Gemini API call
+    const aiResponse = `You are using the '${req.body.model}' model. You typed: '${userMessage}'`;
+
+    res.json({ response: aiResponse });
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
