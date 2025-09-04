@@ -257,6 +257,8 @@
     </div>
 
     <script type="module">
+        import { getFirestore, collection, query, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // Firebase SDKs are imported in the HTML.
         
         // Helper function to convert base64 to ArrayBuffer
@@ -284,7 +286,7 @@
             writeString(view, 0, 'RIFF');
             view.setUint32(4, 36 + pcm16.length * 2, true);
             writeString(view, 8, 'WAVE');
-            view.setUint32(12, 'fmt ');
+            view.setUint32(12, 16, true);
             view.setUint32(16, 16, true);
             view.setUint16(20, 1, true); // PCM format
             view.setUint16(22, 1, true); // Mono
@@ -430,7 +432,7 @@
                 chatContainer.appendChild(typingIndicator);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                const apiUrl = window.location.origin + '/chat'; // Corrected URL
+                const apiUrl = '/send-message';
                 const payload = {
                     userId: userId,
                     appId: appId,
@@ -451,7 +453,7 @@
                     
                     if (!response.ok) {
                         const errorText = await response.text();
-                        throw new Error(`Server returned an error: ${response.status} - ${errorText}`);
+                        throw new Error(`Server responded with status ${response.status}: ${errorText}`);
                     }
 
                     const result = await response.json();
@@ -462,7 +464,7 @@
                 } catch (error) {
                     console.error('Error sending message to server:', error);
                     typingIndicator.remove();
-                    addMessage(`Error: Could not send message. Please ensure your backend server is running and configured correctly. Details: ${error.message}`, 'system');
+                    addMessage(`Error: ${error.message}. Please check your backend deployment.`, 'system');
                 }
             }
             
@@ -537,7 +539,7 @@
             
             async function updateDashboard() {
                 try {
-                    const messagesRef = collection(db, `artifacts/${appId}/users/${userId}/messages`);
+                    const messagesRef = collection(window.db, `artifacts/${window.appId}/users/${window.userId}/messages`);
                     const q = query(messagesRef);
 
                     onSnapshot(q, (snapshot) => {
