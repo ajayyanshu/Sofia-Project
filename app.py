@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 import re
-from google.generativeai import GenerativeModel, GroundingConfig
+from google.generativeai import GenerativeModel
 from google.generativeai.types import Tool
 from google.generativeai.types.tool import Function as ToolFunction
 
@@ -66,7 +66,7 @@ def chat():
         # Handle live data search
         tools = []
         if any(keyword in user_message.lower() for keyword in ["what is the latest", "who won", "what's the current"]):
-            tools.append({"google_search": {}})
+            tools.append(Tool.from_dict({"google_search": {}}))
 
         # Handle image or PDF input
         if is_vision and image_data:
