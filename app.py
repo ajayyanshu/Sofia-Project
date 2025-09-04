@@ -5,7 +5,6 @@ from youtube_transcript_api import YouTubeTranscriptApi
 import re
 from google.generativeai import GenerativeModel
 from google.generativeai.types import Tool
-from google.generativeai.types.tool import Function as ToolFunction
 
 # Placeholder for user data (in a real app, this would be a database)
 user_profiles = {}
