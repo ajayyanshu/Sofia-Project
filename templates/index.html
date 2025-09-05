@@ -123,6 +123,61 @@
             overflow-y: hidden;
             max-height: 150px;
         }
+        /* --- New styles for file preview --- */
+        #file-preview-container {
+            padding: 0.5rem 0.5rem 0 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .preview-item {
+            position: relative;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+        .preview-item.image-preview {
+            width: 70px;
+            height: 70px;
+        }
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .preview-item.doc-preview {
+             display: flex;
+             align-items: center;
+             padding: 0.5rem 0.75rem;
+             background-color: #f3f4f6;
+        }
+        .doc-preview .file-icon {
+            flex-shrink: 0;
+            margin-right: 0.5rem;
+        }
+        .doc-preview .file-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+        .remove-preview-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 1.25rem;
+            height: 1.25rem;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            line-height: 1;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -141,37 +196,41 @@
     </main>
 
     <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
-        <div class="w-full max-w-3xl flex items-end bg-white rounded-3xl border border-gray-300 shadow-lg px-2 sm:px-4 py-2">
-            <div class="flex items-center space-x-1 sm:space-x-2 mr-1 sm:mr-2">
-                 <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        <div class="w-full max-w-3xl flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg">
+            <!-- Container for the file preview -->
+            <div id="file-preview-container"></div>
+            <div class="w-full flex items-end px-2 sm:px-4 py-2">
+                <div class="flex items-center space-x-1 sm:space-x-2 mr-1 sm:mr-2">
+                     <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                    </button>
+                    <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
+                    <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0...." class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
+                
+                <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
                     </svg>
                 </button>
-                <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
-                <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                
+                <button id="send-btn" class="ml-1 sm:ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                 </button>
             </div>
-            
-            <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0...." class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
-            
-            <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                    <line x1="12" y1="19" x2="12" y2="23"></line>
-                    <line x1="8" y1="23" x2="16" y2="23"></line>
-                </svg>
-            </button>
-            
-            <button id="send-btn" class="ml-1 sm:ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-            </button>
         </div>
     </footer>
 
@@ -184,19 +243,36 @@
         const fileUploadBtn = document.getElementById('file-upload-btn');
         const fileInput = document.getElementById('file-input');
         const searchBtn = document.getElementById('search-btn');
+        const filePreviewContainer = document.getElementById('file-preview-container');
         
         const markdownConverter = new showdown.Converter();
+        let stagedFile = null;
 
-        function addMessage(text, sender) {
+        function addMessage(text, sender, fileInfo = null) {
             if (sender === 'user') {
                 const messageBubble = document.createElement('div');
-                messageBubble.textContent = text;
+                let fileHtml = '';
+
+                if (fileInfo) {
+                    if (fileInfo.type.startsWith('image/')) {
+                         fileHtml = `<img src="${fileInfo.dataUrl}" alt="User upload" class="rounded-lg mb-2 max-w-xs">`;
+                    } else {
+                        fileHtml = `
+                            <div class="flex items-center bg-blue-100 rounded-lg p-2 mb-2">
+                                <svg class="h-6 w-6 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span class="text-sm text-blue-800">${fileInfo.name}</span>
+                            </div>`;
+                    }
+                }
+                
+                messageBubble.innerHTML = fileHtml + `<span>${text}</span>`;
                 messageBubble.className = 'message-bubble user-message ml-auto';
                 chatContainer.appendChild(messageBubble);
+
             } else if (sender === 'ai') {
                 const aiMessageContainer = document.createElement('div');
                 aiMessageContainer.className = 'ai-message-container';
-
+                const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
                 const messageBubble = document.createElement('div');
                 messageBubble.className = 'message-bubble ai-message';
                 const formattedHtml = markdownConverter.makeHtml(text);
@@ -205,19 +281,13 @@
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'message-actions';
                 actionsDiv.innerHTML = `
-                    <button class="action-btn copy-btn" title="Copy text">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>
-                    </button>
-                    <button class="action-btn" title="Good response">
-                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                    </button>
-                    <button class="action-btn" title="Bad response">
-                       <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                    </button>
+                    <button class="action-btn copy-btn" title="Copy text"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg></button>
+                    <button class="action-btn" title="Good response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></button>
+                    <button class="action-btn" title="Bad response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg></button>
                 `;
-                
                 messageBubble.appendChild(contentDiv);
                 messageBubble.appendChild(actionsDiv);
+                aiMessageContainer.innerHTML = avatar;
                 aiMessageContainer.appendChild(messageBubble);
                 chatContainer.appendChild(aiMessageContainer);
 
@@ -228,7 +298,6 @@
                          e.target.closest('button').innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
                     }, 1500);
                 });
-
             } else if (sender === 'system') {
                 const messageBubble = document.createElement('div');
                 messageBubble.textContent = text;
@@ -238,47 +307,63 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         
-        async function sendMessage(text, isVision = false, base64Data = null) {
-            const messageText = text.trim();
-            if (!messageText && !base64Data) return;
+        function showFilePreview(file) {
+            filePreviewContainer.innerHTML = ''; // Clear previous previews
+            const previewItem = document.createElement('div');
+            previewItem.className = 'preview-item';
+            
+            if (file.type.startsWith('image/')) {
+                 previewItem.classList.add('image-preview');
+                 previewItem.innerHTML = `<img src="${stagedFile.dataUrl}" alt="${file.name}"><button class="remove-preview-btn">&times;</button>`;
+            } else {
+                 previewItem.classList.add('doc-preview');
+                 previewItem.innerHTML = `
+                    <div class="file-icon"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
+                    <span class="file-name">${file.name}</span>
+                    <button class="remove-preview-btn">&times;</button>
+                 `;
+            }
+            filePreviewContainer.appendChild(previewItem);
+            previewItem.querySelector('.remove-preview-btn').addEventListener('click', () => {
+                stagedFile = null;
+                filePreviewContainer.innerHTML = '';
+                fileInput.value = '';
+            });
+        }
+        
+        async function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (!messageText && !stagedFile) return;
 
             if (welcomeMessageContainer.offsetParent) {
                 welcomeMessageContainer.classList.add('hidden');
                 chatContainer.classList.remove('hidden');
             }
             
-            if(messageText) addMessage(messageText, 'user');
+            addMessage(messageText, 'user', stagedFile);
+            
             messageInput.value = '';
             messageInput.style.height = 'auto';
+            filePreviewContainer.innerHTML = '';
 
-            // --- New Typing Indicator with Avatar and Text ---
             const typingIndicatorContainer = document.createElement('div');
             typingIndicatorContainer.className = 'ai-message-container typing-indicator';
-
-            const avatar = document.createElement('div');
-            avatar.className = 'ai-avatar';
-            avatar.innerHTML = `<svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg>`;
-
-            const typingBubble = document.createElement('div');
-            typingBubble.className = 'message-bubble ai-message';
-            typingBubble.textContent = 'Sofia is typing...';
-            // Remove bottom padding since there are no action buttons
-            typingBubble.style.paddingBottom = '0.75rem';
-            
-            typingIndicatorContainer.appendChild(avatar);
-            typingIndicatorContainer.appendChild(typingBubble);
+            const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
+            const typingBubble = `<div class="message-bubble ai-message" style="padding-bottom: 0.75rem;">Sofia is typing...</div>`;
+            typingIndicatorContainer.innerHTML = avatar + typingBubble;
             chatContainer.appendChild(typingIndicatorContainer);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             const apiUrl = window.location.origin + '/chat';
             const payload = {
                 text: messageText,
-                model: 'gemini',
-                apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
-                isVision: isVision,
-                image: base64Data,
-                userId: 'user-' + Math.random().toString(36).substr(2, 9)
+                isVision: !!stagedFile,
+                fileData: stagedFile ? stagedFile.base64 : null,
+                fileName: stagedFile ? stagedFile.name : null,
+                fileType: stagedFile ? stagedFile.type : null
             };
+            
+            stagedFile = null;
 
             try {
                 const response = await fetch(apiUrl, {
@@ -288,29 +373,21 @@
                 });
                 
                 document.querySelector('.typing-indicator').remove();
-
                 if (!response.ok) {
                     const errorText = await response.text();
-                    try {
-                        const errorData = JSON.parse(errorText);
-                        throw new Error(errorData.error || `Server responded with status ${response.status}`);
-                    } catch (e) {
-                        throw new Error(`Server returned an unexpected response. Check backend logs.`);
-                    }
+                    throw new Error(errorText || `Server responded with status ${response.status}`);
                 }
-
                 const result = await response.json();
                 addMessage(result.response, 'ai');
-
             } catch (error) {
                 console.error('Error sending message:', error);
                 const indicator = document.querySelector('.typing-indicator');
                 if (indicator) indicator.remove();
-                addMessage(`Sorry, something went wrong: ${error.message}`, 'system');
+                addMessage(`Sorry, something went wrong. Make sure your backend can handle the uploaded file type.`, 'system');
             }
         }
         
-        sendBtn.addEventListener('click', () => sendMessage(messageInput.value));
+        sendBtn.addEventListener('click', sendMessage);
         
         messageInput.addEventListener('input', () => {
             messageInput.style.height = 'auto';
@@ -326,10 +403,9 @@
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage(messageInput.value);
+                sendMessage();
             }
         });
-
 
         fileUploadBtn.addEventListener('click', () => fileInput.click());
         
@@ -339,30 +415,13 @@
 
             const reader = new FileReader();
             reader.onload = (e) => {
-                const base64Data = e.target.result.split(',')[1];
-                let userPrompt = '';
-                let systemNote = '';
-
-                if (file.type.startsWith('image/')) {
-                    userPrompt = prompt("What would you like to know about this image?", "Describe this. I want a details");
-                } else if (file.type === 'application/pdf') {
-                    userPrompt = `Please summarize this PDF: ${file.name}`;
-                    systemNote = "Processing PDF... Note: This requires your backend to be configured to handle PDF files.";
-                } else if (file.type.includes('document')) { 
-                    userPrompt = `Please summarize this document: ${file.name}`;
-                    systemNote = "Processing document... Note: This requires your backend to be configured to handle document files.";
-                } else {
-                    addMessage(`Sorry, I can't process this file type: ${file.type}`, 'system');
-                    return;
-                }
-
-                if (systemNote) {
-                    addMessage(systemNote, 'system');
-                }
-
-                if (userPrompt) {
-                   sendMessage(userPrompt, true, base64Data);
-                }
+                stagedFile = {
+                    base64: e.target.result.split(',')[1],
+                    dataUrl: e.target.result,
+                    name: file.name,
+                    type: file.type
+                };
+                showFilePreview(file);
             };
             reader.readAsDataURL(file);
         });
@@ -370,7 +429,8 @@
         searchBtn.addEventListener('click', () => {
              const promptText = "Please summarize this YouTube video: " + messageInput.value.trim();
             if (messageInput.value.trim()) {
-                sendMessage(promptText);
+                messageInput.value = promptText;
+                sendMessage();
             }
         });
         
@@ -386,8 +446,8 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
-                sendMessage(transcript);
-};
+                sendMessage();
+            };
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 addMessage(`Speech recognition error: ${event.error}`, 'system');
