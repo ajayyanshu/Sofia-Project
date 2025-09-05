@@ -28,7 +28,7 @@
             display: none;
         }
         .message-bubble {
-            max-width: 75%;
+            max-width: 85%; /* Slightly wider for mobile */
             padding: 0.75rem 1.25rem;
             border-radius: 1.5rem;
             margin-bottom: 0.75rem;
@@ -40,14 +40,13 @@
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 0.5rem;
-            /* This is the fix: Makes the bubble only as wide as its content */
             width: fit-content;
         }
         .ai-message-container {
             display: flex;
             align-items: flex-start;
             gap: 0.75rem;
-            max-width: 75%;
+            max-width: 85%;
             margin-right: auto;
             margin-bottom: 0.75rem;
         }
@@ -81,7 +80,7 @@
             color: #111827;
         }
         .system-message {
-            background-color: #f87171; /* A slightly different red for system errors */
+            background-color: #f87171;
             color: white;
             align-self: center;
             text-align: center;
@@ -113,24 +112,25 @@
     </main>
 
     <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
-        <div class="w-full max-w-3xl flex items-center bg-white rounded-3xl border border-gray-300 shadow-lg px-4 py-2">
-            <div class="flex space-x-2 mr-2">
-                 <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Upload file">
+        <div class="w-full max-w-3xl flex items-center bg-white rounded-3xl border border-gray-300 shadow-lg px-2 sm:px-4 py-2">
+            <div class="flex items-center space-x-1 sm:space-x-2 mr-1 sm:mr-2">
+                 <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                 </button>
                 <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
-                <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Live search">
+                <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </button>
             </div>
             
-            <input id="message-input" type="text" placeholder="Ask Sofia 2.0...." class="flex-1 px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot">
+            <input id="message-input" type="text" placeholder="Ask Sofia 2.0...." class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot">
             
-            <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Start voice input">
+            <!-- This is the fix: flex-shrink-0 prevents these buttons from being squeezed out on small screens -->
+            <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -139,8 +139,8 @@
                 </svg>
             </button>
             
-            <button id="send-btn" class="ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button" aria-label="Send message">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform rotate-45 -mt-1 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button id="send-btn" class="ml-1 sm:ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
             </button>
@@ -157,7 +157,6 @@
         const fileInput = document.getElementById('file-input');
         const searchBtn = document.getElementById('search-btn');
         
-        // Initialize Showdown converter
         const markdownConverter = new showdown.Converter();
 
         function addMessage(text, sender) {
@@ -169,18 +168,13 @@
             } else if (sender === 'ai') {
                 const aiMessageContainer = document.createElement('div');
                 aiMessageContainer.className = 'ai-message-container';
-
-                // AI Avatar
                 const avatar = document.createElement('div');
                 avatar.className = 'ai-avatar';
                 avatar.innerHTML = `<svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg>`;
-                
                 const messageBubble = document.createElement('div');
-                // Convert Markdown to HTML before displaying
                 const formattedHtml = markdownConverter.makeHtml(text);
                 messageBubble.innerHTML = formattedHtml;
                 messageBubble.className = 'message-bubble ai-message';
-
                 aiMessageContainer.appendChild(avatar);
                 aiMessageContainer.appendChild(messageBubble);
                 chatContainer.appendChild(aiMessageContainer);
@@ -217,8 +211,7 @@
             const payload = {
                 text: messageText,
                 model: 'gemini',
-                // This is the fix for the JSON error
-                apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4", 
+                apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
                 isVision: isVision,
                 image: base64Image,
                 userId: 'user-' + Math.random().toString(36).substr(2, 9)
@@ -234,15 +227,12 @@
                 document.querySelector('.typing-indicator').remove();
 
                 if (!response.ok) {
-                    // Try to get text error first, as it might be HTML
                     const errorText = await response.text();
                     try {
-                        // See if it's actually JSON
                         const errorData = JSON.parse(errorText);
                         throw new Error(errorData.error || `Server responded with status ${response.status}`);
                     } catch (e) {
-                        // If parsing fails, it's likely an HTML error page
-                        throw new Error(`Server returned an unexpected response. Please check the backend logs.`);
+                        throw new Error(`Server returned an unexpected response. Check backend logs.`);
                     }
                 }
 
@@ -251,7 +241,6 @@
 
             } catch (error) {
                 console.error('Error sending message:', error);
-                // Make sure typing indicator is removed even if it was already
                 const indicator = document.querySelector('.typing-indicator');
                 if (indicator) indicator.remove();
                 addMessage(`Sorry, something went wrong: ${error.message}`, 'system');
@@ -293,17 +282,13 @@
             recognition.continuous = false;
             recognition.lang = 'en-US';
             
-            recognition.onstart = () => {
-                micBtn.classList.add('text-red-500');
-            };
-            recognition.onend = () => {
-                micBtn.classList.remove('text-red-500');
-            };
+            recognition.onstart = () => micBtn.classList.add('text-red-500');
+            recognition.onend = () => micBtn.classList.remove('text-red-500');
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
                 sendMessage(transcript);
-            };
+};
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 addMessage(`Speech recognition error: ${event.error}`, 'system');
