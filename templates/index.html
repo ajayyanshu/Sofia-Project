@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chatbot with Full Features</title>
-    <!-- Load Tailwind CSS -->
+    <title>Sofia 2.0 - AI Chatbot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -67,21 +66,7 @@
 <body class="flex flex-col min-h-screen">
     <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
         <div class="flex items-center space-x-2">
-            <span class="font-bold text-xl text-indigo-600">AIChatbot</span>
-            <div class="relative inline-block text-left">
-                <button id="dropdown-button" class="inline-flex justify-center w-full rounded-md px-4 py-2 bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
-                    <span id="current-model-name">Gemini</span>
-                    <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-                <div id="model-dropdown-menu" class="origin-top-right absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden">
-                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="dropdown-button">
-                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem" data-model="gemini">Gemini</a>
-                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem" data-model="my-ai-model">My AI Model</a>
-                    </div>
-                </div>
-            </div>
+            <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
         </div>
     </header>
 
@@ -102,11 +87,6 @@
                     </svg>
                 </button>
                 <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
-                <button id="youtube-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="YouTube transcript">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M9 17.25v1.063c0 .285.127.558.348.749.221.192.51.298.81.298.563 0 1.02-.457 1.02-1.02V17.25h1.564c.264 0 .52-.106.708-.295.188-.189.294-.442.294-.706V9.75h-3v7.5zM12 2a10 10 0 100 20 10 10 0 000-20z" />
-                    </svg>
-                </button>
                 <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Live search">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -114,7 +94,7 @@
                 </button>
             </div>
             
-            <input id="message-input" type="text" placeholder="Ask AI Chatbot...." class="flex-1 px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot">
+            <input id="message-input" type="text" placeholder="Ask Sofia 2.0...." class="flex-1 px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot">
             
             <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Start voice input">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
@@ -180,30 +160,11 @@
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
         const micBtn = document.getElementById('mic-btn');
-        const dropdownButton = document.getElementById('dropdown-button');
-        const dropdownMenu = document.getElementById('model-dropdown-menu');
-        const currentModelName = document.getElementById('current-model-name');
         const fileUploadBtn = document.getElementById('file-upload-btn');
         const fileInput = document.getElementById('file-input');
         const searchBtn = document.getElementById('search-btn');
-        const youtubeBtn = document.getElementById('youtube-btn');
         
-        let currentModel = 'gemini';
         const API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
-
-        dropdownButton.addEventListener('click', () => {
-            dropdownMenu.classList.toggle('hidden');
-        });
-        
-        dropdownMenu.querySelectorAll('a').forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                currentModel = e.target.getAttribute('data-model');
-                currentModelName.textContent = e.target.textContent;
-                dropdownMenu.classList.add('hidden');
-                console.log("Switched to model:", currentModel);
-            });
-        });
 
         function addMessage(text, sender) {
             const messageBubble = document.createElement('div');
@@ -291,7 +252,7 @@
             const apiUrl = window.location.origin + '/chat';
             const payload = {
                 text: messageText,
-                model: currentModel,
+                model: 'gemini', // Model is now fixed
                 apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
                 isVision: isVision,
                 image: base64Image
@@ -378,10 +339,6 @@
             micBtn.style.display = 'none';
             console.warn('Speech Recognition API is not supported in this browser.');
         }
-
-        youtubeBtn.addEventListener('click', () => {
-            addMessage("This feature requires a backend service to access the YouTube API and a text transcription model.", 'ai');
-        });
     </script>
 </body>
 </html>
