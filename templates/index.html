@@ -51,7 +51,7 @@
             padding-bottom: 2.5rem; /* Space for action icons */
             width: fit-content; 
         }
-        .ai-message-container {
+        .ai-typing-container {
              display: flex;
              align-items: flex-start;
              gap: 0.75rem;
@@ -123,7 +123,6 @@
             overflow-y: hidden;
             max-height: 150px;
         }
-        /* --- New styles for file preview --- */
         #file-preview-container {
             padding: 0.5rem 0.5rem 0 0.5rem;
             display: flex;
@@ -197,38 +196,26 @@
 
     <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
         <div class="w-full max-w-3xl flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg">
-            <!-- Container for the file preview -->
             <div id="file-preview-container"></div>
             <div class="w-full flex items-end px-2 sm:px-4 py-2">
                 <div class="flex items-center space-x-1 sm:space-x-2 mr-1 sm:mr-2">
                      <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     </button>
                     <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
                     <button id="search-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </button>
                 </div>
                 
                 <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0...." class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
                 
                 <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                        <line x1="12" y1="19" x2="12" y2="23"></line>
-                        <line x1="8" y1="23" x2="16" y2="23"></line>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                 </button>
                 
                 <button id="send-btn" class="ml-1 sm:ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                 </button>
             </div>
         </div>
@@ -257,24 +244,23 @@
                     if (fileInfo.type.startsWith('image/')) {
                          fileHtml = `<img src="${fileInfo.dataUrl}" alt="User upload" class="rounded-lg mb-2 max-w-xs">`;
                     } else {
+                        // Improved UI for file display in the user message
                         fileHtml = `
-                            <div class="flex items-center bg-blue-100 rounded-lg p-2 mb-2">
-                                <svg class="h-6 w-6 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                <span class="text-sm text-blue-800">${fileInfo.name}</span>
+                            <div class="flex items-center border border-white/20 rounded-lg p-2 mb-2">
+                                <svg class="h-6 w-6 text-white/80 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span class="text-sm truncate">${fileInfo.name}</span>
                             </div>`;
                     }
                 }
                 
-                messageBubble.innerHTML = fileHtml + `<span>${text}</span>`;
+                messageBubble.innerHTML = fileHtml + `<div>${text}</div>`;
                 messageBubble.className = 'message-bubble user-message ml-auto';
                 chatContainer.appendChild(messageBubble);
 
             } else if (sender === 'ai') {
-                const aiMessageContainer = document.createElement('div');
-                aiMessageContainer.className = 'ai-message-container';
-                const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
+                // The AI message does not have a container or avatar for the final reply
                 const messageBubble = document.createElement('div');
-                messageBubble.className = 'message-bubble ai-message';
+                messageBubble.className = 'message-bubble ai-message ml-0'; // No margin needed
                 const formattedHtml = markdownConverter.makeHtml(text);
                 const contentDiv = document.createElement('div');
                 contentDiv.innerHTML = formattedHtml;
@@ -287,9 +273,7 @@
                 `;
                 messageBubble.appendChild(contentDiv);
                 messageBubble.appendChild(actionsDiv);
-                aiMessageContainer.innerHTML = avatar;
-                aiMessageContainer.appendChild(messageBubble);
-                chatContainer.appendChild(aiMessageContainer);
+                chatContainer.appendChild(messageBubble);
 
                 actionsDiv.querySelector('.copy-btn').addEventListener('click', (e) => {
                     navigator.clipboard.writeText(text);
@@ -308,7 +292,7 @@
         }
         
         function showFilePreview(file) {
-            filePreviewContainer.innerHTML = ''; // Clear previous previews
+            filePreviewContainer.innerHTML = '';
             const previewItem = document.createElement('div');
             previewItem.className = 'preview-item';
             
@@ -347,7 +331,7 @@
             filePreviewContainer.innerHTML = '';
 
             const typingIndicatorContainer = document.createElement('div');
-            typingIndicatorContainer.className = 'ai-message-container typing-indicator';
+            typingIndicatorContainer.className = 'ai-typing-container typing-indicator';
             const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
             const typingBubble = `<div class="message-bubble ai-message" style="padding-bottom: 0.75rem;">Sofia is typing...</div>`;
             typingIndicatorContainer.innerHTML = avatar + typingBubble;
