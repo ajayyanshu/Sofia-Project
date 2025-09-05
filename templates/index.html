@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sofia 2.0 - AI Chatbot</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Showdown library to render Markdown -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         body {
@@ -30,29 +33,60 @@
             border-radius: 1.5rem;
             margin-bottom: 0.75rem;
             word-wrap: break-word;
+            line-height: 1.6;
         }
         .user-message {
             background-color: #3b82f6;
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 0.5rem;
-            max-width: fit-content;
+            /* This is the fix: Makes the bubble only as wide as its content */
+            width: fit-content;
+        }
+        .ai-message-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            max-width: 75%;
+            margin-right: auto;
+            margin-bottom: 0.75rem;
+        }
+        .ai-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
         .ai-message {
             background-color: #e5e7eb;
             color: #1f2937;
-            align-self: flex-start;
             border-bottom-left-radius: 0.5rem;
-            width: fit-content;
-            max-width: 75%;
+        }
+        /* Styling for lists and bold text rendered from Markdown */
+        .ai-message ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .ai-message li {
+            margin-bottom: 0.25rem;
+        }
+        .ai-message strong, .ai-message b {
+            font-weight: 600;
+            color: #111827;
         }
         .system-message {
-            background-color: #fca5a5;
+            background-color: #f87171; /* A slightly different red for system errors */
             color: white;
-            align-self: flex-start;
-            border-bottom-left-radius: 0.5rem;
-            width: fit-content;
-            max-width: 75%;
+            align-self: center;
+            text-align: center;
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
         }
         .floating-action-button {
             transition: transform 0.2s ease-in-out;
@@ -81,7 +115,7 @@
     <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
         <div class="w-full max-w-3xl flex items-center bg-white rounded-3xl border border-gray-300 shadow-lg px-4 py-2">
             <div class="flex space-x-2 mr-2">
-                <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Upload file">
+                 <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button" aria-label="Upload file">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
@@ -114,47 +148,6 @@
     </footer>
 
     <script type="module">
-        function base64ToArrayBuffer(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        function pcmToWav(pcmData, sampleRate) {
-            const pcm16 = new Int16Array(pcmData);
-            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
-            const view = new DataView(buffer);
-            const writeString = (view, offset, string) => {
-                for (let i = 0; i < string.length; i++) {
-                    view.setUint8(offset + i, string.charCodeAt(i));
-                }
-            };
-            
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + pcm16.length * 2, true);
-            writeString(view, 8, 'WAVE');
-            view.setUint32(12, 16, true);
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, 1, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true);
-            view.setUint16(32, 2, true);
-            view.setUint16(34, 16, true);
-            writeString(view, 36, 'data');
-            view.setUint32(40, pcm16.length * 2, true);
-            
-            for (let i = 0; i < pcm16.length; i++) {
-                view.setInt16(44 + i * 2, pcm16[i], true);
-            }
-            
-            return new Blob([view], { type: 'audio/wav' });
-        }
-
         const chatContainer = document.getElementById('chat-container');
         const welcomeMessageContainer = document.getElementById('welcome-message-container');
         const messageInput = document.getElementById('message-input');
@@ -164,101 +157,72 @@
         const fileInput = document.getElementById('file-input');
         const searchBtn = document.getElementById('search-btn');
         
-        const API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
+        // Initialize Showdown converter
+        const markdownConverter = new showdown.Converter();
 
         function addMessage(text, sender) {
-            const messageBubble = document.createElement('div');
-            messageBubble.textContent = text;
-            messageBubble.classList.add('message-bubble');
             if (sender === 'user') {
-                messageBubble.classList.add('user-message', 'ml-auto');
+                const messageBubble = document.createElement('div');
+                messageBubble.textContent = text;
+                messageBubble.className = 'message-bubble user-message ml-auto';
+                chatContainer.appendChild(messageBubble);
             } else if (sender === 'ai') {
-                messageBubble.classList.add('ai-message', 'mr-auto');
-                const ttsBtn = document.createElement('button');
-                ttsBtn.classList.add('tts-btn', 'ml-2', 'h-4', 'w-4', 'inline-block');
-                ttsBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                    </svg>
-                `;
-                ttsBtn.onclick = () => speakText(text);
-                messageBubble.appendChild(ttsBtn);
+                const aiMessageContainer = document.createElement('div');
+                aiMessageContainer.className = 'ai-message-container';
+
+                // AI Avatar
+                const avatar = document.createElement('div');
+                avatar.className = 'ai-avatar';
+                avatar.innerHTML = `<svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg>`;
+                
+                const messageBubble = document.createElement('div');
+                // Convert Markdown to HTML before displaying
+                const formattedHtml = markdownConverter.makeHtml(text);
+                messageBubble.innerHTML = formattedHtml;
+                messageBubble.className = 'message-bubble ai-message';
+
+                aiMessageContainer.appendChild(avatar);
+                aiMessageContainer.appendChild(messageBubble);
+                chatContainer.appendChild(aiMessageContainer);
             } else if (sender === 'system') {
-                messageBubble.classList.add('system-message', 'mr-auto');
+                const messageBubble = document.createElement('div');
+                messageBubble.textContent = text;
+                messageBubble.className = 'message-bubble system-message';
+                chatContainer.appendChild(messageBubble);
             }
-            chatContainer.appendChild(messageBubble);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        async function speakText(text) {
-            const apiKey = "";
-            const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=" + apiKey;
-            const payload = {
-                contents: [{ parts: [{ text: text }] }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
-                },
-                model: "gemini-2.5-flash-preview-tts"
-            };
-
-            let audio = new Audio();
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const wavBlob = pcmToWav(pcmData, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-                    audio.src = audioUrl;
-                    audio.play();
-                } else {
-                    console.error("Audio data not found or invalid format:", result);
-                }
-            } catch (error) {
-                console.error("Error with TTS API:", error);
-            }
         }
         
         async function sendMessage(text, isVision = false, base64Image = null) {
             const messageText = text.trim();
-            if (!messageText) return;
+            if (!messageText && !base64Image) return;
 
-            if (welcomeMessageContainer) {
+            if (welcomeMessageContainer.offsetParent) {
                 welcomeMessageContainer.classList.add('hidden');
                 chatContainer.classList.remove('hidden');
             }
             
-            addMessage(messageText, 'user');
+            if(messageText) addMessage(messageText, 'user');
             messageInput.value = '';
 
-            const typingIndicator = document.createElement('div');
-            typingIndicator.textContent = 'AI is typing...';
-            typingIndicator.classList.add('ai-message', 'mr-auto', 'typing-indicator');
-            chatContainer.appendChild(typingIndicator);
+            const typingIndicatorContainer = document.createElement('div');
+            typingIndicatorContainer.className = 'ai-message-container typing-indicator';
+            const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
+            const typingBubble = `<div class="message-bubble ai-message">Sofia is typing...</div>`;
+            typingIndicatorContainer.innerHTML = avatar + typingBubble;
+            chatContainer.appendChild(typingIndicatorContainer);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             const apiUrl = window.location.origin + '/chat';
             const payload = {
                 text: messageText,
-                model: 'gemini', // Model is now fixed
-                apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
+                model: 'gemini',
+                // This is the fix for the JSON error
+                apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4", 
                 isVision: isVision,
-                image: base64Image
+                image: base64Image,
+                userId: 'user-' + Math.random().toString(36).substr(2, 9)
             };
-            
-            console.log("Sending message payload:", payload);
 
             try {
                 const response = await fetch(apiUrl, {
@@ -267,78 +231,89 @@
                     body: JSON.stringify(payload)
                 });
                 
+                document.querySelector('.typing-indicator').remove();
+
                 if (!response.ok) {
+                    // Try to get text error first, as it might be HTML
                     const errorText = await response.text();
-                    throw new Error(`Server responded with status ${response.status}: ${errorText}`);
+                    try {
+                        // See if it's actually JSON
+                        const errorData = JSON.parse(errorText);
+                        throw new Error(errorData.error || `Server responded with status ${response.status}`);
+                    } catch (e) {
+                        // If parsing fails, it's likely an HTML error page
+                        throw new Error(`Server returned an unexpected response. Please check the backend logs.`);
+                    }
                 }
 
                 const result = await response.json();
-                typingIndicator.remove();
-                
                 addMessage(result.response, 'ai');
-                speakText(result.response);
+
             } catch (error) {
-                console.error('Error sending message to server:', error);
-                typingIndicator.remove();
-                addMessage(`Error: ${error.message}. Please check your backend deployment.`, 'system');
+                console.error('Error sending message:', error);
+                // Make sure typing indicator is removed even if it was already
+                const indicator = document.querySelector('.typing-indicator');
+                if (indicator) indicator.remove();
+                addMessage(`Sorry, something went wrong: ${error.message}`, 'system');
             }
         }
         
-        sendBtn.addEventListener('click', () => {
-            sendMessage(messageInput.value.trim());
-        });
+        sendBtn.addEventListener('click', () => sendMessage(messageInput.value));
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage(messageInput.value.trim());
-            }
+            if (e.key === 'Enter') sendMessage(messageInput.value);
         });
 
         fileUploadBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', async (event) => {
+        fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = async (e) => {
+            reader.onload = (e) => {
                 const base64Image = e.target.result.split(',')[1];
-                addMessage("Analyzing image...", 'system');
-                await sendMessage("Analyze this image.", true, base64Image);
+                const userPrompt = prompt("What would you like to know about this image?", "Describe this image");
+                if(userPrompt) {
+                   sendMessage(userPrompt, true, base64Image);
+                }
             };
             reader.readAsDataURL(file);
         });
         
         searchBtn.addEventListener('click', () => {
-            const prompt = messageInput.value.trim();
-            if (prompt) {
-                addMessage(`Searching the web for "${prompt}"...`, 'system');
-                sendMessage(prompt);
+             const promptText = "Please summarize this YouTube video: " + messageInput.value.trim();
+            if (messageInput.value.trim()) {
+                sendMessage(promptText);
             }
         });
         
         let recognition;
-        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+        try {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.lang = 'en-US';
             
+            recognition.onstart = () => {
+                micBtn.classList.add('text-red-500');
+            };
+            recognition.onend = () => {
+                micBtn.classList.remove('text-red-500');
+            };
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
+                sendMessage(transcript);
             };
-
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
+                addMessage(`Speech recognition error: ${event.error}`, 'system');
             };
-
-            micBtn.addEventListener('click', () => {
-                addMessage('Listening...', 'ai');
-                recognition.start();
-            });
-        } else {
+            micBtn.addEventListener('click', () => recognition.start());
+        } catch (e) {
             micBtn.style.display = 'none';
             console.warn('Speech Recognition API is not supported in this browser.');
         }
     </script>
 </body>
 </html>
+
