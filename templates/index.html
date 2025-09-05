@@ -28,12 +28,13 @@
             display: none;
         }
         .message-bubble {
-            max-width: 85%; /* Slightly wider for mobile */
+            max-width: 85%;
             padding: 0.75rem 1.25rem;
             border-radius: 1.5rem;
             margin-bottom: 0.75rem;
             word-wrap: break-word;
             line-height: 1.6;
+            position: relative;
         }
         .user-message {
             background-color: #3b82f6;
@@ -42,30 +43,18 @@
             border-bottom-right-radius: 0.5rem;
             width: fit-content;
         }
-        .ai-message-container {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            max-width: 85%;
-            margin-right: auto;
-            margin-bottom: 0.75rem;
-        }
-        .ai-avatar {
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 50%;
-            background-color: #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
         .ai-message {
             background-color: #e5e7eb;
             color: #1f2937;
+            align-self: flex-start;
             border-bottom-left-radius: 0.5rem;
+            padding-bottom: 2.5rem; /* Space for action icons */
         }
-        /* Styling for lists and bold text rendered from Markdown */
+        .ai-message-container {
+             max-width: 85%;
+             margin-right: auto;
+             margin-bottom: 0.75rem;
+        }
         .ai-message ul {
             list-style-type: disc;
             padding-left: 1.5rem;
@@ -94,6 +83,32 @@
         .floating-action-button:hover {
             transform: scale(1.05);
         }
+        .message-actions {
+            position: absolute;
+            bottom: 0.5rem;
+            right: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0.7;
+        }
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.25rem;
+            border-radius: 9999px;
+            transition: background-color 0.2s;
+        }
+        .action-btn:hover {
+            background-color: #d1d5db;
+        }
+        /* Style for the auto-expanding textarea */
+        #message-input {
+            resize: none;
+            overflow-y: hidden;
+            max-height: 150px; /* Limit max height */
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -112,7 +127,7 @@
     </main>
 
     <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
-        <div class="w-full max-w-3xl flex items-center bg-white rounded-3xl border border-gray-300 shadow-lg px-2 sm:px-4 py-2">
+        <div class="w-full max-w-3xl flex items-end bg-white rounded-3xl border border-gray-300 shadow-lg px-2 sm:px-4 py-2">
             <div class="flex items-center space-x-1 sm:space-x-2 mr-1 sm:mr-2">
                  <button id="file-upload-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -127,9 +142,8 @@
                 </button>
             </div>
             
-            <input id="message-input" type="text" placeholder="Ask Sofia 2.0...." class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot">
+            <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0...." class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
             
-            <!-- This is the fix: flex-shrink-0 prevents these buttons from being squeezed out on small screens -->
             <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -168,16 +182,39 @@
             } else if (sender === 'ai') {
                 const aiMessageContainer = document.createElement('div');
                 aiMessageContainer.className = 'ai-message-container';
-                const avatar = document.createElement('div');
-                avatar.className = 'ai-avatar';
-                avatar.innerHTML = `<svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg>`;
+
                 const messageBubble = document.createElement('div');
-                const formattedHtml = markdownConverter.makeHtml(text);
-                messageBubble.innerHTML = formattedHtml;
                 messageBubble.className = 'message-bubble ai-message';
-                aiMessageContainer.appendChild(avatar);
+                const formattedHtml = markdownConverter.makeHtml(text);
+                const contentDiv = document.createElement('div');
+                contentDiv.innerHTML = formattedHtml;
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'message-actions';
+                actionsDiv.innerHTML = `
+                    <button class="action-btn copy-btn" title="Copy text">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>
+                    </button>
+                    <button class="action-btn" title="Good response">
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </button>
+                    <button class="action-btn" title="Bad response">
+                       <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    </button>
+                `;
+                
+                messageBubble.appendChild(contentDiv);
+                messageBubble.appendChild(actionsDiv);
                 aiMessageContainer.appendChild(messageBubble);
                 chatContainer.appendChild(aiMessageContainer);
+
+                actionsDiv.querySelector('.copy-btn').addEventListener('click', (e) => {
+                    navigator.clipboard.writeText(text);
+                    e.target.closest('button').innerHTML = 'Copied!';
+                    setTimeout(() => {
+                         e.target.closest('button').innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
+                    }, 1500);
+                });
+
             } else if (sender === 'system') {
                 const messageBubble = document.createElement('div');
                 messageBubble.textContent = text;
@@ -198,12 +235,13 @@
             
             if(messageText) addMessage(messageText, 'user');
             messageInput.value = '';
+            // Reset textarea height after sending
+            messageInput.style.height = 'auto';
 
             const typingIndicatorContainer = document.createElement('div');
             typingIndicatorContainer.className = 'ai-message-container typing-indicator';
-            const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
             const typingBubble = `<div class="message-bubble ai-message">Sofia is typing...</div>`;
-            typingIndicatorContainer.innerHTML = avatar + typingBubble;
+            typingIndicatorContainer.innerHTML = typingBubble;
             chatContainer.appendChild(typingIndicatorContainer);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -248,9 +286,29 @@
         }
         
         sendBtn.addEventListener('click', () => sendMessage(messageInput.value));
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage(messageInput.value);
+        
+        // --- This is the new logic for the input box ---
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            // Set height based on content, but don't exceed max-height
+            let newHeight = messageInput.scrollHeight;
+            messageInput.style.height = `${newHeight}px`;
+            // Enable scroll if content exceeds max-height
+            if (newHeight > 150) {
+                 messageInput.style.overflowY = 'auto';
+            } else {
+                 messageInput.style.overflowY = 'hidden';
+            }
         });
+        
+        messageInput.addEventListener('keydown', (e) => {
+            // Send on Enter, but allow new line with Shift+Enter
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // Prevent new line
+                sendMessage(messageInput.value);
+            }
+        });
+
 
         fileUploadBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (event) => {
