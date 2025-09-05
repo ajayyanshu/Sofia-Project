@@ -271,7 +271,7 @@
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
-          apiKey: "AIzaSyCxSHKW_q3OlaohdRmqkEWAQ5AqANRiCyU",
+          apiKey: "AIzaSyCSPo1agHJuhbz0oWOPtt0UK0vloNThmLw",
           authDomain: "college-project-68993.firebaseapp.com",
           projectId: "college-project-68993",
           storageBucket: "college-project-68993.firebasestorage.app",
@@ -338,13 +338,15 @@
             const dropdownMenu = document.getElementById('model-dropdown-menu');
             const currentModelName = document.getElementById('current-model-name');
             const fileInput = document.getElementById('file-input');
-            const fileUploadBtn = document.getElementById('file-upload-btn');
             const plusBtn = document.getElementById('plus-btn');
             const plusMenu = document.getElementById('plus-menu');
+            
+            // These buttons are now inside the plusMenu and need to be found after it's been defined.
+            const fileUploadBtn = document.getElementById('file-upload-btn');
             const webSearchBtn = document.getElementById('web-search-btn');
 
             let currentModel = 'gemini';
-            const API_KEY = "AIzaSyCxSHKW_q3OlaohdRmqkEWAQ5AqANRiCyU";
+            const API_KEY = "AIzaSyCSPo1agHJuhbz0oWOPtt0UK0vloNThmLw";
 
             let isChatVisible = false;
 
