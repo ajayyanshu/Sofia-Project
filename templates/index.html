@@ -49,11 +49,26 @@
             align-self: flex-start;
             border-bottom-left-radius: 0.5rem;
             padding-bottom: 2.5rem; /* Space for action icons */
+            width: fit-content; 
         }
         .ai-message-container {
+             display: flex;
+             align-items: flex-start;
+             gap: 0.75rem;
              max-width: 85%;
              margin-right: auto;
              margin-bottom: 0.75rem;
+             width: fit-content;
+        }
+        .ai-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
         .ai-message ul {
             list-style-type: disc;
@@ -103,11 +118,10 @@
         .action-btn:hover {
             background-color: #d1d5db;
         }
-        /* Style for the auto-expanding textarea */
         #message-input {
             resize: none;
             overflow-y: hidden;
-            max-height: 150px; /* Limit max height */
+            max-height: 150px;
         }
     </style>
 </head>
@@ -224,9 +238,9 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         
-        async function sendMessage(text, isVision = false, base64Image = null) {
+        async function sendMessage(text, isVision = false, base64Data = null) {
             const messageText = text.trim();
-            if (!messageText && !base64Image) return;
+            if (!messageText && !base64Data) return;
 
             if (welcomeMessageContainer.offsetParent) {
                 welcomeMessageContainer.classList.add('hidden');
@@ -235,13 +249,24 @@
             
             if(messageText) addMessage(messageText, 'user');
             messageInput.value = '';
-            // Reset textarea height after sending
             messageInput.style.height = 'auto';
 
+            // --- New Typing Indicator with Avatar and Text ---
             const typingIndicatorContainer = document.createElement('div');
             typingIndicatorContainer.className = 'ai-message-container typing-indicator';
-            const typingBubble = `<div class="message-bubble ai-message">Sofia is typing...</div>`;
-            typingIndicatorContainer.innerHTML = typingBubble;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'ai-avatar';
+            avatar.innerHTML = `<svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg>`;
+
+            const typingBubble = document.createElement('div');
+            typingBubble.className = 'message-bubble ai-message';
+            typingBubble.textContent = 'Sofia is typing...';
+            // Remove bottom padding since there are no action buttons
+            typingBubble.style.paddingBottom = '0.75rem';
+            
+            typingIndicatorContainer.appendChild(avatar);
+            typingIndicatorContainer.appendChild(typingBubble);
             chatContainer.appendChild(typingIndicatorContainer);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -251,7 +276,7 @@
                 model: 'gemini',
                 apiKey: "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4",
                 isVision: isVision,
-                image: base64Image,
+                image: base64Data,
                 userId: 'user-' + Math.random().toString(36).substr(2, 9)
             };
 
@@ -287,13 +312,10 @@
         
         sendBtn.addEventListener('click', () => sendMessage(messageInput.value));
         
-        // --- This is the new logic for the input box ---
         messageInput.addEventListener('input', () => {
             messageInput.style.height = 'auto';
-            // Set height based on content, but don't exceed max-height
             let newHeight = messageInput.scrollHeight;
             messageInput.style.height = `${newHeight}px`;
-            // Enable scroll if content exceeds max-height
             if (newHeight > 150) {
                  messageInput.style.overflowY = 'auto';
             } else {
@@ -302,25 +324,44 @@
         });
         
         messageInput.addEventListener('keydown', (e) => {
-            // Send on Enter, but allow new line with Shift+Enter
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Prevent new line
+                e.preventDefault();
                 sendMessage(messageInput.value);
             }
         });
 
 
         fileUploadBtn.addEventListener('click', () => fileInput.click());
+        
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = (e) => {
-                const base64Image = e.target.result.split(',')[1];
-                const userPrompt = prompt("What would you like to know about this image?", "Describe this image");
-                if(userPrompt) {
-                   sendMessage(userPrompt, true, base64Image);
+                const base64Data = e.target.result.split(',')[1];
+                let userPrompt = '';
+                let systemNote = '';
+
+                if (file.type.startsWith('image/')) {
+                    userPrompt = prompt("What would you like to know about this image?", "Describe this. I want a details");
+                } else if (file.type === 'application/pdf') {
+                    userPrompt = `Please summarize this PDF: ${file.name}`;
+                    systemNote = "Processing PDF... Note: This requires your backend to be configured to handle PDF files.";
+                } else if (file.type.includes('document')) { 
+                    userPrompt = `Please summarize this document: ${file.name}`;
+                    systemNote = "Processing document... Note: This requires your backend to be configured to handle document files.";
+                } else {
+                    addMessage(`Sorry, I can't process this file type: ${file.type}`, 'system');
+                    return;
+                }
+
+                if (systemNote) {
+                    addMessage(systemNote, 'system');
+                }
+
+                if (userPrompt) {
+                   sendMessage(userPrompt, true, base64Data);
                 }
             };
             reader.readAsDataURL(file);
