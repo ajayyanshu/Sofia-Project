@@ -26,7 +26,7 @@ youtube_service = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
 @app.route('/')
 def home():
-    return render_template('new1.0.html')
+    return render_template('index.html')
 
 def get_video_details(video_id):
     """Gets video details like title using the YouTube Data API."""
