@@ -5,4 +5,5 @@ python-dotenv
 PyMuPDF
 Pillow
 youtube-transcript-api
-PyMuPDF
+google-api-python-client
+requests
