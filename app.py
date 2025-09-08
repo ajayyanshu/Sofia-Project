@@ -24,7 +24,6 @@ genai.configure(api_key=GOOGLE_API_KEY)
 GITHUB_USER = "ajayyanshu"
 GITHUB_REPO = "collegeproject"
 GITHUB_FOLDER_PATH = "upload pdf"
-# This is a list of all available files. The AI will search this list.
 AVAILABLE_PDFS = [
     "2016 - Hindi (7402-01).pdf",
     "2023 - English (7403-01).pdf",
@@ -61,7 +60,6 @@ def find_matching_pdf(message):
     """Smarter function to find a PDF based on keywords in the user's message."""
     message_lower = message.lower()
     
-    # Simple keyword matching
     if "2016" in message_lower and "hindi" in message_lower:
         return "2016 - Hindi (7402-01).pdf"
     if "2023" in message_lower and "english" in message_lower:
@@ -73,7 +71,19 @@ def find_matching_pdf(message):
     if "2025" in message_lower and "hindi" in message_lower:
         return "2025 - Hindi (7402-01).pdf"
         
-    return None # No match found
+    return None
+
+def get_video_id(video_url):
+    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
+    return video_id_match.group(1) if video_id_match else None
+
+def get_youtube_transcript(video_id):
+    try:
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        return " ".join([d['text'] for d in transcript_list])
+    except Exception as e:
+        print(f"Error getting YouTube transcript: {e}")
+        return None
 
 # --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
@@ -86,7 +96,19 @@ def chat():
         
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Priority 1: Check for keywords to get a file from GitHub
+        # Priority 1: Check for a YouTube Link
+        if "youtube.com" in user_message or "youtu.be" in user_message:
+            video_id = get_video_id(user_message)
+            if video_id:
+                transcript = get_youtube_transcript(video_id)
+                if transcript:
+                    prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
+                    response = model.generate_content(prompt)
+                    return jsonify({'response': response.text})
+                else:
+                    return jsonify({'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."})
+
+        # Priority 2: Check for keywords to get a file from GitHub
         matched_filename = find_matching_pdf(user_message)
         
         if matched_filename:
@@ -100,22 +122,33 @@ def chat():
             if file_bytes:
                 document_text = extract_text_from_pdf(file_bytes)
                 if document_text:
-                    prompt = f"I have found the document '{matched_filename}'. Based on its content, please answer the user's question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+                    prompt = f"Based on the content of the document '{matched_filename}', please answer the user's question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
                     response = model.generate_content(prompt)
                     ai_response = f"I found the file **{matched_filename}**.\n\n" + response.text
                     ai_response += f"\n\n[Download this paper here]({download_url})"
                     return jsonify({'response': ai_response})
                 else:
-                    return jsonify({'response': f"Sorry, I found and downloaded '{matched_filename}', but could not read its content. You can still [download it here]({download_url})."})
+                    return jsonify({'response': f"Sorry, I downloaded '{matched_filename}', but could not read its content. You can still [download it here]({download_url})."})
             else:
                 return jsonify({'response': f"Sorry, I found a match for '{matched_filename}' but could not download it from GitHub."})
 
-        # Priority 2: Handle a direct file upload from the user
+        # Priority 3: Handle a direct file upload from the user
         if file_data:
-            # This part of the code handles files uploaded from the user's computer
-            pass # The logic for this would go here
+            file_bytes = base64.b64decode(file_data)
+            if 'pdf' in file_type:
+                document_text = extract_text_from_pdf(file_bytes)
+                if document_text:
+                    prompt = f"Based on the uploaded PDF, please answer this question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+                    response = model.generate_content(prompt)
+                    return jsonify({'response': response.text})
+                else:
+                    return jsonify({'response': "Sorry, I could not read the content of the uploaded PDF."})
+            elif 'image' in file_type:
+                image = Image.open(io.BytesIO(file_bytes))
+                response = model.generate_content([user_message, image])
+                return jsonify({'response': response.text})
 
-        # Priority 3: Normal Conversation
+        # Priority 4: Normal Conversation
         response = model.generate_content(user_message)
         return jsonify({'response': response.text})
 
