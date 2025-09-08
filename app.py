@@ -15,7 +15,7 @@ app = Flask(__name__, template_folder='templates')
 # --- Hardcoded API Keys ---
 # ⚠️ This is NOT recommended for security reasons. Use environment variables for production.
 GOOGLE_API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4"
-YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI" # Added YouTube Key
+YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI"
 
 # --- Configure API Services ---
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -56,14 +56,11 @@ def get_file_from_github(filename):
         print(f"Error downloading from GitHub: {e}")
         return None
 
-# --- New YouTube Helper Functions ---
 def get_video_id(video_url):
-    """Extracts the YouTube video ID from a URL."""
     video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
     return video_id_match.group(1) if video_id_match else None
 
 def get_youtube_transcript(video_id):
-    """Gets the transcript for a given video ID."""
     try:
         transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
         return " ".join([d['text'] for d in transcript_list])
@@ -81,10 +78,7 @@ def chat():
         file_type = data.get('fileType')
         
         model = genai.GenerativeModel('gemini-1.5-flash')
-        document_text = ""
-        context_message = ""
-        ai_response = ""
-
+        
         # Priority 1: Check for a YouTube Link
         if "youtube.com" in user_message or "youtu.be" in user_message:
             video_id = get_video_id(user_message)
@@ -93,12 +87,11 @@ def chat():
                 if transcript:
                     prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
                     response = model.generate_content(prompt)
-                    ai_response = response.text
+                    return jsonify({'response': response.text})
                 else:
-                    ai_response = "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
+                    return jsonify({'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."})
             else:
-                ai_response = "That doesn't look like a valid YouTube link. Please provide the full URL."
-            return jsonify({'response': ai_response})
+                return jsonify({'response': "That doesn't look like a valid YouTube link. Please provide the full URL."})
 
         # Priority 2: Check for keywords to get a file from GitHub
         matched_filename = None
@@ -111,32 +104,42 @@ def chat():
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
                 document_text = extract_text_from_pdf(file_bytes)
-                context_message = f"Based on the document '{matched_filename}'"
+                if document_text:
+                    context_message = f"Based on the document '{matched_filename}'"
+                    prompt = f"{context_message}, please answer the following question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+                    response = model.generate_content(prompt)
+                    ai_response = response.text
+                    
+                    # --- FIX: Add the download link to the response ---
+                    download_url = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/raw/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{matched_filename.replace(' ', '%20')}"
+                    ai_response += f"\n\n[Download the paper here]({download_url})"
+                    
+                    return jsonify({'response': ai_response})
+                else:
+                    return jsonify({'response': f"Sorry, I downloaded the file '{matched_filename}', but I could not read its content. It might be an image-based PDF."})
             else:
-                ai_response = f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."
-                return jsonify({'response': ai_response})
+                return jsonify({'response': f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."})
 
         # Priority 3: Handle a direct file upload from the user
-        elif file_data:
+        if file_data:
             file_bytes = base64.b64decode(file_data)
             if 'pdf' in file_type:
                 document_text = extract_text_from_pdf(file_bytes)
-                context_message = "Based on the uploaded PDF"
+                if document_text:
+                    prompt = f"Based on the uploaded PDF, please answer this question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+                    response = model.generate_content(prompt)
+                    return jsonify({'response': response.text})
+                else:
+                    return jsonify({'response': "Sorry, I could not read the content of the uploaded PDF."})
+
             elif 'image' in file_type:
                 image = Image.open(io.BytesIO(file_bytes))
                 response = model.generate_content([user_message, image])
                 return jsonify({'response': response.text})
 
-        # --- Generate AI Response ---
-        if document_text:
-            prompt = f"{context_message}, please answer the following question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
-            response = model.generate_content(prompt)
-            ai_response = response.text
-        else:
-            response = model.generate_content(user_message)
-            ai_response = response.text
-            
-        return jsonify({'response': ai_response})
+        # Priority 4: Normal Conversation
+        response = model.generate_content(user_message)
+        return jsonify({'response': response.text})
 
     except Exception as e:
         print(f"A critical error occurred: {e}")
