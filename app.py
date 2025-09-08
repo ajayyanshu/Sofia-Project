@@ -5,10 +5,9 @@ import re
 import requests
 
 import fitz  # PyMuPDF
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
 from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
+from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__, template_folder='templates')
@@ -16,57 +15,29 @@ app = Flask(__name__, template_folder='templates')
 # --- Hardcoded API Keys ---
 # ⚠️ This is NOT recommended for security reasons. Use environment variables for production.
 GOOGLE_API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4"
-YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI"
+YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI" # Added YouTube Key
 
 # --- Configure API Services ---
 genai.configure(api_key=GOOGLE_API_KEY)
-youtube_service = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
-# Add Google Drive service using the same API key for public file access
-drive_service = build('drive', 'v3', developerKey=GOOGLE_API_KEY)
+
+# --- GitHub PDF Configuration ---
+GITHUB_USER = "ajayyanshu"
+GITHUB_REPO = "collegeproject"
+GITHUB_FOLDER_PATH = "upload pdf"
+PDF_KEYWORDS = {
+    "2016 hindi paper": "2016 - Hindi (7402-01).pdf",
+    "2023 english paper": "2023 - English (7403-01).pdf",
+    "2023 hindi paper": "2023 - Hindi (7402-01).pdf",
+    "2025 english paper": "2025 - English (7403-01).pdf",
+    "2025 hindi paper": "2025 - Hindi (7402-01).pdf"
+}
 
 @app.route('/')
 def home():
-    # The HTML file is named index.html in the templates folder
     return render_template('index.html')
 
-def get_file_from_drive_url(url):
-    """Downloads a file from a public Google Drive link."""
-    try:
-        file_id_match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
-        if not file_id_match:
-            return None, "Invalid Google Drive Link"
-        
-        file_id = file_id_match.group(1)
-        print(f"Found Google Drive file ID: {file_id}")
-        
-        # Get file metadata to determine the type
-        file_metadata = drive_service.files().get(fileId=file_id, fields='mimeType, name').execute()
-        mime_type = file_metadata.get('mimeType')
-        file_name = file_metadata.get('name')
-
-        if mime_type == 'application/vnd.google-apps.document':
-            # Export Google Docs as plain text
-            request = drive_service.files().export_media(fileId=file_id, mimeType='text/plain')
-        else:
-            # For other file types like PDF, directly download
-            request = drive_service.files().get_media(fileId=file_id)
-            
-        fh = io.BytesIO()
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-            print(f"Download {int(status.progress() * 100)}%.")
-        
-        print(f"Successfully downloaded '{file_name}' from Google Drive.")
-        return fh.getvalue(), file_name
-        
-    except Exception as e:
-        print(f"Error fetching from Google Drive: {e}")
-        return None, "Could not access the file. Make sure it is shared publicly ('Anyone with the link')."
-
+# --- Helper Functions for File Processing ---
 def extract_text_from_pdf(pdf_bytes):
-    """Extracts text from a PDF file's bytes."""
     try:
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
         return "".join(page.get_text() for page in pdf_document)
@@ -74,52 +45,104 @@ def extract_text_from_pdf(pdf_bytes):
         print(f"Error extracting PDF text: {e}")
         return ""
 
+def get_file_from_github(filename):
+    url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        print(f"Successfully downloaded {filename} from GitHub.")
+        return response.content
+    except requests.exceptions.RequestException as e:
+        print(f"Error downloading from GitHub: {e}")
+        return None
+
+# --- New YouTube Helper Functions ---
+def get_video_id(video_url):
+    """Extracts the YouTube video ID from a URL."""
+    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
+    return video_id_match.group(1) if video_id_match else None
+
+def get_youtube_transcript(video_id):
+    """Gets the transcript for a given video ID."""
+    try:
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        return " ".join([d['text'] for d in transcript_list])
+    except Exception as e:
+        print(f"Error getting YouTube transcript: {e}")
+        return None
+
+# --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
         data = request.json
         user_message = data.get('text', '')
+        file_data = data.get('fileData')
+        file_type = data.get('fileType')
         
         model = genai.GenerativeModel('gemini-1.5-flash')
+        document_text = ""
+        context_message = ""
         ai_response = ""
 
-        # --- New: Priority 1 - Handle Google Drive links ---
-        drive_link_match = re.search(r'https?://drive\.google\.com/[^\s]+', user_message)
-        if drive_link_match:
-            drive_url = drive_link_match.group(0)
-            file_bytes, message = get_file_from_drive_url(drive_url)
-            
-            if file_bytes:
-                # Check if it's a PDF or plain text (from Google Doc)
-                try:
-                    # Attempt to decode as text first (for exported GDocs)
-                    document_text = file_bytes.decode('utf-8')
-                except UnicodeDecodeError:
-                    # If it fails, it's likely a binary file like a PDF
-                    document_text = extract_text_from_pdf(file_bytes)
-                
-                if document_text:
-                    prompt = f"Based ONLY on the following document content, answer the user's question.\nUser Question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+        # Priority 1: Check for a YouTube Link
+        if "youtube.com" in user_message or "youtu.be" in user_message:
+            video_id = get_video_id(user_message)
+            if video_id:
+                transcript = get_youtube_transcript(video_id)
+                if transcript:
+                    prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
                     response = model.generate_content(prompt)
                     ai_response = response.text
                 else:
-                    ai_response = f"I downloaded the file '{message}', but I was unable to read its content."
+                    ai_response = "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
             else:
-                ai_response = message # Return the error message (e.g., "Make sure it's public")
+                ai_response = "That doesn't look like a valid YouTube link. Please provide the full URL."
+            return jsonify({'response': ai_response})
+
+        # Priority 2: Check for keywords to get a file from GitHub
+        matched_filename = None
+        for keyword, filename in PDF_KEYWORDS.items():
+            if keyword in user_message.lower():
+                matched_filename = filename
+                break
         
-        # Priority 2: Handle standard text messages
+        if matched_filename:
+            file_bytes = get_file_from_github(matched_filename)
+            if file_bytes:
+                document_text = extract_text_from_pdf(file_bytes)
+                context_message = f"Based on the document '{matched_filename}'"
+            else:
+                ai_response = f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."
+                return jsonify({'response': ai_response})
+
+        # Priority 3: Handle a direct file upload from the user
+        elif file_data:
+            file_bytes = base64.b64decode(file_data)
+            if 'pdf' in file_type:
+                document_text = extract_text_from_pdf(file_bytes)
+                context_message = "Based on the uploaded PDF"
+            elif 'image' in file_type:
+                image = Image.open(io.BytesIO(file_bytes))
+                response = model.generate_content([user_message, image])
+                return jsonify({'response': response.text})
+
+        # --- Generate AI Response ---
+        if document_text:
+            prompt = f"{context_message}, please answer the following question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+            response = model.generate_content(prompt)
+            ai_response = response.text
         else:
-            # This is the default case for any regular text message
             response = model.generate_content(user_message)
             ai_response = response.text
             
         return jsonify({'response': ai_response})
+
     except Exception as e:
         print(f"A critical error occurred: {e}")
         return jsonify({'error': 'An internal error occurred.'}), 500
 
 if __name__ == '__main__':
-    # This is used for local testing. Render uses its own start command.
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
