@@ -122,7 +122,7 @@ def chat():
             download_url = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/raw/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{matched_filename.replace(' ', '%20')}"
             
             if "download" in user_message.lower() or "link" in user_message.lower():
-                ai_response = f"Of course! Here is the download link for '{matched_filename}':<br><br><a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>Download the paper here</a>"
+                ai_response = f"Of course! Here is the download link for '{matched_filename}':<br><br><a href='{download_url}' target='{_blank}' style='color: blue; text-decoration: underline;'>Download the paper here</a>"
                 return jsonify({'response': ai_response})
 
             file_bytes = get_file_from_github(matched_filename)
@@ -132,10 +132,10 @@ def chat():
                     prompt = f"Based on the content of the document '{matched_filename}', please answer the user's question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
                     response = model.generate_content(prompt)
                     ai_response = f"I found the file **{matched_filename}**.\n\n" + response.text
-                    ai_response += f"<br><br><a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>Download this paper here</a>"
+                    ai_response += f"<br><br><a href='{download_url}' target='{_blank}' style='color: blue; text-decoration: underline;'>Download this paper here</a>"
                     return jsonify({'response': ai_response})
                 else:
-                    error_link = f"<a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>download it here</a>"
+                    error_link = f"<a href='{download_url}' target='{_blank}' style='color: blue; text-decoration: underline;'>download it here</a>"
                     return jsonify({'response': f"Sorry, I downloaded '{matched_filename}', but could not read its content. You can still {error_link}."})
             else:
                 return jsonify({'response': f"Sorry, I found a match for '{matched_filename}' but could not download it from GitHub."})
