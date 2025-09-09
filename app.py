@@ -12,13 +12,16 @@ from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__, template_folder='templates')
 
-# --- Hardcoded API Keys ---
-# ⚠️ This is NOT recommended for security reasons. Use environment variables for production.
-GOOGLE_API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4"
-YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI"
+# --- Securely Load API Keys from Render Environment ---
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 
 # --- Configure API Services ---
-genai.configure(api_key=GOOGLE_API_KEY)
+# Check if the keys were loaded before configuring
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+else:
+    print("WARNING: GOOGLE_API_KEY environment variable not found.")
 
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -89,6 +92,10 @@ def get_youtube_transcript(video_id):
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
+        # Check if API key is available
+        if not GOOGLE_API_KEY:
+             return jsonify({'error': 'The server is missing the GOOGLE_API_KEY.'}), 500
+
         data = request.json
         user_message = data.get('text', '')
         file_data = data.get('fileData')
@@ -115,7 +122,6 @@ def chat():
             download_url = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/raw/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{matched_filename.replace(' ', '%20')}"
             
             if "download" in user_message.lower() or "link" in user_message.lower():
-                # FIX: Send a direct HTML link to ensure it's clickable
                 ai_response = f"Of course! Here is the download link for '{matched_filename}':<br><br><a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>Download the paper here</a>"
                 return jsonify({'response': ai_response})
 
@@ -126,11 +132,9 @@ def chat():
                     prompt = f"Based on the content of the document '{matched_filename}', please answer the user's question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
                     response = model.generate_content(prompt)
                     ai_response = f"I found the file **{matched_filename}**.\n\n" + response.text
-                    # FIX: Send a direct HTML link to ensure it's clickable
                     ai_response += f"<br><br><a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>Download this paper here</a>"
                     return jsonify({'response': ai_response})
                 else:
-                    # FIX: Send a direct HTML link even on error
                     error_link = f"<a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>download it here</a>"
                     return jsonify({'response': f"Sorry, I downloaded '{matched_filename}', but could not read its content. You can still {error_link}."})
             else:
