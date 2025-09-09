@@ -12,18 +12,13 @@ from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__, template_folder='templates')
 
-# --- Securely Load API Keys from Render Environment ---
-# This reads the keys you set in the Render dashboard.
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
+# --- Hardcoded API Keys ---
+# This ensures the application will run without server configuration issues.
+GOOGLE_API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4"
+YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI"
 
 # --- Configure API Services ---
-# Check if the keys were loaded before configuring
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-else:
-    # This message will appear in your Render logs if the key is missing.
-    print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
+genai.configure(api_key=GOOGLE_API_KEY)
 
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -86,9 +81,6 @@ def get_youtube_transcript(video_id):
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
-        if not GOOGLE_API_KEY:
-             return jsonify({'error': 'The server is missing the required API keys.'}), 500
-
         data = request.json
         user_message = data.get('text', '')
         file_data = data.get('fileData')
