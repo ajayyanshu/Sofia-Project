@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sofia 2.0 - AI Chatbot</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Showdown library to render Markdown -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1rem;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .chat-container::-webkit-scrollbar {
+            display: none;
+        }
+        .message-bubble {
+            max-width: 85%;
+            padding: 0.75rem 1.25rem;
+            border-radius: 1.5rem;
+            margin-bottom: 0.75rem;
+            word-wrap: break-word;
+            line-height: 1.6;
+            position: relative;
+        }
+        .user-message {
+            background-color: #3b82f6;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.5rem;
+            width: fit-content;
+        }
+        .ai-message {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.5rem;
+            padding-bottom: 2.5rem; /* Space for action icons */
+            width: fit-content; 
+        }
+        .ai-typing-container {
+             display: flex;
+             align-items: flex-start;
+             gap: 0.75rem;
+             max-width: 85%;
+             margin-right: auto;
+             margin-bottom: 0.75rem;
+             width: fit-content;
+        }
+        .ai-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .ai-message ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .ai-message li {
+            margin-bottom: 0.25rem;
+        }
+        .ai-message strong, .ai-message b {
+            font-weight: 600;
+            color: #111827;
+        }
+        .system-message {
+            background-color: #f87171;
+            color: white;
+            align-self: center;
+            text-align: center;
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+        .floating-action-button {
+            transition: transform 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .floating-action-button:hover {
+            transform: scale(1.05);
+        }
+        .message-actions {
+            position: absolute;
+            bottom: 0.5rem;
+            right: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0.7;
+        }
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.25rem;
+            border-radius: 9999px;
+            transition: background-color 0.2s;
+        }
+        .action-btn:hover {
+            background-color: #d1d5db;
+        }
+        #message-input {
+            resize: none;
+            overflow-y: hidden;
+            max-height: 150px;
+        }
+        #file-preview-container {
+            padding: 0.5rem 0.5rem 0 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .preview-item {
+            position: relative;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+        .preview-item.image-preview {
+            width: 70px;
+            height: 70px;
+        }
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .preview-item.doc-preview {
+             display: flex;
+             align-items: center;
+             padding: 0.5rem 0.75rem;
+             background-color: #f3f4f6;
+        }
+        .doc-preview .file-icon {
+            flex-shrink: 0;
+            margin-right: 0.5rem;
+        }
+        .doc-preview .file-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+        .remove-preview-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 1.25rem;
+            height: 1.25rem;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            line-height: 1;
+        }
+
+        /* Submenu styles */
+        .submenu {
+            display: none;
+            position: absolute;
+            left: 100%;
+            /* Adjust top to align with the "More" button */
+            top: -2.5rem; 
+            width: 200px;
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f3f4f6;
+            z-index: 30;
+        }
+        .has-submenu:hover .submenu {
+            display: block;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
+        <div class="flex items-center space-x-2">
+            <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col pt-20 pb-24 bg-white">
+        <div id="welcome-message-container" class="flex-1 flex items-center justify-center p-4 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">Hello, User</h1>
+        </div>
+        <div id="chat-container" class="flex-1 flex-col overflow-y-auto w-full px-4 sm:px-6 hidden">
+        </div>
+    </main>
+
+    <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
+        <div class="w-full max-w-3xl flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg">
+            <div id="file-preview-container"></div>
+            <div class="w-full flex items-end px-2 sm:px-4 py-2">
+                <div class="relative flex items-center mr-1 sm:mr-2">
+                    <div id="action-menu" class="absolute bottom-12 -left-2 w-52 bg-white rounded-xl shadow-2xl border border-gray-100 hidden transition-all duration-300 ease-in-out transform origin-bottom-left z-20">
+                         <button id="menu-deep-research-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center space-x-3 rounded-t-xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.33 1.885 18.658 1.5 19 1.5s.67.385.832.486l.004.003.018.01a.5.5 0 01.04.062l.003.004a.5.5 0 01.018.033L20 2.13l.004.004a.5.5 0 01.02.042l.002.003a.5.5 0 01.016.037l.002.004a.5.5 0 01.01.03l.002.004c.003.01.006.02.007.031l.002.004a.5.5 0 01.004.022l.003.005a.5.5 0 01.002.02l.002.004a.5.5 0 01.003.023l.002.004a.5.5 0 01.002.023l.002.003a.5.5 0 01.002.024l.002.004a.5.5 0 01.002.025l.002.003a.5.5 0 01.002.026l.002.004a.5.5 0 01.002.028l.002.003a.5.5 0 01.002.03l.002.003a.5.5 0 01.002.034l.002.002a.5.5 0 01.002.036l.003.003a.5.5 0 01.002.04l.002.002a.5.5 0 01.002.045V4.5" />
+                            </svg>
+                            <span class="text-sm font-medium">Deep Research</span>
+                         </button>
+                         <button id="menu-create-image-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center space-x-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <span class="text-sm font-medium">Create Image</span>
+                         </button>
+                         <button id="menu-canvas-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center space-x-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            <span class="text-sm font-medium">Canvas</span>
+                         </button>
+                         <button id="menu-web-search-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center space-x-3">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                           </svg>
+                           <span class="text-sm font-medium">Web Search</span>
+                         </button>
+                        <div class="relative has-submenu">
+                             <button class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between rounded-b-xl">
+                                <div class="flex items-center space-x-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+                                    <span class="text-sm font-medium">More</span>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                             </button>
+                             <div class="submenu">
+                                <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-3 rounded-t-lg">
+                                    <img src="https://www.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" class="h-5 w-5">
+                                    <span>Connect Google Drive</span>
+                                </a>
+                                <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-3 rounded-b-lg">
+                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18.001 21.001H6.001c-1.656 0-3-1.344-3-3V6.001c0-1.656 1.344-3 3-3h12.001c1.656 0 3 1.344 3 3v12.001c0 1.656-1.344 3-3 3zM6.5 8.001H11v3.5l-4.5 4.5v-8.001zM13 16.001h4.5v-3.5l-4.5-4.5v8.001z"/>
+                                    </svg>
+                                    <span>Connect OneDrive</span>
+                                </a>
+                             </div>
+                        </div>
+                    </div>
+                    <button id="add-btn" class="p-2 text-gray-500 hover:text-indigo-600 transition-colors rounded-full hover:bg-gray-100 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div id="research-tag-container" class="hidden items-center pl-2 space-x-1 text-blue-600 font-medium text-sm flex-shrink-0">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.33 1.885 18.658 1.5 19 1.5s.67.385.832.486l.004.003.018.01a.5.5 0 01.04.062l.003.004a.5.5 0 01.018.033L20 2.13l.004.004a.5.5 0 01.02.042l.002.003a.5.5 0 01.016.037l.002.004a.5.5 0 01.01.03l.002.004c.003.01.006.02.007.031l.002.004a.5.5 0 01.004.022l.003.005a.5.5 0 01.002.02l.002.004a.5.5 0 01.003.023l.002.004a.5.5 0 01.002.023l.002.003a.5.5 0 01.002.024l.002.004a.5.5 0 01.002.025l.002.003a.5.5 0 01.002.026l.002.004a.5.5 0 01.002.028l.002.003a.5.5 0 01.002.03l.002.003a.5.5 0 01.002.034l.002.002a.5.5 0 01.002.036l.003.003a.5.5 0 01.002.04l.002.002a.5.5 0 01.002.045V4.5" />
+                     </svg>
+                     <span>Research</span>
+                </div>
+
+                <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
+                <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0...." class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
+                
+                <div id="mic-voice-container" class="flex items-center">
+                    <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
+                    <button id="voice-mode-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M9 8v8M15 5v14M21 10v4"/></svg>
+                    </button>
+                </div>
+                
+                <button id="send-btn" class="hidden ml-1 sm:ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 11l7-7 7 7M12 4v17" /></svg>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module">
+        const chatContainer = document.getElementById('chat-container');
+        const welcomeMessageContainer = document.getElementById('welcome-message-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const fileInput = document.getElementById('file-input');
+        const filePreviewContainer = document.getElementById('file-preview-container');
+        const addBtn = document.getElementById('add-btn');
+        const actionMenu = document.getElementById('action-menu');
+        const menuCreateImageBtn = document.getElementById('menu-create-image-btn');
+        const menuCanvasBtn = document.getElementById('menu-canvas-btn');
+        const voiceModeBtn = document.getElementById('voice-mode-btn');
+        const micVoiceContainer = document.getElementById('mic-voice-container');
+        
+        // New elements
+        const menuDeepResearchBtn = document.getElementById('menu-deep-research-btn');
+        const menuWebSearchBtn = document.getElementById('menu-web-search-btn');
+        const researchTagContainer = document.getElementById('research-tag-container');
+        
+        const markdownConverter = new showdown.Converter();
+        let stagedFile = null;
+
+        function addMessage(text, sender, fileInfo = null) {
+            if (sender === 'user') {
+                const messageBubble = document.createElement('div');
+                let fileHtml = '';
+                if (fileInfo) {
+                    if (fileInfo.type.startsWith('image/')) {
+                         fileHtml = `<img src="${fileInfo.dataUrl}" alt="User upload" class="rounded-lg mb-2 max-w-xs">`;
+                    } else {
+                        fileHtml = `
+                            <div class="flex items-center border border-white/20 rounded-lg p-2 mb-2">
+                                <svg class="h-6 w-6 text-white/80 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span class="text-sm truncate">${fileInfo.name}</span>
+                            </div>`;
+                    }
+                }
+                messageBubble.innerHTML = fileHtml + `<div>${text}</div>`;
+                messageBubble.className = 'message-bubble user-message ml-auto';
+                chatContainer.appendChild(messageBubble);
+            } else if (sender === 'ai') {
+                const messageBubble = document.createElement('div');
+                messageBubble.className = 'message-bubble ai-message ml-0';
+                const formattedHtml = markdownConverter.makeHtml(text);
+                const contentDiv = document.createElement('div');
+                contentDiv.innerHTML = formattedHtml;
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'message-actions';
+                actionsDiv.innerHTML = `
+                    <button class="action-btn copy-btn" title="Copy text"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg></button>
+                    <button class="action-btn" title="Good response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></button>
+                    <button class="action-btn" title="Bad response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg></button>
+                `;
+                messageBubble.appendChild(contentDiv);
+                messageBubble.appendChild(actionsDiv);
+                chatContainer.appendChild(messageBubble);
+
+                actionsDiv.querySelector('.copy-btn').addEventListener('click', (e) => {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        e.target.closest('button').innerHTML = 'Copied!';
+                    } catch (err) {
+                        console.error('Fallback: Oops, unable to copy', err);
+                    }
+                    document.body.removeChild(textArea);
+
+                    setTimeout(() => {
+                         e.target.closest('button').innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
+                    }, 1500);
+                });
+            } else if (sender === 'system') {
+                const messageBubble = document.createElement('div');
+                messageBubble.textContent = text;
+                messageBubble.className = 'message-bubble system-message';
+                chatContainer.appendChild(messageBubble);
+            }
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function showFilePreview(file) {
+            filePreviewContainer.innerHTML = '';
+            const previewItem = document.createElement('div');
+            previewItem.className = 'preview-item';
+            
+            if (file.type.startsWith('image/')) {
+                 previewItem.classList.add('image-preview');
+                 previewItem.innerHTML = `<img src="${stagedFile.dataUrl}" alt="${file.name}"><button class="remove-preview-btn">&times;</button>`;
+            } else {
+                 previewItem.classList.add('doc-preview');
+                 previewItem.innerHTML = `
+                    <div class="file-icon"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
+                    <span class="file-name">${file.name}</span>
+                    <button class="remove-preview-btn">&times;</button>
+                 `;
+            }
+            filePreviewContainer.appendChild(previewItem);
+            previewItem.querySelector('.remove-preview-btn').addEventListener('click', () => {
+                stagedFile = null;
+                filePreviewContainer.innerHTML = '';
+                fileInput.value = '';
+            });
+        }
+        
+        function resetInputState() {
+            researchTagContainer.classList.add('hidden');
+            messageInput.placeholder = "Ask Sofia 2.0....";
+        }
+
+        async function sendMessage() {
+            let messageText = messageInput.value.trim();
+            if (!messageText && !stagedFile) return;
+
+            if (welcomeMessageContainer.offsetParent) {
+                welcomeMessageContainer.classList.add('hidden');
+                chatContainer.classList.remove('hidden');
+            }
+            
+            // Prepend research tag if active
+            if (!researchTagContainer.classList.contains('hidden')) {
+                messageText = `Deep research on: ${messageText}`;
+            }
+
+            addMessage(messageText, 'user', stagedFile);
+            
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            messageInput.dispatchEvent(new Event('input')); 
+            filePreviewContainer.innerHTML = '';
+            resetInputState();
+
+
+            const typingIndicatorContainer = document.createElement('div');
+            typingIndicatorContainer.className = 'ai-typing-container typing-indicator';
+            const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
+            const typingBubble = `<div class="message-bubble ai-message" style="padding-bottom: 0.75rem;">Sofia is typing...</div>`;
+            typingIndicatorContainer.innerHTML = avatar + typingBubble;
+            chatContainer.appendChild(typingIndicatorContainer);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            const apiUrl = 'https://jsonplaceholder.typicode.com/posts'; 
+            const payload = {
+                title: 'User Message',
+                body: messageText,
+                userId: 1,
+                fileInfo: stagedFile ? { name: stagedFile.name, type: stagedFile.type } : null,
+            };
+            stagedFile = null;
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                document.querySelector('.typing-indicator').remove();
+                const simulatedResponse = `This is a simulated response to your message: "${messageText}". I received your message and file (if any).`;
+                addMessage(simulatedResponse, 'ai');
+            } catch (error) {
+                console.error('Error sending message:', error);
+                const indicator = document.querySelector('.typing-indicator');
+                if (indicator) indicator.remove();
+                addMessage(`Sorry, something went wrong. Error: ${error.message}`, 'system');
+            }
+        }
+        
+        sendBtn.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            let newHeight = messageInput.scrollHeight;
+            messageInput.style.height = `${newHeight}px`;
+            if (newHeight > 150) {
+                 messageInput.style.overflowY = 'auto';
+            } else {
+                 messageInput.style.overflowY = 'hidden';
+            }
+
+            if (messageInput.value.trim().length > 0) {
+                micVoiceContainer.classList.add('hidden');
+                sendBtn.classList.remove('hidden');
+            } else {
+                micVoiceContainer.classList.remove('hidden');
+                sendBtn.classList.add('hidden');
+                // If input is cleared, hide the research tag
+                if (!researchTagContainer.classList.contains('hidden')) {
+                    resetInputState();
+                }
+            }
+        });
+        
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                stagedFile = {
+                    base64: e.target.result.split(',')[1],
+                    dataUrl: e.target.result,
+                    name: file.name,
+                    type: file.type
+                };
+                showFilePreview(file);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        addBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const icon = addBtn.querySelector('svg');
+            actionMenu.classList.toggle('hidden');
+            if (!actionMenu.classList.contains('hidden')) {
+                icon.style.transform = 'rotate(45deg)';
+            } else {
+                icon.style.transform = 'rotate(0deg)';
+            }
+        });
+        
+        function closeActionMenu() {
+            actionMenu.classList.add('hidden');
+            addBtn.querySelector('svg').style.transform = 'rotate(0deg)';
+        }
+
+        menuDeepResearchBtn.addEventListener('click', () => {
+            resetInputState();
+            researchTagContainer.classList.remove('hidden');
+            researchTagContainer.classList.add('flex');
+            messageInput.placeholder = "Get a detailed report on...";
+            messageInput.focus();
+            closeActionMenu();
+        });
+
+        menuWebSearchBtn.addEventListener('click', () => {
+            resetInputState();
+            messageInput.value = "Search the web for: ";
+            messageInput.focus();
+            closeActionMenu();
+        });
+        
+        menuCreateImageBtn.addEventListener('click', () => {
+            resetInputState();
+            messageInput.value = "Create an image of...";
+            messageInput.focus();
+            closeActionMenu();
+        });
+        
+        menuCanvasBtn.addEventListener('click', () => {
+            resetInputState();
+            addMessage("Canvas feature is not yet implemented.", "system");
+            closeActionMenu();
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!actionMenu.contains(event.target) && !addBtn.contains(event.target)) {
+                closeActionMenu();
+            }
+        });
+        
+        voiceModeBtn.addEventListener('click', () => {
+             addMessage("Voice mode is not yet implemented.", "system");
+        });
+
+        let recognition;
+        try {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => micBtn.classList.add('text-red-500');
+            recognition.onend = () => micBtn.classList.remove('text-red-500');
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+                messageInput.dispatchEvent(new Event('input'));
+                sendMessage();
+            };
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                addMessage(`Speech recognition error: ${event.error}`, 'system');
+            };
+            micBtn.addEventListener('click', () => recognition.start());
+        } catch (e) {
+            micBtn.style.display = 'none';
+            console.warn('Speech Recognition API is not supported in this browser.');
+        }
+    </script>
+</body>
+</html>
+
