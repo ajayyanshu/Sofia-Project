@@ -13,6 +13,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 app = Flask(__name__, template_folder='templates')
 
 # --- Securely Load API Keys from Render Environment ---
+# This reads the keys you set in the Render dashboard.
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 
@@ -21,7 +22,8 @@ YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 else:
-    print("WARNING: GOOGLE_API_KEY environment variable not found.")
+    # This message will appear in your Render logs if the key is missing.
+    print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
 
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -60,20 +62,12 @@ def get_file_from_github(filename):
         return None
 
 def find_matching_pdf(message):
-    """Smarter function to find a PDF based on keywords in the user's message."""
     message_lower = message.lower()
-    
-    if "2016" in message_lower and "hindi" in message_lower:
-        return "2016 - Hindi (7402-01).pdf"
-    if "2023" in message_lower and "english" in message_lower:
-        return "2023 - English (7403-01).pdf"
-    if "2023" in message_lower and "hindi" in message_lower:
-        return "2023 - Hindi (7402-01).pdf"
-    if "2025" in message_lower and "english" in message_lower:
-        return "2025 - English (7403-01).pdf"
-    if "2025" in message_lower and "hindi" in message_lower:
-        return "2025 - Hindi (7402-01).pdf"
-        
+    if "2016" in message_lower and "hindi" in message_lower: return "2016 - Hindi (7402-01).pdf"
+    if "2023" in message_lower and "english" in message_lower: return "2023 - English (7403-01).pdf"
+    if "2023" in message_lower and "hindi" in message_lower: return "2023 - Hindi (7402-01).pdf"
+    if "2025" in message_lower and "english" in message_lower: return "2025 - English (7403-01).pdf"
+    if "2025" in message_lower and "hindi" in message_lower: return "2025 - Hindi (7402-01).pdf"
     return None
 
 def get_video_id(video_url):
@@ -92,9 +86,8 @@ def get_youtube_transcript(video_id):
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
-        # Check if API key is available
         if not GOOGLE_API_KEY:
-             return jsonify({'error': 'The server is missing the GOOGLE_API_KEY.'}), 500
+             return jsonify({'error': 'The server is missing the required API keys.'}), 500
 
         data = request.json
         user_message = data.get('text', '')
@@ -103,50 +96,45 @@ def chat():
         
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Priority 1: Check for a YouTube Link
         if "youtube.com" in user_message or "youtu.be" in user_message:
             video_id = get_video_id(user_message)
             if video_id:
                 transcript = get_youtube_transcript(video_id)
                 if transcript:
-                    prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
+                    prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\n{transcript}"
                     response = model.generate_content(prompt)
                     return jsonify({'response': response.text})
                 else:
-                    return jsonify({'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."})
+                    return jsonify({'response': "Sorry, I couldn't get the transcript for that video."})
 
-        # Priority 2: Check for keywords to get a file from GitHub
         matched_filename = find_matching_pdf(user_message)
-        
         if matched_filename:
             download_url = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/raw/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{matched_filename.replace(' ', '%20')}"
-            
             if "download" in user_message.lower() or "link" in user_message.lower():
-                ai_response = f"Of course! Here is the download link for '{matched_filename}':<br><br><a href='{download_url}' target='{_blank}' style='color: blue; text-decoration: underline;'>Download the paper here</a>"
+                ai_response = f"Of course! Here is the download link for '{matched_filename}':<br><br><a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>Download the paper here</a>"
                 return jsonify({'response': ai_response})
 
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
                 document_text = extract_text_from_pdf(file_bytes)
                 if document_text:
-                    prompt = f"Based on the content of the document '{matched_filename}', please answer the user's question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+                    prompt = f"Based on '{matched_filename}', answer: '{user_message}'\n\nContent:\n{document_text}"
                     response = model.generate_content(prompt)
-                    ai_response = f"I found the file **{matched_filename}**.\n\n" + response.text
-                    ai_response += f"<br><br><a href='{download_url}' target='{_blank}' style='color: blue; text-decoration: underline;'>Download this paper here</a>"
+                    ai_response = f"I found **{matched_filename}**.\n\n" + response.text
+                    ai_response += f"<br><br><a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>Download this paper here</a>"
                     return jsonify({'response': ai_response})
                 else:
-                    error_link = f"<a href='{download_url}' target='{_blank}' style='color: blue; text-decoration: underline;'>download it here</a>"
-                    return jsonify({'response': f"Sorry, I downloaded '{matched_filename}', but could not read its content. You can still {error_link}."})
+                    error_link = f"<a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>download it here</a>"
+                    return jsonify({'response': f"Sorry, I downloaded '{matched_filename}', but couldn't read its content. You can still {error_link}."})
             else:
-                return jsonify({'response': f"Sorry, I found a match for '{matched_filename}' but could not download it from GitHub."})
+                return jsonify({'response': f"Sorry, I could not download '{matched_filename}' from GitHub."})
 
-        # Priority 3: Handle a direct file upload from the user
         if file_data:
             file_bytes = base64.b64decode(file_data)
             if 'pdf' in file_type:
                 document_text = extract_text_from_pdf(file_bytes)
                 if document_text:
-                    prompt = f"Based on the uploaded PDF, please answer this question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
+                    prompt = f"Based on the uploaded PDF, answer: '{user_message}'\n\nContent:\n{document_text}"
                     response = model.generate_content(prompt)
                     return jsonify({'response': response.text})
                 else:
@@ -156,7 +144,6 @@ def chat():
                 response = model.generate_content([user_message, image])
                 return jsonify({'response': response.text})
 
-        # Priority 4: Normal Conversation
         response = model.generate_content(user_message)
         return jsonify({'response': response.text})
 
