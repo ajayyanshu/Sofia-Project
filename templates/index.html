@@ -48,7 +48,6 @@
             color: #1f2937;
             align-self: start;
             border-bottom-left-radius: 0.5rem;
-            padding-bottom: 2.5rem; /* Space for action icons */
             width: fit-content; 
         }
         .ai-typing-container {
@@ -85,10 +84,30 @@
         }
         #message-input:focus, #message-input-mobile:focus { outline: none; }
         
-        #file-preview-container { display: flex; gap: 0.5rem; padding: 0.5rem 0.5rem 0 0.5rem; }
-        .preview-item { position: relative; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e5e7eb; }
-        .preview-item.image-preview { width: 70px; height: 70px; }
+        #file-preview-container-desktop, #file-preview-container-mobile { display: flex; gap: 0.5rem; padding: 0.5rem 0.5rem 0 0.5rem; }
+        .preview-item { position: relative; border-radius: 0.5rem; overflow: hidden; }
+        .preview-item.image-preview { width: 80px; height: 80px; }
         .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        .preview-item.doc-preview {
+            width: 80px;
+            height: 80px;
+            background-color: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+        }
+        .doc-preview span {
+            font-size: 0.75rem;
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         
         .remove-preview-btn {
             position: absolute; top: 2px; right: 2px; width: 1.25rem; height: 1.25rem;
@@ -120,23 +139,26 @@
         <div class="w-full max-w-3xl flex flex-col">
              <!-- Mobile Input -->
              <div class="sm:hidden w-full">
-                <div class="bg-white flex items-center p-2 space-x-2 rounded-2xl shadow-lg border border-gray-200">
-                    <button id="add-btn-mobile" class="p-2 text-gray-500">
-                        <svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                    </button>
-                    <textarea id="message-input-mobile" rows="1" placeholder="Ask Sofia 2.0..." class="flex-1 bg-transparent focus:outline-none py-2" aria-label="Ask AI Chatbot"></textarea>
-                     <div id="mic-voice-container-mobile" class="flex items-center">
-                        <button id="mic-btn-mobile" class="p-2 text-gray-500"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
-                        <button id="voice-mode-btn-mobile" class="p-2 text-gray-100 bg-black rounded-full"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M9 8v8M15 5v14M21 10v4"/></svg></button>
+                <div class="bg-white flex flex-col p-2 rounded-2xl shadow-lg border border-gray-200">
+                    <div id="file-preview-container-mobile" class="px-2"></div>
+                    <div class="flex items-center space-x-2">
+                        <button id="add-btn-mobile" class="p-2 text-gray-500">
+                            <svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-6-6h12" />
+                            </svg>
+                        </button>
+                        <textarea id="message-input-mobile" rows="1" placeholder="Ask Sofia 2.0..." class="flex-1 bg-transparent focus:outline-none py-2" aria-label="Ask AI Chatbot"></textarea>
+                         <div id="mic-voice-container-mobile" class="flex items-center">
+                            <button id="mic-btn-mobile" class="p-2 text-gray-500"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
+                            <button id="voice-mode-btn-mobile" class="p-2 text-gray-100 bg-black rounded-full"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M9 8v8M15 5v14M21 10v4"/></svg></button>
+                        </div>
+                        <button id="send-btn-mobile" class="hidden p-2 text-white bg-indigo-600 rounded-full"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11l7-7 7 7M12 4v17" /></svg></button>
                     </div>
-                    <button id="send-btn-mobile" class="hidden p-2 text-white bg-indigo-600 rounded-full"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11l7-7 7 7M12 4v17" /></svg></button>
                 </div>
             </div>
             <!-- Desktop Input -->
             <div class="hidden sm:flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg px-4 py-2">
-                <div id="file-preview-container"></div>
+                <div id="file-preview-container-desktop"></div>
                 <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0..." class="flex-1 min-w-0 p-2 bg-transparent text-gray-700" aria-label="Ask AI Chatbot"></textarea>
                 <div class="flex items-center mt-2">
                     <div class="flex items-center flex-1">
@@ -169,11 +191,24 @@
     
     <!-- Action Menu -->
     <div id="action-menu" class="fixed bottom-24 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 left-4 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-20 hidden">
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="think" data-placeholder="Let's think about..." data-tag-text="Think"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.75-1-2.414l-.548-.547z" /></svg><span class="text-sm font-medium">Think longer</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between active" data-mode="research" data-placeholder="Get a detailed report on..." data-tag-text="Research"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.33 1.885 18.658 1.5 19 1.5s.67.385.832.486l.004.003.018.01a.5.5 0 01.04.062l.003.004a.5.5 0 01.018.033L20 2.13l.004.004a.5.5 0 01.02.042l.002.003a.5.5 0 01.016.037l.002.004a.5.5 0 01.01.03l.002.004c.003.01.006.02.007.031l.002.004a.5.5 0 01.004.022l.003.005a.5.5 0 01.002.02l.002.004a.5.5 0 01.003.023l.002.004a.5.5 0 01.002.023l.002.003a.5.5 0 01.002.024l.002.004a.5.5 0 01.002.025l.002.003a.5.5 0 01.002.026l.002.004a.5.5 0 01.002.028l.002.003a.5.5 0 01.002.03l.002.003a.5.5 0 01.002.034l.002.002a.5.5 0 01.002.036l.003.003a.5.5 0 01.002.04l.002.002a.5.5 0 01.002.045V4.5" /></svg><span class="text-sm font-medium">Deep Research</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="study" data-placeholder="What should we study?" data-tag-text="Study"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg><span class="text-sm font-medium">Study and learn</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="image" data-placeholder="Create an image of..." data-tag-text="Image"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span class="text-sm font-medium">Create Image</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="web" data-placeholder="Search the web for..." data-tag-text="Web"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 009-9M3 12a9 9 0 019-9m-9 9h18" /></svg><span class="text-sm font-medium">Web Search</span></div></button>
+        <button id="menu-add-files-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center space-x-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+            <span class="text-sm font-medium">Add photos & files</span>
+        </button>
+        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between active" data-mode="research" data-placeholder="Get a detailed report on..." data-tag-text="Research">
+            <div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.33 1.885 18.658 1.5 19 1.5s.67.385.832.486l.004.003.018.01a.5.5 0 01.04.062l.003.004a.5.5 0 01.018.033L20 2.13l.004.004a.5.5 0 01.02.042l.002.003a.5.5 0 01.016.037l.002.004a.5.5 0 01.01.03l.002.004c.003.01.006.02.007.031l.002.004a.5.5 0 01.004.022l.003.005a.5.5 0 01.002.02l.002.004a.5.5 0 01.003.023l.002.004a.5.5 0 01.002.023l.002.003a.5.5 0 01.002.024l.002.004a.5.5 0 01.002.025l.002.003a.5.5 0 01.002.026l.002.004a.5.5 0 01.002.028l.002.003a.5.5 0 01.002.03l.002.003a.5.5 0 01.002.034l.002.002a.5.5 0 01.002.036l.003.003a.5.5 0 01.002.04l.002.002a.5.5 0 01.002.045V4.5" /></svg><span class="text-sm font-medium">Deep Research</span></div>
+            <svg class="h-5 w-5 text-blue-600 check-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+        </button>
+        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="image" data-placeholder="Create an image of..." data-tag-text="Image">
+            <div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span class="text-sm font-medium">Create Image</span></div>
+            <svg class="h-5 w-5 text-blue-600 check-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+        </button>
+        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="web" data-placeholder="Search the web for..." data-tag-text="Web">
+            <div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 009-9M3 12a9 9 0 019-9m-9 9h18" /></svg><span class="text-sm font-medium">Web Search</span></div>
+            <svg class="h-5 w-5 text-blue-600 check-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+        </button>
     </div>
     <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
 
@@ -189,7 +224,8 @@
         const micBtn = document.getElementById('mic-btn');
         const micBtnMobile = document.getElementById('mic-btn-mobile');
         const fileInput = document.getElementById('file-input');
-        const filePreviewContainer = document.getElementById('file-preview-container');
+        const filePreviewContainerDesktop = document.getElementById('file-preview-container-desktop');
+        const filePreviewContainerMobile = document.getElementById('file-preview-container-mobile');
         const addBtn = document.getElementById('add-btn');
         const addBtnMobile = document.getElementById('add-btn-mobile');
         const actionMenu = document.getElementById('action-menu');
@@ -250,15 +286,32 @@
         
         // Show file preview
         function showFilePreview(file) {
-            filePreviewContainer.innerHTML = '';
-            const previewItem = document.createElement('div');
-            previewItem.className = 'preview-item image-preview';
-            previewItem.innerHTML = `<img src="${stagedFile.dataUrl}" alt="${file.name}"><button class="remove-preview-btn">&times;</button>`;
-            filePreviewContainer.appendChild(previewItem);
-            previewItem.querySelector('.remove-preview-btn').addEventListener('click', () => {
-                stagedFile = null;
-                filePreviewContainer.innerHTML = '';
-                fileInput.value = '';
+            let previewHTML = '';
+            if (file.type.startsWith('image/')) {
+                previewHTML = `<div class="preview-item image-preview relative group p-2">
+                                <img src="${stagedFile.dataUrl}" alt="${file.name}" class="rounded-lg w-20 h-20 object-cover">
+                                <button class="remove-preview-btn absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                             </div>`;
+            } else {
+                 previewHTML = `<div class="preview-item doc-preview relative group p-2 flex flex-col items-center justify-center bg-gray-100 rounded-lg border border-gray-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span class="text-xs text-gray-700 truncate w-20 text-center">${file.name}</span>
+                                <button class="remove-preview-btn absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                             </div>`;
+            }
+
+            filePreviewContainerDesktop.innerHTML = previewHTML;
+            filePreviewContainerMobile.innerHTML = previewHTML;
+
+            document.querySelectorAll('.remove-preview-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    stagedFile = null;
+                    filePreviewContainerDesktop.innerHTML = '';
+                    filePreviewContainerMobile.innerHTML = '';
+                    fileInput.value = '';
+                });
             });
         }
         
@@ -287,6 +340,9 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
+                     if (response.status === 403) {
+                         throw new Error('API key is invalid or missing. Please check your configuration.');
+                    }
                     if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
                     
                     const result = await response.json();
@@ -320,7 +376,8 @@
             const currentFile = stagedFile;
             stagedFile = null;
             setCurrentMessage('');
-            filePreviewContainer.innerHTML = '';
+            filePreviewContainerDesktop.innerHTML = '';
+            filePreviewContainerMobile.innerHTML = '';
 
             const typingIndicatorContainer = document.createElement('div');
             typingIndicatorContainer.className = 'ai-typing-container typing-indicator';
@@ -381,6 +438,9 @@
                 showFilePreview(file);
             };
             reader.readAsDataURL(file);
+            if (!actionMenu.classList.contains('hidden')) {
+                toggleActionMenu();
+            }
         });
 
         function toggleActionMenu() {
@@ -424,7 +484,7 @@
         });
         
         if (menuAddFilesBtn) {
-            menuAddFilesBtn.addEventListener('click', () => { fileInput.click(); toggleActionMenu(); });
+            menuAddFilesBtn.addEventListener('click', () => { fileInput.click(); });
         }
         
         // Voice Recognition
