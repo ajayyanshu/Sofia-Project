@@ -331,7 +331,9 @@
                 }
                 // Corrected payload with 'role'
                 payload = { contents: [{ role: "user", parts: parts }] }; 
-                if (mode === 'research') payload.tools = [{ "google_search": {} }];
+                if (mode === 'web') {
+                    payload.tools = [{ "google_search": {} }];
+                }
             }
 
             for (let i = 0, delay = 1000; i < 3; i++, delay *= 2) {
@@ -525,7 +527,6 @@
         micBtnMobile.addEventListener('click', setupRecognition);
         
         // Set initial state
-        document.querySelector('.menu-item[data-mode="research"]').classList.remove('active');
         modeTagContainer.classList.add('hidden');
         messageInput.placeholder = "Ask Sofia 2.0...";
         messageInputMobile.placeholder = "Ask Sofia 2.0...";
