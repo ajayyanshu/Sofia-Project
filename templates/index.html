@@ -201,7 +201,21 @@
         let stagedFile = null;
         let currentMode = null; 
 
-        function addMessage(text, sender, fileInfo = null, mode = null) {
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const cleanedText = text.replace(/[*_`#]/g, '');
+                const utterance = new SpeechSynthesisUtterance(cleanedText);
+                utterance.lang = 'en-US';
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.error('Speech Synthesis API is not supported in this browser.');
+                addMessage('Sorry, my voice response is not available on your browser.', 'system');
+            }
+        }
+
+        // MODIFIED: Added imageUrl parameter
+        function addMessage(text, sender, fileInfo = null, mode = null, imageUrl = null) {
             if (sender === 'user') {
                 const messageBubble = document.createElement('div');
                 let fileHtml = '';
@@ -238,9 +252,21 @@
                 const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
                 const messageBubble = document.createElement('div');
                 messageBubble.className = 'message-bubble ai-message';
-                const formattedHtml = markdownConverter.makeHtml(text);
                 const contentDiv = document.createElement('div');
-                contentDiv.innerHTML = formattedHtml;
+                
+                // MODIFIED: Add image if URL is provided
+                if (imageUrl) {
+                    const imageElement = document.createElement('img');
+                    imageElement.src = imageUrl;
+                    imageElement.alt = "AI generated image";
+                    imageElement.className = "rounded-lg mb-2 max-w-full h-auto";
+                    contentDiv.appendChild(imageElement);
+                }
+
+                const textWrapper = document.createElement('div');
+                textWrapper.innerHTML = markdownConverter.makeHtml(text);
+                contentDiv.appendChild(textWrapper);
+
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'message-actions';
                 actionsDiv.innerHTML = `<button class="action-btn copy-btn" title="Copy text"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg></button><button class="action-btn" title="Good response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></button><button class="action-btn" title="Bad response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg></button>`;
@@ -328,11 +354,23 @@
             stagedFile = null;
 
             try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                document.querySelector('.typing-indicator').remove();
-                if (!response.ok) { throw new Error(await response.text() || `Server responded with status ${response.status}`); }
-                const result = await response.json();
-                addMessage(result.response, 'ai');
+                // MODIFIED: Handle image creation mode separately
+                if (modeForThisMessage === 'create_image') {
+                    document.querySelector('.typing-indicator').remove();
+                    const subject = messageText.replace("A hyper-realistic photo of ", "").trim();
+                    const imageUrl = `https://placehold.co/600x400/EEE/31343C?text=Generated+Image+of+${encodeURIComponent(subject)}`;
+                    addMessage(`Here is your generated image of a ${subject}.`, 'ai', null, null, imageUrl);
+                } else {
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    document.querySelector('.typing-indicator').remove();
+                    if (!response.ok) { throw new Error(await response.text() || `Server responded with status ${response.status}`); }
+                    const result = await response.json();
+                    addMessage(result.response, 'ai');
+                    
+                    if (modeForThisMessage === 'voice_mode') {
+                        speakText(result.response);
+                    }
+                }
             } catch (error) {
                 console.error('Error sending message:', error);
                 const indicator = document.querySelector('.typing-indicator');
@@ -417,8 +455,14 @@
         });
         
         voiceModeBtn.addEventListener('click', () => {
-            console.log("Voice mode button clicked.");
-            addMessage("Voice mode is not yet implemented.", 'system');
+            currentMode = 'voice_mode';
+            try {
+                window.speechSynthesis.cancel();
+                recognition.start();
+            } catch(e) {
+                console.error("Could not start recognition:", e);
+                addMessage("Sorry, I couldn't start listening. Please check your microphone permissions.", 'system');
+            }
         });
         
         fileInput.addEventListener('change', (event) => {
@@ -453,9 +497,13 @@
                 listeningIndicator.classList.add('hidden');
                 listeningIndicator.classList.remove('flex');
             };
-            micBtn.addEventListener('click', () => recognition.start());
+            micBtn.addEventListener('click', () => {
+                currentMode = null;
+                recognition.start();
+            });
         } catch (e) {
             micBtn.style.display = 'none';
+            voiceModeBtn.style.display = 'none';
             console.warn('Speech Recognition API is not supported in this browser.');
         }
     </script>
