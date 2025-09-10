@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,13 +11,12 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* MODIFIED: Re-enabled normal scrolling behavior for better keyboard handling */
         html {
-            /* overscroll-behavior: none; -- Removed */
+            overscroll-behavior: none;
         }
         body {
-            /* overflow: hidden; -- Removed */
-            /* overscroll-behavior: none; -- Removed */
+            overflow: hidden;
+            overscroll-behavior: none;
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
@@ -103,12 +102,6 @@
             align-items: center; 
         }
         body.initial-view #welcome-message-container { flex-grow: 0; }
-        
-        /* ADDED: Makes footer part of the normal flow in initial view to prevent scrolling */
-        body.initial-view footer {
-            position: static;
-        }
-
         .listening-bar { width: 3px; height: 5px; background-color: #6b7280; border-radius: 5px; animation: listening 1.2s infinite ease-in-out; }
         .listening-bar:nth-child(2) { animation-delay: -1.0s; }
         .listening-bar:nth-child(3) { animation-delay: -0.8s; }
@@ -121,69 +114,71 @@
         .mode-indicator { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen initial-view">
-    <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
-        <div class="flex items-center space-x-2">
-            <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
-        </div>
-    </header>
-
-    <main class="flex-1 flex flex-col pt-20 pb-24 bg-white">
-        <div id="welcome-message-container" class="flex-1 flex items-center justify-center p-4 text-center">
-            <h1 class="text-4xl font-bold text-gray-800">What can I help with?</h1>
-        </div>
-        <div id="chat-container" class="flex-1 flex-col overflow-y-auto w-full px-4 sm:px-6 hidden"></div>
-    </main>
-
-    <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
-        <div class="w-full max-w-3xl flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg">
-            <div id="file-preview-container"></div>
-            <div id="mode-indicator-container" class="p-2 pb-0"></div>
-            <div class="w-full flex items-end px-2 sm:px-4 py-2">
-                <div class="relative flex items-center">
-                     <button id="add-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                    </button>
-                    <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
-                    <div id="add-menu" class="hidden absolute bottom-full mb-2 w-60 bg-white border border-gray-200 rounded-xl shadow-lg p-2 z-20">
-                        <button id="upload-file-btn" class="menu-item w-full text-left">
-                            <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                            <span class="text-sm font-medium text-gray-700">Add photos & file</span>
-                        </button>
-                        <button id="create-image-btn" class="menu-item w-full text-left">
-                           <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                           <span class="text-sm font-medium text-gray-700">Create an image</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="border-l h-6 border-gray-300 mx-2"></div>
-                
-                <textarea id="message-input" rows="1" placeholder="Ask anything" class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
-                
-                <div id="listening-indicator" class="hidden items-center gap-1 p-2 flex-shrink-0">
-                    <div class="listening-bar"></div><div class="listening-bar"></div><div class="listening-bar"></div>
-                </div>
-
-                <button id="web-search-toggle-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
-                </button>
-
-                <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                </button>
-
-                <button id="voice-mode-btn" class="p-2 w-10 h-10 bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors floating-action-button flex-shrink-0 flex items-center justify-center">
-                    <div class="flex items-center gap-0.5">
-                        <div class="listening-bar h-3"></div><div class="listening-bar h-3"></div><div class="listening-bar h-3"></div>
-                    </div>
-                </button>
-                
-                <button id="send-btn" class="hidden ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                </button>
+<body class="h-full flex flex-col initial-view">
+    <div class="flex flex-col h-full">
+        <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
+            <div class="flex items-center space-x-2">
+                <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
             </div>
-        </div>
-    </footer>
+        </header>
+
+        <main class="flex-1 flex flex-col bg-white overflow-hidden">
+            <div id="welcome-message-container" class="flex-1 flex flex-col items-center justify-center p-4 text-center">
+                <h1 class="text-4xl font-bold text-gray-800">What can I help with?</h1>
+            </div>
+            <div id="chat-container" class="flex-1 flex-col overflow-y-auto w-full px-4 sm:px-6 hidden"></div>
+        </main>
+
+        <footer class="w-full flex justify-center py-4 px-4 sm:px-6 bg-white">
+            <div class="w-full max-w-3xl flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg">
+                <div id="file-preview-container"></div>
+                <div id="mode-indicator-container" class="p-2 pb-0"></div>
+                <div class="w-full flex items-end px-2 sm:px-4 py-2">
+                    <div class="relative flex items-center">
+                        <button id="add-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                        <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
+                        <div id="add-menu" class="hidden absolute bottom-full mb-2 w-60 bg-white border border-gray-200 rounded-xl shadow-lg p-2 z-20">
+                            <button id="upload-file-btn" class="menu-item w-full text-left">
+                                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                <span class="text-sm font-medium text-gray-700">Add photos & file</span>
+                            </button>
+                            <button id="create-image-btn" class="menu-item w-full text-left">
+                            <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <span class="text-sm font-medium text-gray-700">Create an image</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="border-l h-6 border-gray-300 mx-2"></div>
+                    
+                    <textarea id="message-input" rows="1" placeholder="Ask anything" class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
+                    
+                    <div id="listening-indicator" class="hidden items-center gap-1 p-2 flex-shrink-0">
+                        <div class="listening-bar"></div><div class="listening-bar"></div><div class="listening-bar"></div>
+                    </div>
+
+                    <button id="web-search-toggle-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                    </button>
+
+                    <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
+
+                    <button id="voice-mode-btn" class="p-2 w-10 h-10 bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors floating-action-button flex-shrink-0 flex items-center justify-center">
+                        <div class="flex items-center gap-0.5">
+                            <div class="listening-bar h-3"></div><div class="listening-bar h-3"></div><div class="listening-bar h-3"></div>
+                        </div>
+                    </button>
+                    
+                    <button id="send-btn" class="hidden ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
 
     <script type="module">
         const chatContainer = document.getElementById('chat-container');
