@@ -13,11 +13,12 @@ app.use(express.static(path.join(__dirname)));
 
 // API endpoint to get the Gemini API key
 app.get('/api/key', (req, res) => {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  // This line reads the environment variable you set on Render
+  const apiKey = process.env.GOOGLE_API_KEY; 
   if (apiKey) {
     res.json({ apiKey: apiKey });
   } else {
-    res.status(500).json({ error: 'API key not found on the server.' });
+    res.status(500).json({ error: 'API key not found on the server. Make sure the GOOGLE_API_KEY environment variable is set.' });
   }
 });
 
