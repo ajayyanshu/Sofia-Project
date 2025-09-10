@@ -11,16 +11,17 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* MODIFIED: Prevent body scrolling for an app-like feel */
+        /* MODIFIED: Re-enabled normal scrolling behavior for better keyboard handling */
         html {
-            height: 100%;
+            /* overscroll-behavior: none; -- Removed */
         }
         body {
-            height: 100%;
-            overflow: hidden;
+            /* overflow: hidden; -- Removed */
+            /* overscroll-behavior: none; -- Removed */
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
+
         .chat-container {
             flex: 1;
             display: flex;
@@ -102,6 +103,12 @@
             align-items: center; 
         }
         body.initial-view #welcome-message-container { flex-grow: 0; }
+        
+        /* ADDED: Makes footer part of the normal flow in initial view to prevent scrolling */
+        body.initial-view footer {
+            position: static;
+        }
+
         .listening-bar { width: 3px; height: 5px; background-color: #6b7280; border-radius: 5px; animation: listening 1.2s infinite ease-in-out; }
         .listening-bar:nth-child(2) { animation-delay: -1.0s; }
         .listening-bar:nth-child(3) { animation-delay: -0.8s; }
@@ -114,8 +121,7 @@
         .mode-indicator { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
     </style>
 </head>
-<!-- MODIFIED: Removed min-h-screen as height is now handled in CSS -->
-<body class="flex flex-col initial-view">
+<body class="flex flex-col min-h-screen initial-view">
     <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
         <div class="flex items-center space-x-2">
             <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
