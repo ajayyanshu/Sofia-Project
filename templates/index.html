@@ -576,11 +576,18 @@
             stopVoiceBtn.addEventListener('click', () => {
                 recognition.stop();
             });
+
+            // UPDATED: When the cancel button (X icon) is clicked
             cancelVoiceBtn.addEventListener('click', () => {
-                currentMode = null;
-                recognition.abort();
+                // Hide the voice overlay immediately for a responsive user experience
                 voiceOverlay.classList.add('hidden');
                 voiceOverlay.classList.remove('flex');
+
+                // Abort the speech recognition process
+                if (recognition) {
+                    recognition.abort();
+                }
+                currentMode = null;
             });
 
         } catch (e) {
@@ -591,5 +598,3 @@
     </script>
 </body>
 </html>
-"
-
