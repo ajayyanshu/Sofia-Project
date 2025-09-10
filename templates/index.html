@@ -112,9 +112,63 @@
         .menu-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s; }
         .menu-item:hover { background-color: #f3f4f6; }
         .mode-indicator { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
+
+        /* --- NEW: Voice overlay styles --- */
+        #voice-overlay {
+            background-color: #87CEEB; /* Sky blue */
+        }
+        .cloud {
+            width: 250px;
+            height: 250px;
+            background: white;
+            border-radius: 50%;
+            position: relative;
+            filter: drop-shadow(0 0 15px rgba(0,0,0,0.1));
+            animation: pulse 2s infinite ease-in-out;
+        }
+        .cloud::before, .cloud::after {
+            content: '';
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+        }
+        .cloud::before {
+            width: 150px; height: 150px;
+            top: -50px; left: 30px;
+        }
+        .cloud::after {
+            width: 120px; height: 120px;
+            top: -20px; right: 20px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body class="h-full flex flex-col initial-view">
+    <!-- NEW: Voice input overlay -->
+    <div id="voice-overlay" class="hidden fixed inset-0 z-50 flex-col items-center justify-center p-8">
+        <div class="flex-1 flex items-center justify-center">
+            <div class="cloud"></div>
+        </div>
+        <p class="text-white text-lg mb-8">Finish speaking to send</p>
+        <div class="flex w-full justify-center gap-16">
+            <button id="stop-voice-btn" class="w-16 h-16 bg-gray-800 text-white rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 10h6v4H9z" />
+                </svg>
+            </button>
+            <button id="cancel-voice-btn" class="w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
     <div class="flex flex-col h-full">
         <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
             <div class="flex items-center space-x-2">
@@ -196,6 +250,10 @@
         const modeIndicatorContainer = document.getElementById('mode-indicator-container');
         const webSearchToggleBtn = document.getElementById('web-search-toggle-btn');
         const voiceModeBtn = document.getElementById('voice-mode-btn');
+        // --- NEW: Voice overlay elements ---
+        const voiceOverlay = document.getElementById('voice-overlay');
+        const stopVoiceBtn = document.getElementById('stop-voice-btn');
+        const cancelVoiceBtn = document.getElementById('cancel-voice-btn');
         
         const markdownConverter = new showdown.Converter();
         let stagedFile = null;
@@ -214,7 +272,6 @@
             }
         }
 
-        // MODIFIED: Added imageUrl parameter
         function addMessage(text, sender, fileInfo = null, mode = null, imageUrl = null) {
             if (sender === 'user') {
                 const messageBubble = document.createElement('div');
@@ -228,7 +285,7 @@
                 }
 
                 let modeIconHtml = '';
-                if (mode === 'create_image' || mode === 'web_search') {
+                if (mode === 'create_image' || mode === 'web_search' || mode === 'voice_mode') {
                     modeIconHtml = `
                         <div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center mr-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
@@ -254,7 +311,6 @@
                 messageBubble.className = 'message-bubble ai-message';
                 const contentDiv = document.createElement('div');
                 
-                // MODIFIED: Add image if URL is provided
                 if (imageUrl) {
                     const imageElement = document.createElement('img');
                     imageElement.src = imageUrl;
@@ -354,7 +410,6 @@
             stagedFile = null;
 
             try {
-                // MODIFIED: Handle image creation mode separately
                 if (modeForThisMessage === 'create_image') {
                     document.querySelector('.typing-indicator').remove();
                     const subject = messageText.replace("A hyper-realistic photo of ", "").trim();
@@ -458,6 +513,8 @@
             currentMode = 'voice_mode';
             try {
                 window.speechSynthesis.cancel();
+                voiceOverlay.classList.remove('hidden');
+                voiceOverlay.classList.add('flex');
                 recognition.start();
             } catch(e) {
                 console.error("Could not start recognition:", e);
@@ -483,8 +540,21 @@
             recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.lang = 'en-US';
-            recognition.onstart = () => { micBtn.classList.add('text-red-500'); listeningIndicator.classList.remove('hidden'); listeningIndicator.classList.add('flex'); };
-            recognition.onend = () => { micBtn.classList.remove('text-red-500'); listeningIndicator.classList.add('hidden'); listeningIndicator.classList.remove('flex'); };
+            recognition.onstart = () => {
+                // Only show footer listening indicator for regular mic, not voice mode
+                if (currentMode !== 'voice_mode') {
+                    micBtn.classList.add('text-red-500'); 
+                    listeningIndicator.classList.remove('hidden'); 
+                    listeningIndicator.classList.add('flex');
+                }
+            };
+            recognition.onend = () => {
+                micBtn.classList.remove('text-red-500'); 
+                listeningIndicator.classList.add('hidden'); 
+                listeningIndicator.classList.remove('flex');
+                voiceOverlay.classList.add('hidden');
+                voiceOverlay.classList.remove('flex');
+            };
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
@@ -494,13 +564,25 @@
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 addMessage(`Speech recognition error: ${event.error}`, 'system');
-                listeningIndicator.classList.add('hidden');
-                listeningIndicator.classList.remove('flex');
+                voiceOverlay.classList.add('hidden');
+                voiceOverlay.classList.remove('flex');
             };
             micBtn.addEventListener('click', () => {
                 currentMode = null;
                 recognition.start();
             });
+
+            // --- NEW: Voice overlay button listeners ---
+            stopVoiceBtn.addEventListener('click', () => {
+                recognition.stop();
+            });
+            cancelVoiceBtn.addEventListener('click', () => {
+                currentMode = null;
+                recognition.abort();
+                voiceOverlay.classList.add('hidden');
+                voiceOverlay.classList.remove('flex');
+            });
+
         } catch (e) {
             micBtn.style.display = 'none';
             voiceModeBtn.style.display = 'none';
@@ -509,4 +591,5 @@
     </script>
 </body>
 </html>
+"
 
