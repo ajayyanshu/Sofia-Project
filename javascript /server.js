@@ -21,7 +21,7 @@ app.get('/api/key', (req, res) => {
   }
 });
 
-// Fallback to serve index.html for any other requests (for single-page apps)
+// Fallback to serve index.html for any other requests
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
