@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- MODIFIED: Added maximum-scale and user-scalable to prevent zooming -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sofia 2.0 - AI Chatbot</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -88,9 +89,14 @@
         .doc-preview .file-icon { flex-shrink: 0; margin-right: 0.5rem; }
         .doc-preview .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.875rem; color: #4b5563; }
         .remove-preview-btn { position: absolute; top: 2px; right: 2px; width: 1.25rem; height: 1.25rem; background-color: rgba(0,0,0,0.5); color: white; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; line-height: 1; }
-        body.initial-view main { display: flex; flex-direction: column; justify-content: center; align-items: center; padding-bottom: 0; }
+        body.initial-view main { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+        }
         body.initial-view #welcome-message-container { flex-grow: 0; }
-        body.initial-view footer { position: static; padding-top: 2rem; background-color: transparent; }
+        /* REMOVED: The rule that made the footer static in the initial view */
         .listening-bar { width: 3px; height: 5px; background-color: #6b7280; border-radius: 5px; animation: listening 1.2s infinite ease-in-out; }
         .listening-bar:nth-child(2) { animation-delay: -1.0s; }
         .listening-bar:nth-child(3) { animation-delay: -0.8s; }
@@ -100,7 +106,7 @@
         }
         .menu-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s; }
         .menu-item:hover { background-color: #f3f4f6; }
-        .mode-indicator { display: inline-flex; align-items: center; gap: 0.25rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.875rem; }
+        .mode-indicator { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen initial-view">
@@ -338,13 +344,12 @@
             
             const hasText = messageInput.value.trim() !== '';
             
-            // Toggle visibility based on whether there is text in the input
             sendBtn.classList.toggle('hidden', !hasText);
             micBtn.classList.toggle('hidden', hasText);
             voiceModeBtn.classList.toggle('hidden', hasText);
-
-            // NOTE: The + button (addBtn) and G button (webSearchToggleBtn) are no longer hidden here,
-            // so they will remain visible when the user is typing.
+            webSearchToggleBtn.classList.toggle('hidden', hasText);
+            addBtn.classList.toggle('hidden', hasText);
+            addBtn.parentElement.nextElementSibling.classList.toggle('hidden', hasText);
         });
         
         messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
@@ -372,7 +377,7 @@
             messageInput.dispatchEvent(new Event('input')); 
             addMenu.classList.add('hidden');
         });
-        
+
         function deactivateWebSearch() {
             currentMode = null;
             modeIndicatorContainer.innerHTML = '';
@@ -452,5 +457,4 @@
     </script>
 </body>
 </html>
-
 
