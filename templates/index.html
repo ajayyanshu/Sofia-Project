@@ -197,10 +197,6 @@
             </svg>
             <span class="text-sm font-medium">Add photos & files</span>
         </button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between active" data-mode="research" data-placeholder="Get a detailed report on..." data-tag-text="Research">
-            <div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.33 1.885 18.658 1.5 19 1.5s.67.385.832.486l.004.003.018.01a.5.5 0 01.04.062l.003.004a.5.5 0 01.018.033L20 2.13l.004.004a.5.5 0 01.02.042l.002.003a.5.5 0 01.016.037l.002.004a.5.5 0 01.01.03l.002.004c.003.01.006.02.007.031l.002.004a.5.5 0 01.004.022l.003.005a.5.5 0 01.002.02l.002.004a.5.5 0 01.003.023l.002.004a.5.5 0 01.002.023l.002.003a.5.5 0 01.002.024l.002.004a.5.5 0 01.002.025l.002.003a.5.5 0 01.002.026l.002.004a.5.5 0 01.002.028l.002.003a.5.5 0 01.002.03l.002.003a.5.5 0 01.002.034l.002.002a.5.5 0 01.002.036l.003.003a.5.5 0 01.002.04l.002.002a.5.5 0 01.002.045V4.5" /></svg><span class="text-sm font-medium">Deep Research</span></div>
-            <svg class="h-5 w-5 text-blue-600 check-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-        </button>
         <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="image" data-placeholder="Create an image of..." data-tag-text="Image">
             <div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span class="text-sm font-medium">Create Image</span></div>
             <svg class="h-5 w-5 text-blue-600 check-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
@@ -240,7 +236,7 @@
         
         const markdownConverter = new showdown.Converter();
         let stagedFile = null;
-        let geminiApiKey = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
+        const geminiApiKey = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
 
         function getCurrentMessage() { return window.innerWidth < 640 ? messageInputMobile.value : messageInput.value; }
         function setCurrentMessage(val) {
@@ -319,7 +315,7 @@
         // Call Gemini API
         async function callGeminiApi(prompt, mode, file = null) {
             if (!geminiApiKey) {
-                 throw new Error('API key is invalid or missing. Please check your configuration.');
+                 throw new Error('API key is not set. Please add your key to the script.');
             }
             const apiKey = geminiApiKey;
             let apiUrl, payload;
@@ -470,19 +466,20 @@
         });
 
         function setMode(target) {
-            const wasActive = target.classList.contains('active');
             menuItems.forEach(item => item.classList.remove('active'));
+            target.classList.add('active');
+            
+            const placeholder = target.dataset.placeholder;
+            const tagText = target.dataset.tagText;
+            const iconHTML = target.querySelector('.flex.items-center.space-x-3 svg').outerHTML;
+            
+            messageInput.placeholder = placeholder;
+            messageInputMobile.placeholder = placeholder;
 
-            if (wasActive) {
-                modeTagContainer.classList.add('hidden');
-                messageInput.placeholder = "Ask Sofia 2.0...";
-            } else {
-                target.classList.add('active');
-                messageInput.placeholder = target.dataset.placeholder;
-                modeTagText.textContent = target.dataset.tagText;
-                modeTagIcon.innerHTML = target.querySelector('.flex.items-center.space-x-3 svg').outerHTML;
-                modeTagContainer.classList.remove('hidden');
-            }
+            modeTagContainer.classList.remove('hidden');
+            modeTagText.textContent = tagText;
+            modeTagIcon.innerHTML = iconHTML;
+            
             if (!actionMenu.classList.contains('hidden')) {
                 toggleActionMenu();
             }
@@ -528,7 +525,10 @@
         micBtnMobile.addEventListener('click', setupRecognition);
         
         // Set initial state
-        document.querySelector('.menu-item[data-mode="research"]').click();
+        document.querySelector('.menu-item[data-mode="research"]').classList.remove('active');
+        modeTagContainer.classList.add('hidden');
+        messageInput.placeholder = "Ask Sofia 2.0...";
+        messageInputMobile.placeholder = "Ask Sofia 2.0...";
         
         messageInput.dispatchEvent(new Event('input'));
         messageInputMobile.dispatchEvent(new Event('input'));
