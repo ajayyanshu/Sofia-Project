@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sofia 2.0 - AI Chatbot</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Showdown library to render Markdown -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -48,7 +46,7 @@
             color: #1f2937;
             align-self: start;
             border-bottom-left-radius: 0.5rem;
-            width: fit-content; 
+            width: fit-content;
         }
         .ai-typing-container {
              display: flex;
@@ -72,18 +70,18 @@
         .ai-message ul { list-style-type: disc; padding-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
         .ai-message li { margin-bottom: 0.25rem; }
         .ai-message strong, .ai-message b { font-weight: 600; color: #111827; }
-        
+
         .system-message {
             background-color: #f87171; color: white; align-self: center; text-align: center;
             font-size: 0.875rem; padding: 0.5rem 1rem;
         }
-      
+
         #message-input, #message-input-mobile {
             resize: none; overflow-y: hidden; max-height: 150px; transition: all 0.2s ease-in-out;
             border: none; width: 100%; background: transparent;
         }
         #message-input:focus, #message-input-mobile:focus { outline: none; }
-        
+
         #file-preview-container-desktop, #file-preview-container-mobile { display: flex; gap: 0.5rem; padding: 0.5rem 0.5rem 0 0.5rem; }
         .preview-item { position: relative; border-radius: 0.5rem; overflow: hidden; }
         .preview-item.image-preview { width: 80px; height: 80px; }
@@ -108,7 +106,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        
+
         .remove-preview-btn {
             position: absolute; top: 2px; right: 2px; width: 1.25rem; height: 1.25rem;
             background-color: rgba(0,0,0,0.5); color: white; border-radius: 50%;
@@ -117,7 +115,7 @@
         }
         .check-mark { display: none; }
         .menu-item.active .check-mark { display: block; }
-        
+
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -137,7 +135,6 @@
 
     <footer class="w-full flex justify-center py-2 px-2 sm:py-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-transparent">
         <div class="w-full max-w-3xl flex flex-col">
-             <!-- Mobile Input -->
              <div class="sm:hidden w-full">
                 <div class="bg-white flex flex-col p-2 rounded-2xl shadow-lg border border-gray-200">
                     <div id="file-preview-container-mobile" class="px-2"></div>
@@ -156,7 +153,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Desktop Input -->
             <div class="hidden sm:flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg px-4 py-2">
                 <div id="file-preview-container-desktop"></div>
                 <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0..." class="flex-1 min-w-0 p-2 bg-transparent text-gray-700" aria-label="Ask AI Chatbot"></textarea>
@@ -188,8 +184,7 @@
             </div>
         </div>
     </footer>
-    
-    <!-- Action Menu -->
+
     <div id="action-menu" class="fixed bottom-24 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 left-4 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-20 hidden">
         <button id="menu-add-files-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center space-x-3">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -237,7 +232,7 @@
         const removeModeTagBtn = document.getElementById('remove-mode-tag-btn');
         const menuAddFilesBtn = document.getElementById('menu-add-files-btn');
         const menuItems = document.querySelectorAll('.menu-item');
-        
+
         const markdownConverter = new showdown.Converter();
         let stagedFile = null;
 
@@ -283,7 +278,7 @@
             }
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-        
+
         // Show file preview
         function showFilePreview(file) {
             let previewHTML = '';
@@ -314,10 +309,19 @@
                 });
             });
         }
-        
+
         // Call Gemini API
         async function callGeminiApi(prompt, mode, file = null) {
-            const apiKey = "";
+            // =================================================================
+            // PASTE YOUR GEMINI API KEY HERE
+            // =================================================================
+            const apiKey = "YOUR_GEMINI_API_KEY";
+            // =================================================================
+
+            if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
+                throw new Error('API key is invalid or missing. Please check your configuration.');
+            }
+
             let apiUrl, payload;
 
             if (mode === 'image') {
@@ -344,7 +348,7 @@
                          throw new Error('API key is invalid or missing. Please check your configuration.');
                     }
                     if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-                    
+
                     const result = await response.json();
                     if (mode === 'image') {
                         if (result.predictions?.[0]?.bytesBase64Encoded) {
@@ -370,9 +374,9 @@
             if (!messageText && !stagedFile) return;
 
             const activeMode = document.querySelector('.menu-item.active')?.dataset.mode || 'chat';
-            
+
             addMessage(messageText, 'user', stagedFile);
-            
+
             const currentFile = stagedFile;
             stagedFile = null;
             setCurrentMessage('');
@@ -395,7 +399,7 @@
                 document.querySelector('.typing-indicator')?.remove();
             }
         }
-        
+
         // Event Listeners Setup
         sendBtn.addEventListener('click', sendMessage);
         sendBtnMobile.addEventListener('click', sendMessage);
@@ -404,12 +408,12 @@
             textarea.style.height = 'auto';
             textarea.style.height = `${textarea.scrollHeight}px`;
         }
-        
+
         [messageInput, messageInputMobile].forEach(input => {
             input.addEventListener('input', () => {
                 adjustTextareaHeight(input);
                 const hasText = input.value.trim().length > 0;
-                
+
                 micVoiceContainer.classList.toggle('hidden', hasText);
                 sendBtn.classList.toggle('hidden', !hasText);
                 micVoiceContainerMobile.classList.toggle('hidden', hasText);
@@ -446,10 +450,10 @@
         function toggleActionMenu() {
             actionMenu.classList.toggle('hidden');
         }
-        
+
         addBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleActionMenu() });
         addBtnMobile.addEventListener('click', (e) => { e.stopPropagation(); toggleActionMenu() });
-        
+
         document.addEventListener('click', (event) => {
             if (!actionMenu.classList.contains('hidden') && !actionMenu.contains(event.target) && !addBtn.contains(event.target) && !addBtnMobile.contains(event.target)) {
                 actionMenu.classList.add('hidden');
@@ -482,11 +486,11 @@
             modeTagContainer.classList.add('hidden');
             messageInput.placeholder = "Ask Sofia 2.0...";
         });
-        
+
         if (menuAddFilesBtn) {
             menuAddFilesBtn.addEventListener('click', () => { fileInput.click(); });
         }
-        
+
         // Voice Recognition
         let recognition;
         function setupRecognition() {
@@ -513,14 +517,13 @@
         }
         micBtn.addEventListener('click', setupRecognition);
         micBtnMobile.addEventListener('click', setupRecognition);
-        
+
         // Set initial state
         document.querySelector('.menu-item[data-mode="research"]').click();
-        
+
         messageInput.dispatchEvent(new Event('input'));
         messageInputMobile.dispatchEvent(new Event('input'));
     });
     </script>
 </body>
 </html>
-
