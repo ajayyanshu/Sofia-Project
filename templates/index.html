@@ -333,7 +333,8 @@
                 if (file && file.type.startsWith('image/')) {
                     parts.push({ inlineData: { mimeType: file.type, data: file.base64 } });
                 }
-                payload = { contents: [{ parts }] };
+                // Corrected payload with 'role'
+                payload = { contents: [{ role: "user", parts: parts }] }; 
                 if (mode === 'research') payload.tools = [{ "google_search": {} }];
             }
 
@@ -347,7 +348,11 @@
                      if (response.status === 403) {
                          throw new Error('API key is invalid or missing. Please check your configuration.');
                     }
-                    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("API Error Response:", errorText);
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
                     
                     const result = await response.json();
                     if (mode === 'image') {
@@ -358,6 +363,10 @@
                     } else {
                         if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                             return result.candidates[0].content.parts[0].text;
+                        }
+                        // Handle cases where the response might be blocked
+                        if(result.candidates?.[0]?.finishReason === 'SAFETY') {
+                            return "I'm sorry, but I can't respond to that. The request was blocked for safety reasons."
                         }
                         throw new Error('Invalid text response from API');
                     }
