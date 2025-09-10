@@ -236,7 +236,7 @@
         
         const markdownConverter = new showdown.Converter();
         let stagedFile = null;
-        const geminiApiKey = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4";
+        const geminiApiKey = ""; // This should be left empty
 
         function getCurrentMessage() { return window.innerWidth < 640 ? messageInputMobile.value : messageInput.value; }
         function setCurrentMessage(val) {
@@ -314,10 +314,7 @@
         
         // Call Gemini API
         async function callGeminiApi(prompt, mode, file = null) {
-            if (!geminiApiKey) {
-                 throw new Error('API key is not set. Please add your key to the script.');
-            }
-            const apiKey = geminiApiKey;
+             const apiKey = geminiApiKey;
             let apiUrl, payload;
 
             if (mode === 'image') {
