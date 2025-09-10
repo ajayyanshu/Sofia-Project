@@ -1,23 +1,33 @@
 const express = require('express');
-const cors = require('cors');
+const dotenv = require('dotenv');
 const path = require('path');
-const app = express();
-const PORT = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
+// Load environment variables from .env file for local development
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Serve static files from the root directory (where index.html is)
 app.use(express.static(path.join(__dirname)));
 
-app.post('/chat', (req, res) => {
-    const userMessage = req.body.text;
-    console.log(`Received message from frontend: ${userMessage}`);
-
-    // Placeholder for your actual Gemini API call
-    const aiResponse = `You are using the '${req.body.model}' model. You typed: '${userMessage}'`;
-
-    res.json({ response: aiResponse });
+// API endpoint to get the Gemini API key
+app.get('/api/key', (req, res) => {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (apiKey) {
+    res.json({ apiKey: apiKey });
+  } else {
+    res.status(500).json({ error: 'API key not found on the server.' });
+  }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+// Fallback to serve index.html for any other requests (for single-page apps)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
+
