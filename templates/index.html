@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- MODIFIED: Added maximum-scale and user-scalable to prevent zooming -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sofia 2.0 - AI Chatbot</title>
     <!-- Load Tailwind CSS -->
@@ -11,7 +10,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* MODIFIED: Prevent body scrolling for an app-like feel */
+        html {
+            height: 100%;
+        }
         body {
+            height: 100%;
+            overflow: hidden;
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
@@ -96,7 +102,6 @@
             align-items: center; 
         }
         body.initial-view #welcome-message-container { flex-grow: 0; }
-        /* REMOVED: The rule that made the footer static in the initial view */
         .listening-bar { width: 3px; height: 5px; background-color: #6b7280; border-radius: 5px; animation: listening 1.2s infinite ease-in-out; }
         .listening-bar:nth-child(2) { animation-delay: -1.0s; }
         .listening-bar:nth-child(3) { animation-delay: -0.8s; }
@@ -109,7 +114,8 @@
         .mode-indicator { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen initial-view">
+<!-- MODIFIED: Removed min-h-screen as height is now handled in CSS -->
+<body class="flex flex-col initial-view">
     <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
         <div class="flex items-center space-x-2">
             <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
@@ -347,9 +353,6 @@
             sendBtn.classList.toggle('hidden', !hasText);
             micBtn.classList.toggle('hidden', hasText);
             voiceModeBtn.classList.toggle('hidden', hasText);
-            webSearchToggleBtn.classList.toggle('hidden', hasText);
-            addBtn.classList.toggle('hidden', hasText);
-            addBtn.parentElement.nextElementSibling.classList.toggle('hidden', hasText);
         });
         
         messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
