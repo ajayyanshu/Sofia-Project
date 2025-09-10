@@ -1,4 +1,4 @@
-a<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -9,7 +9,7 @@ a<!DOCTYPE html>
     <!-- Load Showdown library to render Markdown -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
@@ -46,12 +46,12 @@ a<!DOCTYPE html>
         .ai-message {
             background-color: #e5e7eb;
             color: #1f2937;
-            align-self: start;
+            align-self: flex-start;
             border-bottom-left-radius: 0.5rem;
             padding-bottom: 2.5rem; /* Space for action icons */
             width: fit-content; 
         }
-        .ai-typing-container {
+        .ai-message-container {
              display: flex;
              align-items: flex-start;
              gap: 0.75rem;
@@ -73,184 +73,175 @@ a<!DOCTYPE html>
         .ai-message ul { list-style-type: disc; padding-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
         .ai-message li { margin-bottom: 0.25rem; }
         .ai-message strong, .ai-message b { font-weight: 600; color: #111827; }
-        
-        .system-message {
-            background-color: #f87171; color: white; align-self: center; text-align: center;
-            font-size: 0.875rem; padding: 0.5rem 1rem;
-        }
-        .message-actions {
-            position: absolute; bottom: 0.5rem; right: 0.75rem; display: flex; gap: 0.5rem; opacity: 0.7;
-        }
-        .action-btn {
-            background: none; border: none; cursor: pointer; color: #6b7280; padding: 0.25rem;
-            border-radius: 9999px; transition: background-color 0.2s;
-        }
+        .system-message { background-color: #f87171; color: white; align-self: center; text-align: center; font-size: 0.875rem; padding: 0.5rem 1rem; }
+        .floating-action-button { transition: transform 0.2s ease-in-out; cursor: pointer; }
+        .floating-action-button:hover { transform: scale(1.05); }
+        .message-actions { position: absolute; bottom: 0.5rem; right: 0.75rem; display: flex; gap: 0.5rem; opacity: 0.7; }
+        .action-btn { background: none; border: none; cursor: pointer; color: #6b7280; padding: 0.25rem; border-radius: 9999px; transition: background-color 0.2s; }
         .action-btn:hover { background-color: #d1d5db; }
-        #message-input, #message-input-mobile {
-            resize: none; overflow-y: hidden; max-height: 150px; transition: all 0.2s ease-in-out;
-            border: none; width: 100%; background: transparent;
-        }
-        #message-input:focus, #message-input-mobile:focus { outline: none; }
-        
-        #file-preview-container { display: flex; gap: 0.5rem; padding: 0.5rem 0.5rem 0 0.5rem; }
+        #message-input { resize: none; overflow-y: hidden; max-height: 150px; }
+        #file-preview-container { padding: 0.5rem 0.5rem 0 0.5rem; display: flex; gap: 0.5rem; }
         .preview-item { position: relative; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e5e7eb; }
         .preview-item.image-preview { width: 70px; height: 70px; }
         .preview-item img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .remove-preview-btn {
-            position: absolute; top: 2px; right: 2px; width: 1.25rem; height: 1.25rem;
-            background-color: rgba(0,0,0,0.5); color: white; border-radius: 50%;
-            border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 0.75rem; line-height: 1;
+        .preview-item.doc-preview { display: flex; align-items: center; padding: 0.5rem 0.75rem; background-color: #f3f4f6; }
+        .doc-preview .file-icon { flex-shrink: 0; margin-right: 0.5rem; }
+        .doc-preview .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.875rem; color: #4b5563; }
+        .remove-preview-btn { position: absolute; top: 2px; right: 2px; width: 1.25rem; height: 1.25rem; background-color: rgba(0,0,0,0.5); color: white; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; line-height: 1; }
+        body.initial-view main { display: flex; flex-direction: column; justify-content: center; align-items: center; padding-bottom: 0; }
+        body.initial-view #welcome-message-container { flex-grow: 0; }
+        body.initial-view footer { position: static; padding-top: 2rem; background-color: transparent; }
+        .listening-bar { width: 3px; height: 5px; background-color: #6b7280; border-radius: 5px; animation: listening 1.2s infinite ease-in-out; }
+        .listening-bar:nth-child(2) { animation-delay: -1.0s; }
+        .listening-bar:nth-child(3) { animation-delay: -0.8s; }
+        @keyframes listening {
+            0%, 40%, 100% { transform: scaleY(0.4); }
+            20% { transform: scaleY(1.0); }
         }
-        .check-mark { display: none; }
-        .menu-item.active .check-mark { display: block; }
-        
+        .menu-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s; }
+        .menu-item:hover { background-color: #f3f4f6; }
+        .mode-indicator { display: inline-flex; align-items: center; gap: 0.25rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.875rem; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="flex flex-col min-h-screen initial-view">
     <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-10">
         <div class="flex items-center space-x-2">
-             <button class="sm:hidden"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg></button>
             <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col pt-20 pb-48 sm:pb-32 bg-white">
-        <div id="welcome-message-container" class="flex-1 flex flex-col items-center justify-center p-4 text-center">
-            <h1 class="text-4xl font-bold text-gray-800 mb-8">What can I help with?</h1>
+    <main class="flex-1 flex flex-col pt-20 pb-24 bg-white">
+        <div id="welcome-message-container" class="flex-1 flex items-center justify-center p-4 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">What can I help with?</h1>
         </div>
         <div id="chat-container" class="flex-1 flex-col overflow-y-auto w-full px-4 sm:px-6 hidden"></div>
     </main>
 
-    <footer class="w-full flex justify-center py-2 px-2 sm:py-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-transparent">
-        <div class="w-full max-w-3xl flex flex-col">
-             <!-- Mobile Input -->
-             <div class="sm:hidden w-full">
-                <div class="bg-white flex items-center p-2 space-x-2 rounded-2xl shadow-lg border border-gray-200">
-                    <button id="add-btn-mobile" class="p-2 text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-6-6h12" />
-                        </svg>
+    <footer class="w-full flex justify-center py-4 px-4 sm:px-6 fixed bottom-0 left-0 right-0 bg-white">
+        <div class="w-full max-w-3xl flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg">
+            <div id="file-preview-container"></div>
+            <div id="mode-indicator-container" class="p-2 pb-0"></div>
+            <div class="w-full flex items-end px-2 sm:px-4 py-2">
+                <div class="relative flex items-center">
+                     <button id="add-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
                     </button>
-                    <textarea id="message-input-mobile" rows="1" placeholder="Ask Sofia 2.0..." class="flex-1 bg-transparent focus:outline-none py-2" aria-label="Ask AI Chatbot"></textarea>
-                     <div id="mic-voice-container-mobile" class="flex items-center">
-                        <button id="mic-btn-mobile" class="p-2 text-gray-500"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
-                        <button id="voice-mode-btn-mobile" class="p-2 text-gray-100 bg-black rounded-full"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M9 8v8M15 5v14M21 10v4"/></svg></button>
-                    </div>
-                    <button id="send-btn-mobile" class="hidden p-2 text-white bg-indigo-600 rounded-full"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11l7-7 7 7M12 4v17" /></svg></button>
-                </div>
-            </div>
-            <!-- Desktop Input -->
-            <div class="hidden sm:flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg px-4 py-2">
-                <div id="file-preview-container"></div>
-                <textarea id="message-input" rows="1" placeholder="Ask Sofia 2.0..." class="flex-1 min-w-0 p-2 bg-transparent text-gray-700" aria-label="Ask AI Chatbot"></textarea>
-                <div class="flex items-center mt-2">
-                    <div class="flex items-center flex-1">
-                        <div class="relative flex items-center">
-                             <button id="add-btn" class="p-2 text-gray-500 hover:text-indigo-600 transition-colors rounded-full hover:bg-gray-100 focus:outline-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div id="mode-tag-container" class="hidden items-center ml-2">
-                             <div id="mode-tag" class="flex items-center pl-3 pr-2 py-1 space-x-1 text-blue-600 bg-blue-100 rounded-full font-medium text-sm flex-shrink-0">
-                                 <span id="mode-tag-icon"></span>
-                                 <span id="mode-tag-text"></span>
-                                 <button id="remove-mode-tag-btn" class="text-blue-800 hover:text-blue-900">&times;</button>
-                             </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center">
-                        <div id="mic-voice-container" class="flex items-center">
-                            <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
-                            <button id="voice-mode-btn" class="p-2 text-gray-400 hover:text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M9 8v8M15 5v14M21 10v4"/></svg></button>
-                        </div>
-                        <button id="send-btn" class="hidden ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 11l7-7 7 7M12 4v17" /></svg></button>
+                    <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
+                    <div id="add-menu" class="hidden absolute bottom-full mb-2 w-60 bg-white border border-gray-200 rounded-xl shadow-lg p-2 z-20">
+                        <button id="upload-file-btn" class="menu-item w-full text-left">
+                            <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                            <span class="text-sm font-medium text-gray-700">Add photos & file</span>
+                        </button>
+                        <button id="create-image-btn" class="menu-item w-full text-left">
+                           <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                           <span class="text-sm font-medium text-gray-700">Create an image</span>
+                        </button>
                     </div>
                 </div>
+                <div class="border-l h-6 border-gray-300 mx-2"></div>
+                
+                <textarea id="message-input" rows="1" placeholder="Ask anything" class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
+                
+                <div id="listening-indicator" class="hidden items-center gap-1 p-2 flex-shrink-0">
+                    <div class="listening-bar"></div><div class="listening-bar"></div><div class="listening-bar"></div>
+                </div>
+
+                <button id="web-search-toggle-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                </button>
+
+                <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors floating-action-button flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+
+                <button id="voice-mode-btn" class="p-2 w-10 h-10 bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors floating-action-button flex-shrink-0 flex items-center justify-center">
+                    <div class="flex items-center gap-0.5">
+                        <div class="listening-bar h-3"></div><div class="listening-bar h-3"></div><div class="listening-bar h-3"></div>
+                    </div>
+                </button>
+                
+                <button id="send-btn" class="hidden ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors floating-action-button flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
             </div>
         </div>
     </footer>
-    
-    <!-- Action Menu -->
-    <div id="action-menu" class="fixed bottom-24 sm:bottom-28 left-2 sm:left-auto w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-20 hidden">
-        <button id="menu-add-files-btn" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center space-x-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-            </svg>
-            <span class="text-sm font-medium">Add photos & files</span>
-        </button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="think" data-placeholder="Let's think about..." data-tag-text="Think"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.75-1-2.414l-.548-.547z" /></svg><span class="text-sm font-medium">Think longer</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between active" data-mode="research" data-placeholder="Get a detailed report on..." data-tag-text="Research"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.33 1.885 18.658 1.5 19 1.5s.67.385.832.486l.004.003.018.01a.5.5 0 01.04.062l.003.004a.5.5 0 01.018.033L20 2.13l.004.004a.5.5 0 01.02.042l.002.003a.5.5 0 01.016.037l.002.004a.5.5 0 01.01.03l.002.004c.003.01.006.02.007.031l.002.004a.5.5 0 01.004.022l.003.005a.5.5 0 01.002.02l.002.004a.5.5 0 01.003.023l.002.004a.5.5 0 01.002.023l.002.003a.5.5 0 01.002.024l.002.004a.5.5 0 01.002.025l.002.003a.5.5 0 01.002.026l.002.004a.5.5 0 01.002.028l.002.003a.5.5 0 01.002.03l.002.003a.5.5 0 01.002.034l.002.002a.5.5 0 01.002.036l.003.003a.5.5 0 01.002.04l.002.002a.5.5 0 01.002.045V4.5" /></svg><span class="text-sm font-medium">Deep Research</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="study" data-placeholder="What should we study?" data-tag-text="Study"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg><span class="text-sm font-medium">Study and learn</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="image" data-placeholder="Create an image of..." data-tag-text="Image"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span class="text-sm font-medium">Create Image</span></div></button>
-        <button class="menu-item w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center justify-between" data-mode="web" data-placeholder="Search the web for..." data-tag-text="Web"><div class="flex items-center space-x-3"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 009-9M3 12a9 9 0 019-9m-9 9h18" /></svg><span class="text-sm font-medium">Web Search</span></div></button>
-    </div>
-    <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
 
     <script type="module">
-        // Get all DOM elements
         const chatContainer = document.getElementById('chat-container');
         const welcomeMessageContainer = document.getElementById('welcome-message-container');
         const messageInput = document.getElementById('message-input');
-        const messageInputMobile = document.getElementById('message-input-mobile');
         const sendBtn = document.getElementById('send-btn');
-        const sendBtnMobile = document.getElementById('send-btn-mobile');
         const micBtn = document.getElementById('mic-btn');
-        const micBtnMobile = document.getElementById('mic-btn-mobile');
+        const addBtn = document.getElementById('add-btn');
         const fileInput = document.getElementById('file-input');
         const filePreviewContainer = document.getElementById('file-preview-container');
-        const addBtn = document.getElementById('add-btn');
-        const addBtnMobile = document.getElementById('add-btn-mobile');
-        const actionMenu = document.getElementById('action-menu');
-        const micVoiceContainer = document.getElementById('mic-voice-container');
-        const micVoiceContainerMobile = document.getElementById('mic-voice-container-mobile');
-        const modeTagContainer = document.getElementById('mode-tag-container');
-        const modeTagText = document.getElementById('mode-tag-text');
-        const modeTagIcon = document.getElementById('mode-tag-icon');
-        const removeModeTagBtn = document.getElementById('remove-mode-tag-btn');
-        const menuAddFilesBtn = document.getElementById('menu-add-files-btn');
-        const menuItems = document.querySelectorAll('.menu-item');
+        const listeningIndicator = document.getElementById('listening-indicator');
+        const addMenu = document.getElementById('add-menu');
+        const uploadFileBtn = document.getElementById('upload-file-btn');
+        const createImageBtn = document.getElementById('create-image-btn');
+        const modeIndicatorContainer = document.getElementById('mode-indicator-container');
+        const webSearchToggleBtn = document.getElementById('web-search-toggle-btn');
+        const voiceModeBtn = document.getElementById('voice-mode-btn');
         
         const markdownConverter = new showdown.Converter();
         let stagedFile = null;
+        let currentMode = null; 
 
-        function getCurrentMessage() { return window.innerWidth < 640 ? messageInputMobile.value : messageInput.value; }
-        function setCurrentMessage(val) {
-            messageInput.value = val;
-            messageInputMobile.value = val;
-            messageInput.dispatchEvent(new Event('input'));
-            messageInputMobile.dispatchEvent(new Event('input'));
-        }
-
-        // Add a message to the chat
-        function addMessage(text, sender, fileInfo = null) {
-            if (welcomeMessageContainer.offsetParent) {
-                welcomeMessageContainer.classList.add('hidden');
-                chatContainer.classList.remove('hidden');
-            }
+        // --- START: MODIFIED addMessage function ---
+        function addMessage(text, sender, fileInfo = null, mode = null) {
             if (sender === 'user') {
                 const messageBubble = document.createElement('div');
                 let fileHtml = '';
-                if (fileInfo && fileInfo.type.startsWith('image/')) {
-                     fileHtml = `<img src="${stagedFile.dataUrl}" alt="User upload" class="rounded-lg mb-2 max-w-xs">`;
+                if (fileInfo) {
+                    if (fileInfo.type.startsWith('image/')) {
+                         fileHtml = `<img src="${fileInfo.dataUrl}" alt="User upload" class="rounded-lg mb-2 max-w-xs">`;
+                    } else {
+                        fileHtml = `<div class="flex items-center bg-blue-100 rounded-lg p-2 mb-2"><svg class="h-6 w-6 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg><span class="text-sm text-blue-800">${fileInfo.name}</span></div>`;
+                    }
                 }
-                messageBubble.innerHTML = fileHtml + `<div>${text}</div>`;
+
+                let modeIconHtml = '';
+                if (mode === 'create_image' || mode === 'web_search') {
+                    modeIconHtml = `
+                        <div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center mr-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    `;
+                }
+                
+                messageBubble.innerHTML = fileHtml + `
+                    <div class="flex items-center">
+                        ${modeIconHtml}
+                        <span>${text}</span>
+                    </div>`;
                 messageBubble.className = 'message-bubble user-message ml-auto';
                 chatContainer.appendChild(messageBubble);
+
             } else if (sender === 'ai') {
+                 const aiMessageContainer = document.createElement('div');
+                aiMessageContainer.className = 'ai-message-container';
+                const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
                 const messageBubble = document.createElement('div');
                 messageBubble.className = 'message-bubble ai-message';
-                if (text.startsWith('data:image')) {
-                    messageBubble.innerHTML = `<img src="${text}" alt="Generated by AI" class="rounded-lg max-w-full">`;
-                } else {
-                    const formattedHtml = markdownConverter.makeHtml(text);
-                    messageBubble.innerHTML = formattedHtml;
-                }
-                chatContainer.appendChild(messageBubble);
-
+                const formattedHtml = markdownConverter.makeHtml(text);
+                const contentDiv = document.createElement('div');
+                contentDiv.innerHTML = formattedHtml;
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'message-actions';
+                actionsDiv.innerHTML = `<button class="action-btn copy-btn" title="Copy text"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg></button><button class="action-btn" title="Good response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></button><button class="action-btn" title="Bad response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg></button>`;
+                messageBubble.appendChild(contentDiv);
+                messageBubble.appendChild(actionsDiv);
+                aiMessageContainer.innerHTML = avatar;
+                aiMessageContainer.appendChild(messageBubble);
+                chatContainer.appendChild(aiMessageContainer);
+                actionsDiv.querySelector('.copy-btn').addEventListener('click', (e) => {
+                    navigator.clipboard.writeText(text);
+                    e.target.closest('button').innerHTML = 'Copied!';
+                    setTimeout(() => { e.target.closest('button').innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`; }, 1500);
+                });
             } else if (sender === 'system') {
                 const messageBubble = document.createElement('div');
                 messageBubble.textContent = text;
@@ -259,13 +250,20 @@ a<!DOCTYPE html>
             }
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
+        // --- END: MODIFIED addMessage function ---
         
-        // Show file preview
         function showFilePreview(file) {
             filePreviewContainer.innerHTML = '';
             const previewItem = document.createElement('div');
-            previewItem.className = 'preview-item image-preview';
-            previewItem.innerHTML = `<img src="${stagedFile.dataUrl}" alt="${file.name}"><button class="remove-preview-btn">&times;</button>`;
+            previewItem.className = 'preview-item';
+            
+            if (file.type.startsWith('image/')) {
+                 previewItem.classList.add('image-preview');
+                 previewItem.innerHTML = `<img src="${stagedFile.dataUrl}" alt="${file.name}"><button class="remove-preview-btn">&times;</button>`;
+            } else {
+                 previewItem.classList.add('doc-preview');
+                 previewItem.innerHTML = `<div class="file-icon"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div><span class="file-name">${file.name}</span><button class="remove-preview-btn">&times;</button>`;
+            }
             filePreviewContainer.appendChild(previewItem);
             previewItem.querySelector('.remove-preview-btn').addEventListener('click', () => {
                 stagedFile = null;
@@ -273,120 +271,114 @@ a<!DOCTYPE html>
                 fileInput.value = '';
             });
         }
-        
-        // Call Gemini API
-        async function callGeminiApi(prompt, mode, file = null) {
-            const apiKey = "";
-            let apiUrl, payload;
 
-            if (mode === 'image') {
-                apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-                payload = { instances: [{ prompt }], parameters: { "sampleCount": 1 } };
-            } else {
-                apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                let parts = [{ text: prompt }];
-                if (file && file.type.startsWith('image/')) {
-                    parts.push({ inlineData: { mimeType: file.type, data: file.base64 } });
-                }
-                payload = { contents: [{ parts }] };
-                if (mode === 'research') payload.tools = [{ "google_search": {} }];
-            }
-
-            for (let i = 0, delay = 1000; i < 3; i++, delay *= 2) {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-                    
-                    const result = await response.json();
-                    if (mode === 'image') {
-                        if (result.predictions?.[0]?.bytesBase64Encoded) {
-                            return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
-                        }
-                        throw new Error('Invalid image response from API');
-                    } else {
-                        if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                            return result.candidates[0].content.parts[0].text;
-                        }
-                        throw new Error('Invalid text response from API');
-                    }
-                } catch (error) {
-                    if (i === 2) throw error;
-                    await new Promise(res => setTimeout(res, delay));
-                }
-            }
-        }
-
-        // Send message logic
         async function sendMessage() {
-            let messageText = getCurrentMessage().trim();
+            let messageText = messageInput.value.trim();
             if (!messageText && !stagedFile) return;
 
-            const activeMode = document.querySelector('.menu-item.active')?.dataset.mode || 'chat';
+            if (document.body.classList.contains('initial-view')) {
+                document.body.classList.remove('initial-view');
+                welcomeMessageContainer.classList.add('hidden');
+                chatContainer.classList.remove('hidden');
+            }
             
-            addMessage(messageText, 'user', stagedFile);
+            // --- MODIFIED: Pass currentMode to addMessage ---
+            addMessage(messageText, 'user', stagedFile, currentMode);
             
-            const currentFile = stagedFile;
-            stagedFile = null;
-            setCurrentMessage('');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
             filePreviewContainer.innerHTML = '';
-
+            sendBtn.classList.add('hidden');
+            micBtn.classList.remove('hidden');
+            
             const typingIndicatorContainer = document.createElement('div');
-            typingIndicatorContainer.className = 'ai-typing-container typing-indicator';
-            typingIndicatorContainer.innerHTML = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div><div class="message-bubble ai-message" style="padding-bottom: 0.75rem;">Sofia is thinking...</div>`;
+            typingIndicatorContainer.className = 'ai-message-container typing-indicator';
+            const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
+            const typingBubble = `<div class="message-bubble ai-message" style="padding-bottom: 0.75rem;">Sofia is typing...</div>`;
+            typingIndicatorContainer.innerHTML = avatar + typingBubble;
             chatContainer.appendChild(typingIndicatorContainer);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
+            const apiUrl = window.location.origin + '/chat';
+            const payload = { text: messageText, isVision: !!stagedFile, fileData: stagedFile ? stagedFile.base64 : null, fileName: stagedFile ? stagedFile.name : null, fileType: stagedFile ? stagedFile.type : null, mode: currentMode };
+            
+            stagedFile = null;
+
             try {
-                const responseText = await callGeminiApi(messageText, activeMode, currentFile);
-                addMessage(responseText, 'ai');
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                document.querySelector('.typing-indicator').remove();
+                if (!response.ok) { throw new Error(await response.text() || `Server responded with status ${response.status}`); }
+                const result = await response.json();
+                addMessage(result.response, 'ai');
             } catch (error) {
-                console.error('Error calling Gemini API:', error);
-                addMessage(`Sorry, I encountered an error: ${error.message}. Please try again.`, 'system');
-            } finally {
-                document.querySelector('.typing-indicator')?.remove();
+                console.error('Error sending message:', error);
+                const indicator = document.querySelector('.typing-indicator');
+                if (indicator) indicator.remove();
+                addMessage(`Sorry, something went wrong. Make sure your backend can handle the uploaded file type.`, 'system');
             }
         }
         
-        // Event Listeners Setup
         sendBtn.addEventListener('click', sendMessage);
-        sendBtnMobile.addEventListener('click', sendMessage);
-
-        function adjustTextareaHeight(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = `${textarea.scrollHeight}px`;
-        }
         
-        [messageInput, messageInputMobile].forEach(input => {
-            input.addEventListener('input', () => {
-                adjustTextareaHeight(input);
-                const hasText = input.value.trim().length > 0;
-                
-                micVoiceContainer.classList.toggle('hidden', hasText);
-                sendBtn.classList.toggle('hidden', !hasText);
-                micVoiceContainerMobile.classList.toggle('hidden', hasText);
-                sendBtnMobile.classList.toggle('hidden', !hasText);
-                if (input === messageInput) messageInputMobile.value = input.value;
-                if (input === messageInputMobile) messageInput.value = input.value;
-            });
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            let newHeight = messageInput.scrollHeight;
+            messageInput.style.height = `${newHeight}px`;
+            if (newHeight > 150) { messageInput.style.overflowY = 'auto'; } else { messageInput.style.overflowY = 'hidden'; }
+            if (messageInput.value.trim() !== '') { sendBtn.classList.remove('hidden'); micBtn.classList.add('hidden'); } else { sendBtn.classList.add('hidden'); micBtn.classList.remove('hidden'); }
+        });
+        
+        messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            addMenu.classList.toggle('hidden');
         });
 
+        window.addEventListener('click', () => {
+             if (!addMenu.classList.contains('hidden')) {
+                addMenu.classList.add('hidden');
+            }
+        });
+        
+        uploadFileBtn.addEventListener('click', () => {
+            fileInput.click();
+            addMenu.classList.add('hidden');
+        });
+        
+        createImageBtn.addEventListener('click', () => {
+            currentMode = 'create_image'; // Set mode first
+            messageInput.value = "A hyper-realistic photo of ";
+            messageInput.focus();
+            messageInput.dispatchEvent(new Event('input')); 
+            addMenu.classList.add('hidden');
+        });
+
+        webSearchToggleBtn.addEventListener('click', () => {
+            if (currentMode === 'web_search') {
+                currentMode = null;
+                modeIndicatorContainer.innerHTML = '';
+                webSearchToggleBtn.classList.remove('text-blue-600');
+            } else {
+                currentMode = 'web_search';
+                modeIndicatorContainer.innerHTML = `<div class="mode-indicator ml-2">
+                    <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                    <span>Web Search Active</span>
+                </div>`;
+                webSearchToggleBtn.classList.add('text-blue-600');
+                messageInput.focus();
+            }
+        });
+        
+        voiceModeBtn.addEventListener('click', () => {
+            console.log("Voice mode button clicked.");
+            addMessage("Voice mode is not yet implemented.", 'system');
+        });
+        
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
-            if (file.size > 4 * 1024 * 1024) {
-                addMessage("Sorry, that file is too large. Please upload files under 4MB.", "system");
-                return;
-            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 stagedFile = { base64: e.target.result.split(',')[1], dataUrl: e.target.result, name: file.name, type: file.type };
@@ -394,84 +386,32 @@ a<!DOCTYPE html>
             };
             reader.readAsDataURL(file);
         });
-
-        function toggleActionMenu() {
-            actionMenu.classList.toggle('hidden');
-        }
         
-        addBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleActionMenu() });
-        addBtnMobile.addEventListener('click', (e) => { e.stopPropagation(); toggleActionMenu() });
-        
-        document.addEventListener('click', (event) => {
-            if (!actionMenu.classList.contains('hidden') && !actionMenu.contains(event.target) && !addBtn.contains(event.target) && !addBtnMobile.contains(event.target)) {
-                actionMenu.classList.add('hidden');
-            }
-        });
-
-        function setMode(target) {
-            const wasActive = target.classList.contains('active');
-            menuItems.forEach(item => item.classList.remove('active'));
-
-            if (wasActive) {
-                modeTagContainer.classList.add('hidden');
-                messageInput.placeholder = "Ask Sofia 2.0...";
-            } else {
-                target.classList.add('active');
-                messageInput.placeholder = target.dataset.placeholder;
-                modeTagText.textContent = target.dataset.tagText;
-                modeTagIcon.innerHTML = target.querySelector('.flex.items-center.space-x-3 svg').outerHTML;
-                modeTagContainer.classList.remove('hidden');
-            }
-            if (!actionMenu.classList.contains('hidden')) {
-                toggleActionMenu();
-            }
-            messageInput.focus();
-        }
-
-        menuItems.forEach(item => { item.addEventListener('click', (e) => setMode(e.currentTarget)); });
-        removeModeTagBtn.addEventListener('click', () => {
-            document.querySelector('.menu-item.active')?.classList.remove('active');
-            modeTagContainer.classList.add('hidden');
-            messageInput.placeholder = "Ask Sofia 2.0...";
-        });
-        
-        if (menuAddFilesBtn) {
-            menuAddFilesBtn.addEventListener('click', () => { fileInput.click(); toggleActionMenu(); });
-        }
-        
-        // Voice Recognition
         let recognition;
-        function setupRecognition() {
-            if (!recognition) {
-                try {
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    recognition = new SpeechRecognition();
-                    recognition.continuous = false;
-                    recognition.lang = 'en-US';
-                    recognition.onstart = () => [micBtn, micBtnMobile].forEach(b => b.classList.add('text-red-500'));
-                    recognition.onend = () => [micBtn, micBtnMobile].forEach(b => b.classList.remove('text-red-500'));
-                    recognition.onresult = (event) => {
-                        setCurrentMessage(event.results[0][0].transcript);
-                        sendMessage();
-                    };
-                    recognition.onerror = (event) => addMessage(`Speech recognition error: ${event.error}`, 'system');
-                } catch (e) {
-                    [micBtn, micBtnMobile].forEach(b => b.style.display = 'none');
-                    console.warn('Speech Recognition not supported.');
-                    return;
-                }
-            }
-            recognition.start();
+        try {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            recognition.onstart = () => { micBtn.classList.add('text-red-500'); listeningIndicator.classList.remove('hidden'); listeningIndicator.classList.add('flex'); };
+            recognition.onend = () => { micBtn.classList.remove('text-red-500'); listeningIndicator.classList.add('hidden'); listeningIndicator.classList.remove('flex'); };
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+                messageInput.dispatchEvent(new Event('input'));
+                sendMessage();
+            };
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                addMessage(`Speech recognition error: ${event.error}`, 'system');
+                listeningIndicator.classList.add('hidden');
+                listeningIndicator.classList.remove('flex');
+            };
+            micBtn.addEventListener('click', () => recognition.start());
+        } catch (e) {
+            micBtn.style.display = 'none';
+            console.warn('Speech Recognition API is not supported in this browser.');
         }
-        micBtn.addEventListener('click', setupRecognition);
-        micBtnMobile.addEventListener('click', setupRecognition);
-        
-        // Set initial state
-        document.querySelector('.menu-item[data-mode="research"]').click();
-        
-        messageInput.dispatchEvent(new Event('input'));
-        messageInputMobile.dispatchEvent(new Event('input'));
-
     </script>
 </body>
 </html>
