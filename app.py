@@ -15,6 +15,7 @@ app = Flask(__name__, template_folder='templates')
 # --- Securely Load API Keys from Render Environment ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
+GOOGLE_SEARCH_API_KEY = os.environ.get("GOOGLE_SEARCH_API_KEY")
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
