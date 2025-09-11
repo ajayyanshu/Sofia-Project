@@ -13,16 +13,13 @@ from youtube_transcript_api import YouTubeTranscriptApi
 app = Flask(__name__, template_folder='templates')
 
 # --- Securely Load API Keys from Render Environment ---
-# This reads the keys you set in the Render dashboard.
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 
 # --- Configure API Services ---
-# Check if the keys were loaded before configuring
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 else:
-    # This message will appear in your Render logs if the key is missing.
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
 
 # --- GitHub PDF Configuration ---
@@ -34,7 +31,7 @@ AVAILABLE_PDFS = [
     "2023 - English (7403-01).pdf",
     "2023 - Hindi (7402-01).pdf",
     "2025 - English (7403-01).pdf",
-    "2025 - Hindi (7402-01).pdf"
+    "2025 - Hindi (7402-01).pdf",
 ]
 
 @app.route('/')
@@ -93,9 +90,37 @@ def chat():
         user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType')
-        
+        mode = data.get('mode')
+
+        # --- Mode: Create Image ---
+        if mode == 'create_image':
+            try:
+                model = genai.GenerativeModel('gemini-1.5-flash-image-preview')
+                response = model.generate_content(user_message)
+                
+                image_part = next((p for p in response.parts if p.inline_data), None)
+                text_part = next((p for p in response.parts if p.text), None)
+
+                if image_part:
+                    image_b64 = base64.b64encode(image_part.inline_data.data).decode('utf-8')
+                    image_url = f"data:{image_part.inline_data.mime_type};base64,{image_b64}"
+                    ai_response_text = text_part.text if text_part else "Here is the image you requested."
+                    return jsonify({'response': ai_response_text, 'imageUrl': image_url})
+                else:
+                    fallback_text = text_part.text if text_part else "Sorry, I couldn't create an image. Please try a different prompt."
+                    return jsonify({'response': fallback_text})
+            except Exception as e:
+                print(f"Image generation failed: {e}")
+                return jsonify({'response': "Sorry, I encountered an error while creating the image."})
+
+
         model = genai.GenerativeModel('gemini-1.5-flash')
         
+        # --- Mode: Web Search ---
+        if mode == 'web_search':
+            response = model.generate_content(user_message, tools=[genai.Tool(google_search=genai.GoogleSearch())])
+            return jsonify({'response': response.text})
+
         if "youtube.com" in user_message or "youtu.be" in user_message:
             video_id = get_video_id(user_message)
             if video_id:
@@ -120,7 +145,7 @@ def chat():
                 if document_text:
                     prompt = f"Based on '{matched_filename}', answer: '{user_message}'\n\nContent:\n{document_text}"
                     response = model.generate_content(prompt)
-                    ai_response = f"I found **{matched_filename}**.\n\n" + response.text
+                    ai_response = f"I found **{matched_filename}**.\\n\\n" + response.text
                     ai_response += f"<br><br><a href='{download_url}' target='_blank' style='color: blue; text-decoration: underline;'>Download this paper here</a>"
                     return jsonify({'response': ai_response})
                 else:
