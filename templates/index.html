@@ -148,12 +148,12 @@
     </style>
 </head>
 <body class="h-full flex flex-col initial-view">
-    <!-- NEW: Voice input overlay -->
+    <!-- Voice input overlay -->
     <div id="voice-overlay" class="hidden fixed inset-0 z-50 flex-col items-center justify-center p-8">
         <div class="flex-1 flex items-center justify-center">
             <div class="cloud"></div>
         </div>
-        <p class="text-white text-lg mb-8">Finish speaking to send</p>
+        <p id="voice-status-text" class="text-white text-lg mb-8">Listening...</p>
         <div class="flex w-full justify-center gap-16">
             <button id="stop-voice-btn" class="w-16 h-16 bg-gray-800 text-white rounded-full flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -253,10 +253,14 @@
         const voiceOverlay = document.getElementById('voice-overlay');
         const stopVoiceBtn = document.getElementById('stop-voice-btn');
         const cancelVoiceBtn = document.getElementById('cancel-voice-btn');
+        const voiceStatusText = document.getElementById('voice-status-text');
+
         
         const markdownConverter = new showdown.Converter();
         let stagedFile = null;
         let currentMode = null; 
+        let recognition;
+        let isVoiceConversationActive = false;
 
         function speakText(text, onEndCallback) {
             if ('speechSynthesis' in window) {
@@ -264,7 +268,12 @@
                 const cleanedText = text.replace(/[*_`#]/g, '');
                 const utterance = new SpeechSynthesisUtterance(cleanedText);
                 utterance.lang = 'en-US';
-                utterance.onend = onEndCallback;
+                utterance.onstart = () => {
+                    voiceStatusText.textContent = "Sofia is speaking...";
+                };
+                utterance.onend = () => {
+                    if(onEndCallback) onEndCallback();
+                };
                 window.speechSynthesis.speak(utterance);
             } else {
                 console.error('Speech Synthesis API is not supported in this browser.');
@@ -428,12 +437,8 @@
                     
                     if (modeForThisMessage === 'voice_mode') {
                         speakText(result.response, () => {
-                            if (currentMode === 'voice_mode') {
-                                try {
-                                    recognition.start();
-                                } catch(e) {
-                                    console.error("Could not restart recognition:", e);
-                                }
+                            if (isVoiceConversationActive) {
+                                startListening();
                             }
                         });
                     }
@@ -443,6 +448,9 @@
                 const indicator = document.querySelector('.typing-indicator');
                 if (indicator) indicator.remove();
                 addMessage(`Sorry, something went wrong. Please try again.`, 'system');
+                 if (currentMode === 'voice_mode' && isVoiceConversationActive) {
+                    setTimeout(startListening, 1000); 
+                }
             }
         }
         
@@ -521,19 +529,6 @@
             }
         });
         
-        voiceModeBtn.addEventListener('click', () => {
-            currentMode = 'voice_mode';
-            try {
-                window.speechSynthesis.cancel();
-                voiceOverlay.classList.remove('hidden');
-                voiceOverlay.classList.add('flex');
-                recognition.start();
-            } catch(e) {
-                console.error("Could not start recognition:", e);
-                addMessage("Sorry, I couldn't start listening. Please check your microphone permissions.", 'system');
-            }
-        });
-        
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -545,71 +540,91 @@
             };
             reader.readAsDataURL(file);
         });
-        
-        let recognition;
-        try {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.lang = 'en-US';
 
-            recognition.onstart = () => {
-                if (currentMode !== 'voice_mode') {
-                    micBtn.classList.add('text-red-500'); 
-                    listeningIndicator.classList.remove('hidden'); 
-                    listeningIndicator.classList.add('flex');
-                }
-            };
-            
-            recognition.onend = () => {
-                micBtn.classList.remove('text-red-500'); 
-                listeningIndicator.classList.add('hidden'); 
-                listeningIndicator.classList.remove('flex');
-                // Don't hide the overlay in voice mode, it's handled by cancel button or AI speech end
-                if (currentMode !== 'voice_mode') {
-                    voiceOverlay.classList.add('hidden');
-                    voiceOverlay.classList.remove('flex');
-                }
-            };
+        function startListening() {
+            if (!isVoiceConversationActive) return;
 
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                messageInput.value = transcript;
-                messageInput.dispatchEvent(new Event('input'));
-                sendMessage();
-            };
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = 'en-US';
 
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                addMessage(`Speech recognition error: ${event.error}`, 'system');
-                voiceOverlay.classList.add('hidden');
-                voiceOverlay.classList.remove('flex');
-            };
+                recognition.onstart = () => {
+                    voiceStatusText.textContent = "Listening...";
+                    if (currentMode !== 'voice_mode') {
+                        micBtn.classList.add('text-red-500');
+                        listeningIndicator.classList.remove('hidden');
+                        listeningIndicator.classList.add('flex');
+                    }
+                };
 
-            micBtn.addEventListener('click', () => {
-                currentMode = null;
+                recognition.onend = () => {
+                    micBtn.classList.remove('text-red-500');
+                    listeningIndicator.classList.add('hidden');
+                    listeningIndicator.classList.remove('flex');
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    messageInput.value = transcript;
+                    sendMessage();
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error !== 'aborted') {
+                       addMessage(`Speech recognition error: ${event.error}`, 'system');
+                    }
+                    if (isVoiceConversationActive) {
+                        setTimeout(startListening, 500);
+                    }
+                };
+                
                 recognition.start();
-            });
 
-            stopVoiceBtn.addEventListener('click', () => {
-                recognition.stop();
-            });
-
-            cancelVoiceBtn.addEventListener('click', () => {
+            } catch (e) {
+                micBtn.style.display = 'none';
+                voiceModeBtn.style.display = 'none';
+                console.warn('Speech Recognition API is not supported in this browser.');
+                addMessage('Speech recognition is not supported in this browser.', 'system');
+                isVoiceConversationActive = false;
                 voiceOverlay.classList.add('hidden');
                 voiceOverlay.classList.remove('flex');
-                if (recognition) {
-                    recognition.abort();
-                }
-                window.speechSynthesis.cancel();
-                currentMode = null;
-            });
-
-        } catch (e) {
-            micBtn.style.display = 'none';
-            voiceModeBtn.style.display = 'none';
-            console.warn('Speech Recognition API is not supported in this browser.');
+            }
         }
+
+        voiceModeBtn.addEventListener('click', () => {
+            currentMode = 'voice_mode';
+            isVoiceConversationActive = true;
+            voiceOverlay.classList.remove('hidden');
+            voiceOverlay.classList.add('flex');
+            startListening();
+        });
+
+        micBtn.addEventListener('click', () => {
+            currentMode = null;
+            isVoiceConversationActive = false;
+            startListening();
+        });
+
+        stopVoiceBtn.addEventListener('click', () => {
+            if (recognition) {
+                recognition.stop();
+            }
+        });
+
+        cancelVoiceBtn.addEventListener('click', () => {
+            isVoiceConversationActive = false;
+            voiceOverlay.classList.add('hidden');
+            voiceOverlay.classList.remove('flex');
+            if (recognition) {
+                recognition.abort();
+            }
+            window.speechSynthesis.cancel();
+            currentMode = null;
+        });
+
     </script>
 </body>
 </html>
