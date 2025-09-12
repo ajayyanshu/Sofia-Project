@@ -95,28 +95,30 @@ def chat():
         # --- Mode: Create Image ---
         if mode == 'create_image':
             try:
-                # Using the recommended model for image generation
-                model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
-                response = model.generate_content(user_message)
-                
-                image_part = next((p for p in response.parts if p.inline_data), None)
-                text_part = next((p for p in response.parts if p.text), None)
+                # Use the 'imagen-3.0-generate-002' model for image generation
+                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={GOOGLE_API_KEY}"
+                payload = {
+                    "instances": [{"prompt": user_message}],
+                    "parameters": {"sampleCount": 1}
+                }
+                response = requests.post(api_url, json=payload)
+                response.raise_for_status()
+                result = response.json()
 
-                if image_part:
-                    image_b64 = base64.b64encode(image_part.inline_data.data).decode('utf-8')
-                    image_url = f"data:{image_part.inline_data.mime_type};base64,{image_b64}"
-                    ai_response_text = text_part.text if text_part else "Here is the image you requested."
+                if result.get("predictions") and result["predictions"][0].get("bytesBase64Encoded"):
+                    image_b64 = result["predictions"][0]["bytesBase64Encoded"]
+                    image_url = f"data:image/png;base64,{image_b64}"
+                    ai_response_text = f"Here is the image you requested for: '{user_message}'"
                     return jsonify({'response': ai_response_text, 'imageUrl': image_url})
                 else:
-                    fallback_text = text_part.text if text_part else "Sorry, I couldn't create an image. Please try a different prompt."
-                    return jsonify({'response': fallback_text})
+                    return jsonify({'response': "Sorry, I couldn't create an image. The model didn't return image data."})
+
             except Exception as e:
                 print(f"Image generation failed: {e}")
                 return jsonify({'response': "Sorry, I encountered an error while creating the image."})
 
-
         # Use the recommended model for text generation and search
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # --- Mode: Web Search ---
         if mode == 'web_search':
