@@ -14,8 +14,8 @@ app = Flask(__name__, template_folder='templates')
 
 # --- Hardcoded API Keys ---
 # ⚠️ This is NOT recommended for security reasons. Use environment variables for production.
-GOOGLE_API_KEY = "AIzaSyDSVYwHKLSd_R4HOKDTW8dCY1eY9TvbnP4"
-YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI" # Added YouTube Key
+GOOGLE_API_KEY = "xxxx
+YOUTUBE_API_KEY = "xxxxx" # Added YouTube Key
 
 # --- Configure API Services ---
 genai.configure(api_key=GOOGLE_API_KEY)
