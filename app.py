@@ -95,21 +95,31 @@ def chat():
         # --- Mode: Create Image ---
         if mode == 'create_image':
             try:
-                # Using the recommended model for image generation
-                model = genai.GenerativeModel('imagen-3.0-generate-002')
+                model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
                 response = model.generate_content(user_message)
                 
-                image_b64 = response.candidates[0].content.parts[0].inline_data.data
-                image_url = f"data:image/png;base64,{base64.b64encode(image_b64).decode('utf-8')}"
-                ai_response_text = f"Here is the image you requested for: '{user_message}'"
-                return jsonify({'response': ai_response_text, 'imageUrl': image_url})
+                image_part = None
+                text_part = None
+                for part in response.parts:
+                    if part.inline_data:
+                        image_part = part
+                    if part.text:
+                        text_part = part
+
+                if image_part:
+                    image_b64 = base64.b64encode(image_part.inline_data.data).decode('utf-8')
+                    image_url = f"data:{image_part.inline_data.mime_type};base64,{image_b64}"
+                    ai_response_text = text_part.text if text_part else f"Here is the image you requested: '{user_message}'"
+                    return jsonify({'response': ai_response_text, 'imageUrl': image_url})
+                else:
+                    fallback_text = text_part.text if text_part else "Sorry, I couldn't create an image. Please try a different prompt."
+                    return jsonify({'response': fallback_text})
 
             except Exception as e:
                 print(f"Image generation failed: {e}")
                 return jsonify({'response': "Sorry, I encountered an error while creating the image."})
 
 
-        # Use the recommended model for text generation and search
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         # --- Mode: Web Search ---
