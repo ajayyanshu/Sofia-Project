@@ -15,7 +15,6 @@ app = Flask(__name__, template_folder='templates')
 # --- Securely Load API Keys from Render Environment ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
-GOOGLE_SEARCH_API_KEY = os.environ.get("GOOGLE_SEARCH_API_KEY")
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
@@ -96,6 +95,7 @@ def chat():
         # --- Mode: Create Image ---
         if mode == 'create_image':
             try:
+                # Using the recommended model for image generation
                 model = genai.GenerativeModel('gemini-1.5-flash-image-preview')
                 response = model.generate_content(user_message)
                 
@@ -115,7 +115,8 @@ def chat():
                 return jsonify({'response': "Sorry, I encountered an error while creating the image."})
 
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Use the recommended model for text generation and search
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
         # --- Mode: Web Search ---
         if mode == 'web_search':
