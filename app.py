@@ -95,7 +95,7 @@ def chat():
         # --- Mode: Create Image ---
         if mode == 'create_image':
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
                 response = model.generate_content(user_message, generation_config={"response_mime_type": "image/png"})
                 
                 image_part = response.parts[0]
@@ -109,7 +109,7 @@ def chat():
                 return jsonify({'response': "Sorry, I encountered an error while creating the image."})
 
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('"gemini-2.5-flash-image-preview"')
         
         # --- Mode: Web Search ---
         if mode == 'web_search':
