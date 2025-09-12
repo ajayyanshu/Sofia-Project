@@ -95,27 +95,19 @@ def chat():
         # --- Mode: Create Image ---
         if mode == 'create_image':
             try:
-                # Use the 'imagen-3.0-generate-002' model for image generation
-                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={GOOGLE_API_KEY}"
-                payload = {
-                    "instances": [{"prompt": user_message}],
-                    "parameters": {"sampleCount": 1}
-                }
-                response = requests.post(api_url, json=payload)
-                response.raise_for_status()
-                result = response.json()
-
-                if result.get("predictions") and result["predictions"][0].get("bytesBase64Encoded"):
-                    image_b64 = result["predictions"][0]["bytesBase64Encoded"]
-                    image_url = f"data:image/png;base64,{image_b64}"
-                    ai_response_text = f"Here is the image you requested for: '{user_message}'"
-                    return jsonify({'response': ai_response_text, 'imageUrl': image_url})
-                else:
-                    return jsonify({'response': "Sorry, I couldn't create an image. The model didn't return image data."})
+                # Using the recommended model for image generation
+                model = genai.GenerativeModel('imagen-3.0-generate-002')
+                response = model.generate_content(user_message)
+                
+                image_b64 = response.candidates[0].content.parts[0].inline_data.data
+                image_url = f"data:image/png;base64,{base64.b64encode(image_b64).decode('utf-8')}"
+                ai_response_text = f"Here is the image you requested for: '{user_message}'"
+                return jsonify({'response': ai_response_text, 'imageUrl': image_url})
 
             except Exception as e:
                 print(f"Image generation failed: {e}")
                 return jsonify({'response': "Sorry, I encountered an error while creating the image."})
+
 
         # Use the recommended model for text generation and search
         model = genai.GenerativeModel('gemini-1.5-flash')
