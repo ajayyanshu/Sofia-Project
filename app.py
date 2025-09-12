@@ -95,15 +95,24 @@ def chat():
         # --- Mode: Create Image ---
         if mode == 'create_image':
             try:
-                model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
-                response = model.generate_content(user_message, generation_config={"response_mime_type": "image/png"})
-                
-                image_part = response.parts[0]
-                image_b64 = base64.b64encode(image_part.inline_data.data).decode('utf-8')
-                image_url = f"data:{image_part.inline_data.mime_type};base64,{image_b64}"
-                ai_response_text = f"Here is the image you requested for: '{user_message}'"
-                return jsonify({'response': ai_response_text, 'imageUrl': image_url})
+                # Using the raw REST API for image generation
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={GOOGLE_API_KEY}"
+                payload = {
+                    "instances": [{"prompt": user_message}],
+                    "parameters": {"sampleCount": 1}
+                }
+                resp = requests.post(url, json=payload)
+                resp.raise_for_status() # Raise an exception for bad status codes
+                result = resp.json()
 
+                if "predictions" in result and result["predictions"][0].get("bytesBase64Encoded"):
+                    img_b64 = result["predictions"][0]["bytesBase64Encoded"]
+                    image_url = f"data:image/png;base64,{img_b64}"
+                    ai_response_text = f"Here is the image you requested for: '{user_message}'"
+                    return jsonify({'response': ai_response_text, 'imageUrl': image_url})
+                else:
+                    print(f"Image generation API did not return an image. Response: {result}")
+                    return jsonify({'response': "Sorry, I couldn't generate an image. The model didn't return image data."})
             except Exception as e:
                 print(f"Image generation failed: {e}")
                 return jsonify({'response': "Sorry, I encountered an error while creating the image."})
