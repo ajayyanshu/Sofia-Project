@@ -116,7 +116,7 @@ def chat():
 
 
         # Use the recommended model for text generation and search
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # --- Mode: Web Search ---
         if mode == 'web_search':
