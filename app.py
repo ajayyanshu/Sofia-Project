@@ -95,25 +95,14 @@ def chat():
         # --- Mode: Create Image ---
         if mode == 'create_image':
             try:
-                model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
-                response = model.generate_content(user_message)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content(user_message, generation_config={"response_mime_type": "image/png"})
                 
-                image_part = None
-                text_part = None
-                for part in response.parts:
-                    if part.inline_data:
-                        image_part = part
-                    if part.text:
-                        text_part = part
-
-                if image_part:
-                    image_b64 = base64.b64encode(image_part.inline_data.data).decode('utf-8')
-                    image_url = f"data:{image_part.inline_data.mime_type};base64,{image_b64}"
-                    ai_response_text = text_part.text if text_part else f"Here is the image you requested: '{user_message}'"
-                    return jsonify({'response': ai_response_text, 'imageUrl': image_url})
-                else:
-                    fallback_text = text_part.text if text_part else "Sorry, I couldn't create an image. Please try a different prompt."
-                    return jsonify({'response': fallback_text})
+                image_part = response.parts[0]
+                image_b64 = base64.b64encode(image_part.inline_data.data).decode('utf-8')
+                image_url = f"data:{image_part.inline_data.mime_type};base64,{image_b64}"
+                ai_response_text = f"Here is the image you requested for: '{user_message}'"
+                return jsonify({'response': ai_response_text, 'imageUrl': image_url})
 
             except Exception as e:
                 print(f"Image generation failed: {e}")
