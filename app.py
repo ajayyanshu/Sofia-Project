@@ -92,30 +92,6 @@ def chat():
         file_type = data.get('fileType')
         mode = data.get('mode')
         
-        # --- Mode: Create Image ---
-        if mode == 'create_image':
-            try:
-                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={GOOGLE_API_KEY}"
-                payload = {
-                    "instances": [{"prompt": user_message}],
-                    "parameters": {"sampleCount": 1}
-                }
-                response = requests.post(api_url, json=payload)
-                response.raise_for_status()
-                result = response.json()
-
-                if result.get("predictions") and result["predictions"][0].get("bytesBase64Encoded"):
-                    image_b64 = result["predictions"][0]["bytesBase64Encoded"]
-                    image_url = f"data:image/png;base64,{image_b64}"
-                    ai_response_text = f"Here is the image you requested for: '{user_message}'"
-                    return jsonify({'response': ai_response_text, 'imageUrl': image_url})
-                else:
-                    return jsonify({'response': "Sorry, I couldn't create an image. The model didn't return image data."})
-
-            except Exception as e:
-                print(f"Image generation failed: {e}")
-                return jsonify({'response': "Sorry, I encountered an error while creating the image."})
-
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         # --- Mode: Web Search ---
@@ -168,6 +144,8 @@ def chat():
                     return jsonify({'response': "Sorry, I could not read the content of the uploaded PDF."})
             elif 'image' in file_type:
                 image = Image.open(io.BytesIO(file_bytes))
+                if not user_message:
+                    user_message = "What is this image?" # Add a default prompt for images
                 response = model.generate_content([user_message, image])
                 return jsonify({'response': response.text})
 
