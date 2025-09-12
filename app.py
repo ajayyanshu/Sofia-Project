@@ -109,7 +109,7 @@ def chat():
                 return jsonify({'response': "Sorry, I encountered an error while creating the image."})
 
 
-        model = genai.GenerativeModel('"gemini-2.5-flash-image-preview"')
+        model = genai.GenerativeModel('gemini-2.5-flash-image-previe')
         
         # --- Mode: Web Search ---
         if mode == 'web_search':
