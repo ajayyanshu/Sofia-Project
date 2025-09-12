@@ -96,7 +96,7 @@ def chat():
         if mode == 'create_image':
             try:
                 # Using the recommended model for image generation
-                model = genai.GenerativeModel('gemini-1.5-flash-image-preview')
+                model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
                 response = model.generate_content(user_message)
                 
                 image_part = next((p for p in response.parts if p.inline_data), None)
@@ -116,7 +116,7 @@ def chat():
 
 
         # Use the recommended model for text generation and search
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
         # --- Mode: Web Search ---
         if mode == 'web_search':
