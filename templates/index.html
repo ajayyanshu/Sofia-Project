@@ -200,8 +200,7 @@
     </aside>
 
     <!-- Main Chat Area -->
-    <!-- MODIFICATION: Changed h-full back to h-screen for better mobile viewport handling -->
-    <div class="flex flex-col h-screen flex-1">
+    <div id="main-content" class="flex flex-col h-screen flex-1">
         <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
             <div class="flex items-center gap-2">
                 <button id="menu-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Menu">
@@ -291,6 +290,7 @@
         const stopVoiceBtn = document.getElementById('stop-voice-btn');
         const cancelVoiceBtn = document.getElementById('cancel-voice-btn');
         const voiceStatusText = document.getElementById('voice-status-text');
+        const mainContent = document.getElementById('main-content');
 
         const markdownConverter = new showdown.Converter();
         let fileData = null;
@@ -299,6 +299,15 @@
         let currentMode = null; 
         let recognition;
         let isVoiceConversationActive = false;
+
+        // --- Mobile Viewport Height Fix ---
+        function setAppHeight() {
+            if(mainContent) {
+                mainContent.style.height = window.innerHeight + 'px';
+            }
+        }
+        window.addEventListener('resize', setAppHeight);
+        document.addEventListener('DOMContentLoaded', setAppHeight);
 
         function clearChat() {
             chatContainer.innerHTML = '';
@@ -521,9 +530,10 @@
                 }
 
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Full Error Object:', error);
+                const userFriendlyError = "I'm having trouble connecting right now. Please check your network connection and try again in a moment.";
                 typingIndicator.remove();
-                addMessage(`Sorry, something went wrong. Please try again.`, 'system');
+                addMessage(userFriendlyError, 'system');
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
                     setTimeout(startListening, 1000);
                 }
