@@ -1,4 +1,40 @@
+import sys
 import os
+
+# --- NEW DEBUGGING CODE ---
+# This code will help diagnose the deployment environment on Render.
+print("[DEBUG] Starting application...")
+print(f"[DEBUG] Python Version: {sys.version}")
+print(f"[DEBUG] Python Path: {sys.path}")
+
+# Try to list installed packages to confirm google-generativeai exists
+try:
+    # Find the site-packages directory
+    site_packages = next(p for p in sys.path if 'site-packages' in p)
+    print(f"[DEBUG] Site-packages directory: {site_packages}")
+    installed_packages = os.listdir(site_packages)
+    print(f"[DEBUG] Found {len(installed_packages)} packages in site-packages.")
+    # Check specifically for the 'google' package directory
+    if 'google' in installed_packages:
+        print("[DEBUG] 'google' package FOUND in site-packages.")
+    else:
+        print("[DEBUG] 'google' package NOT FOUND in site-packages.")
+except Exception as e:
+    print(f"[DEBUG] Could not list site-packages. Error: {e}")
+# --- END DEBUGGING CODE ---
+
+
+# We will wrap the import in a try/except to provide a clearer error.
+try:
+    import google.generativai as genai
+    print("[DEBUG] Successfully imported google.generativai")
+except ModuleNotFoundError:
+    print("[DEBUG] CRITICAL ERROR: The 'google.generativai' module could not be found.")
+    print("[DEBUG] This confirms the package is not installed correctly in the environment.")
+    # Exit cleanly if the core dependency is missing.
+    sys.exit("Exiting: Core google.generativai dependency not found.")
+
+
 import base64
 import io
 import re
@@ -7,7 +43,6 @@ import requests
 import fitz  # PyMuPDF
 import docx
 from flask import Flask, render_template, request, jsonify
-import google.generativai as genai
 from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
 
