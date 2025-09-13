@@ -1,0 +1,8 @@
+flask
+gunicorn
+google-generativeai
+PyMuPDF
+Pillow
+youtube-transcript-api
+requests
+python-docx
