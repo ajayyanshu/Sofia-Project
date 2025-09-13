@@ -89,6 +89,34 @@ def get_youtube_transcript(video_id):
 # --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
+    # --- NEW DIAGNOSTIC CODE ---
+    # This block will log the exact request data to help us debug the file upload issue.
+    try:
+        print("[DIAGNOSTIC] --- New Request Received ---")
+        print(f"[DIAGNOSTIC] Request Headers: {request.headers}")
+        if request.is_json:
+            raw_data = request.get_json()
+            print(f"[DIAGNOSTIC] Raw JSON received: {raw_data}")
+            # Check for expected keys and log if they exist and their type
+            if 'text' in raw_data:
+                print(f"[DIAGNOSTIC] 'text' key found. Type: {type(raw_data.get('text'))}")
+            else:
+                print("[DIAGNOSTIC] 'text' key NOT found.")
+            if 'fileData' in raw_data and raw_data.get('fileData'):
+                print(f"[DIAGNOSTIC] 'fileData' key found and is NOT empty. Length: {len(raw_data.get('fileData'))}")
+            else:
+                print("[DIAGNOSTIC] 'fileData' key is MISSING or EMPTY.")
+            if 'fileType' in raw_data:
+                 print(f"[DIAGNOSTIC] 'fileType' key found. Value: {raw_data.get('fileType')}")
+            else:
+                 print("[DIAGNOSTIC] 'fileType' key NOT found.")
+        else:
+            print("[DIAGNOSTIC] Request is NOT JSON. Raw data: {request.data}")
+        print("[DIAGNOSTIC] --- End of Diagnostic Info ---")
+    except Exception as diag_e:
+        print(f"[DIAGNOSTIC] Error during diagnostic logging: {diag_e}")
+    # --- END OF DIAGNOSTIC CODE ---
+
     try:
         data = request.json
         user_message = data.get('text', '')
