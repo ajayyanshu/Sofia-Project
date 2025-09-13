@@ -1,14 +1,8 @@
 flask
 gunicorn
 google-generativeai
-python-dotenv
 PyMuPDF
 Pillow
 youtube-transcript-api
-google-api-python-client
 requests
-google-api-python-client
-google-auth-httplib2
-google-auth-oauthlib
-python-pptx
 python-docx
