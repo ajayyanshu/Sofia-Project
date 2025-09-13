@@ -1,48 +1,14 @@
-import sys
-import os
-
-# --- NEW DEBUGGING CODE ---
-# This code will help diagnose the deployment environment on Render.
-print("[DEBUG] Starting application...")
-print(f"[DEBUG] Python Version: {sys.version}")
-print(f"[DEBUG] Python Path: {sys.path}")
-
-# Try to list installed packages to confirm google-generativeai exists
-try:
-    # Find the site-packages directory
-    site_packages = next(p for p in sys.path if 'site-packages' in p)
-    print(f"[DEBUG] Site-packages directory: {site_packages}")
-    installed_packages = os.listdir(site_packages)
-    print(f"[DEBUG] Found {len(installed_packages)} packages in site-packages.")
-    # Check specifically for the 'google' package directory
-    if 'google' in installed_packages:
-        print("[DEBUG] 'google' package FOUND in site-packages.")
-    else:
-        print("[DEBUG] 'google' package NOT FOUND in site-packages.")
-except Exception as e:
-    print(f"[DEBUG] Could not list site-packages. Error: {e}")
-# --- END DEBUGGING CODE ---
-
-
-# We will wrap the import in a try/except to provide a clearer error.
-try:
-    import google.generativai as genai
-    print("[DEBUG] Successfully imported google.generativai")
-except ModuleNotFoundError:
-    print("[DEBUG] CRITICAL ERROR: The 'google.generativai' module could not be found.")
-    print("[DEBUG] This confirms the package is not installed correctly in the environment.")
-    # Exit cleanly if the core dependency is missing.
-    sys.exit("Exiting: Core google.generativai dependency not found.")
-
-
 import base64
 import io
+import os
 import re
-import requests
+import sys
 
-import fitz  # PyMuPDF
 import docx
-from flask import Flask, render_template, request, jsonify
+import fitz  # PyMuPDF
+import google.generativeai as genai
+import requests
+from flask import Flask, jsonify, render_template, request
 from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
 
@@ -51,7 +17,7 @@ app = Flask(__name__, template_folder='templates')
 # --- Hardcoded API Keys ---
 # ⚠️ This is NOT recommended for security reasons. Use environment variables for production.
 GOOGLE_API_KEY = "AIzaSyCLyorq2keBX6k5J5ZUX_I7YaUQ8apRgL4"
-YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI" # Added YouTube Key
+YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI"  # Added YouTube Key
 
 # --- Configure API Services ---
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -68,9 +34,11 @@ PDF_KEYWORDS = {
     "2025 hindi paper": "2025 - Hindi (7402-01).pdf"
 }
 
+
 @app.route('/')
 def home():
     return render_template('index.html')
+
 
 # --- Helper Functions for File Processing ---
 def extract_text_from_pdf(pdf_bytes):
@@ -81,6 +49,7 @@ def extract_text_from_pdf(pdf_bytes):
         print(f"Error extracting PDF text: {e}")
         return ""
 
+
 def extract_text_from_docx(docx_bytes):
     try:
         document = docx.Document(io.BytesIO(docx_bytes))
@@ -88,6 +57,7 @@ def extract_text_from_docx(docx_bytes):
     except Exception as e:
         print(f"Error extracting DOCX text: {e}")
         return ""
+
 
 def get_file_from_github(filename):
     url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
@@ -100,9 +70,12 @@ def get_file_from_github(filename):
         print(f"Error downloading from GitHub: {e}")
         return None
 
+
 def get_video_id(video_url):
-    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
+    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})",
+                               video_url)
     return video_id_match.group(1) if video_id_match else None
+
 
 def get_youtube_transcript(video_id):
     try:
@@ -112,6 +85,7 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
+
 # --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -120,9 +94,9 @@ def chat():
         user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
-        
-        # UPGRADED MODEL: Using Gemini 1.5 Pro now that you have a subscription.
-        model = genai.GenerativeModel('gemini-1.5-pro')
+
+        # Using the free-tier model to avoid costs after the trial ends.
+        model = genai.GenerativeModel('gemini-1.5-flash')
         prompt_parts = []
         if user_message:
             prompt_parts.append(user_message)
@@ -137,40 +111,60 @@ def chat():
                     response = model.generate_content(youtube_prompt)
                     return jsonify({'response': response.text})
                 else:
-                    return jsonify({'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."})
+                    return jsonify({
+                        'response':
+                        "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
+                    })
             else:
-                return jsonify({'response': "That doesn't look like a valid YouTube link. Please provide the full URL."})
+                return jsonify({
+                    'response':
+                    "That doesn't look like a valid YouTube link. Please provide the full URL."
+                })
 
         # Priority 2: Check for keywords to get a file from GitHub
-        matched_filename = next((filename for keyword, filename in PDF_KEYWORDS.items() if keyword in user_message.lower()), None)
+        matched_filename = next(
+            (filename
+             for keyword, filename in PDF_KEYWORDS.items()
+             if keyword in user_message.lower()), None)
         if matched_filename:
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
                 pdf_text = extract_text_from_pdf(file_bytes)
-                prompt_parts.append(f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---")
+                prompt_parts.append(
+                    f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---"
+                )
             else:
-                return jsonify({'response': f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."})
+                return jsonify({
+                    'response':
+                    f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."
+                })
 
         # Priority 3: Handle a direct file upload
         if file_data:
             file_bytes = base64.b64decode(file_data)
             if 'pdf' in file_type:
                 pdf_text = extract_text_from_pdf(file_bytes)
-                prompt_parts.append(f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---")
-            
+                prompt_parts.append(
+                    f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---"
+                )
+
             elif 'word' in file_type or file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                 docx_text = extract_text_from_docx(file_bytes)
-                prompt_parts.append(f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---")
-            
+                prompt_parts.append(
+                    f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---"
+                )
+
             elif 'image' in file_type:
                 image = Image.open(io.BytesIO(file_bytes))
                 prompt_parts.append(image)
 
         # Generate AI Response
         if not prompt_parts:
-             return jsonify({'response': "Please ask a question or upload a file."})
+            return jsonify(
+                {'response': "Please ask a question or upload a file."})
 
-        has_text = any(isinstance(part, str) and part.strip() for part in prompt_parts)
+        has_text = any(
+            isinstance(part, str) and part.strip() for part in prompt_parts)
         has_image = any(isinstance(part, Image.Image) for part in prompt_parts)
 
         if has_image and not has_text:
@@ -178,13 +172,13 @@ def chat():
 
         response = model.generate_content(prompt_parts)
         ai_response = response.text
-            
+
         return jsonify({'response': ai_response})
 
     # IMPROVED ERROR HANDLING BLOCK
     except Exception as e:
         # Log the full technical error to the server console for debugging.
-        print(f"A critical error occurred: {e}") 
+        print(f"A critical error occurred: {e}")
 
         # Check if this is the specific quota error.
         if "429" in str(e) and "quota" in str(e).lower():
@@ -193,9 +187,10 @@ def chat():
         else:
             # For any other error, show a generic message.
             user_facing_error = "Sorry, something went wrong. Please try again."
-        
+
         # Send the clean, user-friendly message back to the chat.
         return jsonify({'response': user_facing_error})
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
