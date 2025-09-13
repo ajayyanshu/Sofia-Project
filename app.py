@@ -7,7 +7,7 @@ import requests
 import fitz  # PyMuPDF
 import docx
 from flask import Flask, render_template, request, jsonify
-import google.generativeai as genai
+import google.generativai as genai
 from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
 
@@ -86,7 +86,8 @@ def chat():
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
         
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # UPGRADED MODEL: Using Gemini 1.5 Pro now that you have a subscription.
+        model = genai.GenerativeModel('gemini-1.5-pro')
         prompt_parts = []
         if user_message:
             prompt_parts.append(user_message)
@@ -140,17 +141,26 @@ def chat():
         if has_image and not has_text:
             prompt_parts.insert(0, "What is in this image? Describe it in detail.")
 
-        print(f"DEBUG: Sending to Gemini API with parts: {prompt_parts}")
         response = model.generate_content(prompt_parts)
         ai_response = response.text
             
         return jsonify({'response': ai_response})
 
-    # NEW DEBUGGING BLOCK: This will now send the real error message back to the chat.
+    # IMPROVED ERROR HANDLING BLOCK
     except Exception as e:
-        error_message = f"DEVELOPER_ERROR: {str(e)}"
-        print(f"A critical error occurred: {error_message}") # This will print to your Render logs
-        return jsonify({'response': error_message}) # This sends the error to the user's screen
+        # Log the full technical error to the server console for debugging.
+        print(f"A critical error occurred: {e}") 
+
+        # Check if this is the specific quota error.
+        if "429" in str(e) and "quota" in str(e).lower():
+            # If it is, show a user-friendly message about the daily limit.
+            user_facing_error = "Sorry, the daily limit for the AI service has been reached. Please try again tomorrow."
+        else:
+            # For any other error, show a generic message.
+            user_facing_error = "Sorry, something went wrong. Please try again."
+        
+        # Send the clean, user-friendly message back to the chat.
+        return jsonify({'response': user_facing_error})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
