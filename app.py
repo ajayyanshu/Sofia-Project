@@ -77,7 +77,7 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
-# --- Main Chat Logic (FIXED AGAIN) ---
+# --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
@@ -91,7 +91,7 @@ def chat():
         if user_message:
             prompt_parts.append(user_message)
 
-        # Priority 1: Handle a YouTube Link (This part returns directly)
+        # Priority 1: Handle a YouTube Link
         if "youtube.com" in user_message or "youtu.be" in user_message:
             video_id = get_video_id(user_message)
             if video_id:
@@ -115,7 +115,7 @@ def chat():
             else:
                 return jsonify({'response': f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."})
 
-        # Priority 3: Handle a direct file upload (PDF, Image, AND DOCX)
+        # Priority 3: Handle a direct file upload
         if file_data:
             file_bytes = base64.b64decode(file_data)
             if 'pdf' in file_type:
@@ -134,13 +134,10 @@ def chat():
         if not prompt_parts:
              return jsonify({'response': "Please ask a question or upload a file."})
 
-        # NEW FIX: Check if the prompt only contains an image and no text.
-        # If so, add a default instruction for the AI model.
         has_text = any(isinstance(part, str) and part.strip() for part in prompt_parts)
         has_image = any(isinstance(part, Image.Image) for part in prompt_parts)
 
         if has_image and not has_text:
-            # Add a default prompt if there's an image but no text query.
             prompt_parts.insert(0, "What is in this image? Describe it in detail.")
 
         print(f"DEBUG: Sending to Gemini API with parts: {prompt_parts}")
@@ -149,9 +146,11 @@ def chat():
             
         return jsonify({'response': ai_response})
 
+    # NEW DEBUGGING BLOCK: This will now send the real error message back to the chat.
     except Exception as e:
-        print(f"A critical error occurred: {e}")
-        return jsonify({'error': f'An internal error occurred: {str(e)}'}), 500
+        error_message = f"DEVELOPER_ERROR: {str(e)}"
+        print(f"A critical error occurred: {error_message}") # This will print to your Render logs
+        return jsonify({'response': error_message}) # This sends the error to the user's screen
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
