@@ -95,7 +95,6 @@ def chat():
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
 
-        # Using the free-tier model to avoid costs after the trial ends.
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt_parts = []
         if user_message:
@@ -130,40 +129,70 @@ def chat():
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
                 pdf_text = extract_text_from_pdf(file_bytes)
-                prompt_parts.append(
-                    f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---"
-                )
+                if pdf_text.strip():
+                    prompt_parts.append(
+                        f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---"
+                    )
+                else:
+                    return jsonify({
+                        'response':
+                        f"Sorry, I downloaded '{matched_filename}' but could not extract any text from it. It might be a scanned document."
+                    })
             else:
                 return jsonify({
                     'response':
-                    f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."
+                    f"Sorry, I could not download '{matched_filename}' from GitHub."
                 })
 
-        # Priority 3: Handle a direct file upload (FIXED LOGIC)
+        # Priority 3: Handle a direct file upload
         if file_data:
             try:
                 file_bytes = base64.b64decode(file_data)
-                
-                # More robust file type checking
+                file_processed = False
+
                 if 'pdf' in file_type:
                     pdf_text = extract_text_from_pdf(file_bytes)
-                    prompt_parts.append(f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---")
+                    if pdf_text.strip():
+                        prompt_parts.append(
+                            f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---"
+                        )
+                        file_processed = True
+                    else:
+                        return jsonify({
+                            'response':
+                            "Sorry, I could not extract any text from the uploaded PDF. It might be a scanned document."
+                        })
 
                 elif 'word' in file_type or 'vnd.openxmlformats-officedocument.wordprocessingml.document' in file_type:
                     docx_text = extract_text_from_docx(file_bytes)
-                    prompt_parts.append(f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---")
+                    if docx_text.strip():
+                        prompt_parts.append(
+                            f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---"
+                        )
+                        file_processed = True
+                    else:
+                        return jsonify({
+                            'response':
+                            "Sorry, the uploaded DOCX file appears to be empty."
+                        })
 
                 elif 'image' in file_type:
                     image = Image.open(io.BytesIO(file_bytes))
                     prompt_parts.append(image)
-                
-                else:
-                    # If the file type is unknown, inform the user instead of failing silently.
-                    return jsonify({'response': f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."})
+                    file_processed = True
+
+                if not file_processed:
+                    return jsonify({
+                        'response':
+                        f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."
+                    })
 
             except Exception as e:
                 print(f"Error decoding or processing file data: {e}")
-                return jsonify({'response': "Sorry, there was an error processing the uploaded file. It might be corrupted or in an unsupported format."})
+                return jsonify({
+                    'response':
+                    "Sorry, there was an error processing the uploaded file. It might be corrupted."
+                })
 
         # Generate AI Response
         if not prompt_parts:
@@ -175,27 +204,20 @@ def chat():
         has_image = any(isinstance(part, Image.Image) for part in prompt_parts)
 
         if has_image and not has_text:
-            prompt_parts.insert(0, "What is in this image? Describe it in detail.")
+            prompt_parts.insert(0,
+                                "What is in this image? Describe it in detail.")
 
         response = model.generate_content(prompt_parts)
         ai_response = response.text
 
         return jsonify({'response': ai_response})
 
-    # IMPROVED ERROR HANDLING BLOCK
     except Exception as e:
-        # Log the full technical error to the server console for debugging.
         print(f"A critical error occurred: {e}")
-
-        # Check if this is the specific quota error.
         if "429" in str(e) and "quota" in str(e).lower():
-            # If it is, show a user-friendly message about the daily limit.
             user_facing_error = "Sorry, the daily limit for the AI service has been reached. Please try again tomorrow."
         else:
-            # For any other error, show a generic message.
             user_facing_error = "Sorry, something went wrong. Please try again."
-
-        # Send the clean, user-friendly message back to the chat.
         return jsonify({'response': user_facing_error})
 
 
