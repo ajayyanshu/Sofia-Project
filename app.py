@@ -139,24 +139,31 @@ def chat():
                     f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."
                 })
 
-        # Priority 3: Handle a direct file upload
+        # Priority 3: Handle a direct file upload (FIXED LOGIC)
         if file_data:
-            file_bytes = base64.b64decode(file_data)
-            if 'pdf' in file_type:
-                pdf_text = extract_text_from_pdf(file_bytes)
-                prompt_parts.append(
-                    f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---"
-                )
+            try:
+                file_bytes = base64.b64decode(file_data)
+                
+                # More robust file type checking
+                if 'pdf' in file_type:
+                    pdf_text = extract_text_from_pdf(file_bytes)
+                    prompt_parts.append(f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---")
 
-            elif 'word' in file_type or file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                docx_text = extract_text_from_docx(file_bytes)
-                prompt_parts.append(
-                    f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---"
-                )
+                elif 'word' in file_type or 'vnd.openxmlformats-officedocument.wordprocessingml.document' in file_type:
+                    docx_text = extract_text_from_docx(file_bytes)
+                    prompt_parts.append(f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---")
 
-            elif 'image' in file_type:
-                image = Image.open(io.BytesIO(file_bytes))
-                prompt_parts.append(image)
+                elif 'image' in file_type:
+                    image = Image.open(io.BytesIO(file_bytes))
+                    prompt_parts.append(image)
+                
+                else:
+                    # If the file type is unknown, inform the user instead of failing silently.
+                    return jsonify({'response': f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."})
+
+            except Exception as e:
+                print(f"Error decoding or processing file data: {e}")
+                return jsonify({'response': "Sorry, there was an error processing the uploaded file. It might be corrupted or in an unsupported format."})
 
         # Generate AI Response
         if not prompt_parts:
