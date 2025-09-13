@@ -455,29 +455,39 @@
             
             const typingIndicator = addTypingIndicator();
 
-            // --- Mock AI Response ---
-            // Simulating a network request delay since there's no backend
-            setTimeout(() => {
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        fileData: currentFileData,
+                        fileType: currentFileType,
+                        mode: modeForThisMessage
+                    })
+                });
+
                 typingIndicator.remove();
-                
-                let aiResponse = "This is a simulated AI response as the backend is not connected. ";
-                if (text) {
-                    aiResponse += `You said: **"${text}"**. `;
+
+                if (!response.ok) {
+                    throw new Error(`Server responded with status ${response.status}`);
                 }
-                if (currentFileData) {
-                    aiResponse += "You also sent a file. ";
-                }
-                if (modeForThisMessage) {
-                    aiResponse += `The mode was: *${modeForThisMessage}*.`;
-                }
-                
-                addMessage(aiResponse, 'ai');
+
+                const result = await response.json();
+                addMessage(result.response, 'ai');
 
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    speakText(aiResponse, startListening);
+                    speakText(result.response, startListening);
                 }
 
-            }, 1500);
+            } catch (error) {
+                console.error('Error:', error);
+                typingIndicator.remove();
+                addMessage(`Sorry, something went wrong. Please try again.`, 'system');
+                if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
+                    setTimeout(startListening, 1000);
+                }
+            }
         }
         
         function addMessage(text, sender, fileInfo = null, mode = null) {
