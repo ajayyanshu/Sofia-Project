@@ -1,234 +1,721 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sofia 2.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sofia 2.0 - AI Chatbot</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Showdown library to render Markdown -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        html {
+            overscroll-behavior: none;
         }
-        #chat-container {
+        body {
+            /* overflow: hidden; -- This was causing issues on mobile with the keyboard */
+            overscroll-behavior: none;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .chat-container {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            background-color: #f9fafb;
-        }
-        #chat-box {
-            flex-grow: 1;
             overflow-y: auto;
-            padding: 2rem;
+            padding: 1rem;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
-        #input-container {
-            border-top: 1px solid #e5e7eb;
-            padding: 1rem 1.5rem;
-            background-color: #ffffff;
+        .chat-container::-webkit-scrollbar {
+            display: none;
         }
-        .message {
-            margin-bottom: 1.5rem;
-            display: flex;
-            max-width: 80%;
-        }
-        .user-message {
-            margin-left: auto;
-            flex-direction: row-reverse;
-        }
-        .bot-message {
-            margin-right: auto;
-        }
-        .message-content {
+        .message-bubble {
+            max-width: 85%;
             padding: 0.75rem 1.25rem;
             border-radius: 1.5rem;
+            margin-bottom: 0.75rem;
             word-wrap: break-word;
+            line-height: 1.6;
+            position: relative;
         }
-        .user-message .message-content {
+        .user-message {
             background-color: #3b82f6;
             color: white;
+            align-self: flex-end;
             border-bottom-right-radius: 0.5rem;
+            width: fit-content;
         }
-        .bot-message .message-content {
+        .ai-message {
             background-color: #e5e7eb;
             color: #1f2937;
+            align-self: flex-start;
             border-bottom-left-radius: 0.5rem;
+            padding-bottom: 2.5rem; /* Space for action icons */
+            width: fit-content; 
         }
-        .preview-container {
-            position: relative;
-            margin-bottom: 0.5rem;
-            max-width: 250px;
+        .ai-message-container {
+             display: flex;
+             align-items: flex-start;
+             gap: 0.75rem;
+             max-width: 85%;
+             margin-right: auto;
+             margin-bottom: 0.75rem;
+             width: fit-content;
         }
-        .preview-image {
-            max-width: 100%;
-            border-radius: 0.75rem;
-        }
-        .remove-file-btn {
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            background-color: rgba(0,0,0,0.7);
-            color: white;
+        .ai-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
+            background-color: #e2e8f0;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            font-weight: bold;
+            flex-shrink: 0;
         }
+        .ai-message ul { list-style-type: disc; padding-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+        .ai-message li { margin-bottom: 0.25rem; }
+        .ai-message strong, .ai-message b { font-weight: 600; color: #111827; }
+        .system-message { background-color: #f87171; color: white; align-self: center; text-align: center; font-size: 0.875rem; padding: 0.5rem 1rem; }
+        #message-input { resize: none; overflow-y: hidden; max-height: 150px; }
+        #file-preview-container { padding: 0.5rem 0.5rem 0 0.5rem; display: flex; gap: 0.5rem; }
+        .preview-item { position: relative; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e5e7eb; }
+        .preview-item.image-preview { width: 70px; height: 70px; }
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-item.doc-preview { display: flex; align-items: center; padding: 0.5rem 0.75rem; background-color: #f3f4f6; }
+        .doc-preview .file-icon { flex-shrink: 0; margin-right: 0.5rem; }
+        .doc-preview .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.875rem; color: #4b5563; }
+        .remove-preview-btn { position: absolute; top: 2px; right: 2px; width: 1.25rem; height: 1.25rem; background-color: rgba(0,0,0,0.5); color: white; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; line-height: 1; }
+        body.initial-view .chat-area { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        body.initial-view #welcome-message-container { flex-grow: 0; }
+        .mode-indicator { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
+        #voice-overlay { background-color: #87CEEB; } /* Sky blue */
+        .cloud {
+            width: 250px; height: 250px; background: white;
+            border-radius: 50%; position: relative; filter: drop-shadow(0 0 15px rgba(0,0,0,0.1));
+            animation: pulse 2s infinite ease-in-out;
+        }
+        .cloud::before, .cloud::after {
+            content: ''; position: absolute; background: white; border-radius: 50%;
+        }
+        .cloud::before { width: 150px; height: 150px; top: -50px; left: 30px; }
+        .cloud::after { width: 120px; height: 120px; top: -20px; right: 20px; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .message-actions { position: absolute; bottom: 0.5rem; right: 0.75rem; display: flex; gap: 0.5rem; opacity: 0.7; }
+        .action-btn { background: none; border: none; cursor: pointer; color: #6b7280; padding: 0.25rem; border-radius: 9999px; transition: background-color 0.2s; }
+        .action-btn:hover { background-color: #d1d5db; }
+        .menu-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s; }
+        .menu-item:hover { background-color: #f3f4f6; }
+        .listening-bar { width: 3px; height: 5px; background-color: #6b7280; border-radius: 5px; animation: listening 1.2s infinite ease-in-out; }
+        .listening-bar:nth-child(2) { animation-delay: -1.0s; }
+        .listening-bar:nth-child(3) { animation-delay: -0.8s; }
+        @keyframes listening {
+            0%, 40%, 100% { transform: scaleY(0.4); }
+            20% { transform: scaleY(1.0); }
+        }
+        #temp-chat-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s ease-in-out;
+        }
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .sidebar-item {
+             display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 0.5rem; cursor: pointer;
+             color: #374151; font-medium;
+        }
+        .sidebar-item:hover { background-color: #e5e7eb; }
     </style>
 </head>
-<body class="antialiased">
-    <div id="chat-container">
-        <header class="p-4 border-b bg-white">
-            <h1 class="text-2xl font-bold text-gray-800">Sofia 2.0</h1>
+<body class="h-full flex initial-view relative">
+
+    <!-- Sidebar Overlay for mobile -->
+    <div id="sidebar-overlay" class="hidden fixed inset-0 z-30 bg-black/50"></div>
+
+    <!-- Temporary Chat Overlay -->
+    <div id="temp-chat-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center opacity-0">
+        <h2 class="text-3xl font-bold text-white">Temporary Chat</h2>
+    </div>
+
+    <!-- Voice input overlay -->
+    <div id="voice-overlay" class="hidden fixed inset-0 z-50 flex-col items-center justify-center p-8">
+        <div class="flex-1 flex items-center justify-center">
+             <div class="cloud"></div>
+        </div>
+        <p id="voice-status-text" class="text-white text-lg mb-8">Listening...</p>
+        <div class="flex w-full justify-center gap-16">
+            <button id="stop-voice-btn" class="w-16 h-16 bg-gray-800 text-white rounded-full flex items-center justify-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 10h6v4H9z" />
+                </svg>
+            </button>
+            <button id="cancel-voice-btn" class="w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="absolute z-40 w-72 bg-gray-50 border-r border-gray-200 flex-shrink-0 flex flex-col h-full -translate-x-full">
+        <div class="p-4 space-y-4">
+            <div class="relative">
+                <input type="search" placeholder="Search" class="w-full p-2 pl-10 border border-gray-300 rounded-lg bg-white">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+            </div>
+             <button id="new-chat-btn" class="sidebar-item w-full text-left">
+                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002 2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                <span>New chat</span>
+            </button>
+            <button class="sidebar-item w-full text-left">
+                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                <span>Library</span>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-4">
+            <h3 class="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Chat History</h3>
+            <div class="p-2 text-sm text-gray-600">Your chat history will appear here.</div>
+        </div>
+
+        <div class="p-4 border-t border-gray-200">
+             <button class="sidebar-item w-full text-left">
+                <img src="https://placehold.co/32x32/E2E8F0/4A5568?text=A" alt="User Avatar" class="h-8 w-8 rounded-full">
+                <span>Ajay Kumar</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <!-- MODIFICATION: Changed h-full to h-screen to better handle mobile viewport height -->
+    <div class="flex flex-col h-screen flex-1">
+        <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
+            <div class="flex items-center gap-2">
+                <button id="menu-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Menu">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                <span class="font-bold text-xl text-indigo-600">Sofia 2.0</span>
+            </div>
+            <button id="temporary-chat-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Start a temporary chat">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
         </header>
 
-        <div id="chat-box">
-            <!-- Messages will be appended here -->
-        </div>
-
-        <div id="input-container">
-            <div id="file-preview" class="hidden mb-2"></div>
-            <div class="relative flex items-center">
-                <button onclick="document.getElementById('file-input').click()" class="p-2 text-gray-500 hover:text-blue-500 rounded-full focus:outline-none">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </button>
-                <input type="file" id="file-input" class="hidden">
-                <input type="text" id="user-input" class="w-full pl-4 pr-12 py-3 border-2 border-gray-200 rounded-full focus:outline-none focus:border-blue-500 transition-colors" placeholder="Ask anything...">
-                <button id="send-btn" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none disabled:bg-gray-300">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                </button>
+        <main class="chat-area flex-1 flex flex-col bg-white overflow-hidden">
+            <div id="welcome-message-container" class="flex-1 flex flex-col items-center justify-center p-4 text-center">
+                <h1 class="text-4xl font-bold text-gray-800">What can I help with?</h1>
             </div>
-        </div>
+            <div id="chat-container" class="flex-1 flex-col overflow-y-auto w-full px-4 sm:px-6 hidden"></div>
+        </main>
+
+        <footer class="w-full flex justify-center py-4 px-4 sm:px-6 bg-white">
+            <div class="w-full max-w-3xl flex flex-col bg-white rounded-3xl border border-gray-300 shadow-lg">
+                <div id="file-preview-container"></div>
+                <div id="mode-indicator-container" class="p-2 pb-0"></div>
+                <div class="w-full flex items-end px-2 sm:px-4 py-2">
+                    <div class="relative flex items-center">
+                        <button id="add-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                        <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx">
+                        <div id="add-menu" class="hidden absolute bottom-full mb-2 w-60 bg-white border border-gray-200 rounded-xl shadow-lg p-2 z-20">
+                            <button id="upload-file-btn" class="menu-item w-full text-left">
+                                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                <span class="text-sm font-medium text-gray-700">Add photos & file</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="border-l h-6 border-gray-300 mx-2"></div>
+                    
+                    <textarea id="message-input" rows="1" placeholder="Ask anything" class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
+                    
+                    <button id="web-search-toggle-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                    </button>
+
+                    <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
+
+                    <button id="voice-mode-btn" class="p-2 w-10 h-10 bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors flex-shrink-0 flex items-center justify-center">
+                        <div class="flex items-center gap-0.5">
+                            <div class="listening-bar h-3"></div><div class="listening-bar h-3"></div><div class="listening-bar h-3"></div>
+                        </div>
+                    </button>
+                    
+                    <button id="send-btn" class="hidden ml-2 p-2 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-colors flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    </button>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script>
-        const chatBox = document.getElementById('chat-box');
-        const userInput = document.getElementById('user-input');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const tempChatOverlay = document.getElementById('temp-chat-overlay');
+        const temporaryChatBtn = document.getElementById('temporary-chat-btn');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const sidebar = document.getElementById('sidebar');
+        const menuBtn = document.getElementById('menu-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const welcomeMessageContainer = document.getElementById('welcome-message-container');
+        const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
+        const addBtn = document.getElementById('add-btn');
+        const addMenu = document.getElementById('add-menu');
+        const uploadFileBtn = document.getElementById('upload-file-btn');
         const fileInput = document.getElementById('file-input');
-        const filePreview = document.getElementById('file-preview');
+        const filePreviewContainer = document.getElementById('file-preview-container');
+        const webSearchToggleBtn = document.getElementById('web-search-toggle-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const voiceModeBtn = document.getElementById('voice-mode-btn');
+        const modeIndicatorContainer = document.getElementById('mode-indicator-container');
+        const voiceOverlay = document.getElementById('voice-overlay');
+        const stopVoiceBtn = document.getElementById('stop-voice-btn');
+        const cancelVoiceBtn = document.getElementById('cancel-voice-btn');
+        const voiceStatusText = document.getElementById('voice-status-text');
 
+        const markdownConverter = new showdown.Converter();
         let fileData = null;
         let fileType = null;
+        let fileInfoForDisplay = null;
+        let currentMode = null; 
+        let recognition;
+        let isVoiceConversationActive = false;
+
+        function clearChat() {
+            chatContainer.innerHTML = '';
+            welcomeMessageContainer.classList.remove('hidden');
+            chatContainer.classList.add('hidden');
+            document.body.classList.add('initial-view');
+            deactivateWebSearch();
+            currentMode = null;
+            removeFile();
+            messageInput.value = '';
+        }
+
+        // --- Sidebar & Temp Chat Logic ---
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarOverlay.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        }
+
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (sidebar.classList.contains('-translate-x-full')) {
+                openSidebar();
+            } else {
+                closeSidebar();
+            }
+        });
+        sidebarOverlay.addEventListener('click', closeSidebar);
+
+
+        temporaryChatBtn.addEventListener('click', () => {
+            tempChatOverlay.classList.remove('hidden');
+            setTimeout(() => tempChatOverlay.classList.remove('opacity-0'), 10); // Fade in
+
+            setTimeout(() => {
+                tempChatOverlay.classList.add('opacity-0');
+                setTimeout(() => tempChatOverlay.classList.add('hidden'), 300); // Fade out and hide
+                clearChat();
+            }, 1500); // Show message for 1.5 seconds
+        });
+        
+        newChatBtn.addEventListener('click', () => {
+            clearChat();
+            closeSidebar();
+        });
+
 
         // --- Event Listeners ---
         sendBtn.addEventListener('click', sendMessage);
-        userInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+        messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+        uploadFileBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            addMenu.classList.toggle('hidden');
+        });
+        
+        window.addEventListener('click', (e) => {
+             if (!addMenu.classList.contains('hidden') && !addBtn.contains(e.target)) {
+                addMenu.classList.add('hidden');
             }
         });
-        fileInput.addEventListener('change', handleFileSelect);
+
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            let newHeight = messageInput.scrollHeight;
+            messageInput.style.height = `${newHeight}px`;
+            
+            const hasText = messageInput.value.trim() !== '';
+            const shouldShowSend = hasText || fileData;
+            
+            sendBtn.classList.toggle('hidden', !shouldShowSend);
+            micBtn.classList.toggle('hidden', hasText);
+            voiceModeBtn.classList.toggle('hidden', hasText);
+        });
 
         // --- Core Functions ---
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // Use FileReader to convert file to Base64
+            addMenu.classList.add('hidden');
             const reader = new FileReader();
             reader.onload = function(e) {
-                // The result includes the full data URI, we need to extract just the base64 part
-                const base64String = e.target.result.split(',')[1];
-                fileData = base64String;
+                fileData = e.target.result.split(',')[1];
                 fileType = file.type;
-                
-                // Show a preview
-                showFilePreview(file, e.target.result);
+                fileInfoForDisplay = { name: file.name, type: file.type, dataUrl: e.target.result };
+                showFilePreview(file);
+                sendBtn.classList.remove('hidden');
             };
             reader.onerror = function(error) {
                 console.error("Error reading file:", error);
-                addMessage("Sorry, there was an error reading your file.", 'bot');
+                addMessage("Sorry, there was an error reading your file.", 'system');
             };
             reader.readAsDataURL(file);
         }
 
-        function showFilePreview(file, dataUrl) {
-            let previewHtml = '';
+        function showFilePreview(file) {
+            filePreviewContainer.innerHTML = '';
+            const previewItem = document.createElement('div');
+            previewItem.className = 'preview-item';
+            
             if (file.type.startsWith('image/')) {
-                previewHtml = `<div class="preview-container"><img src="${dataUrl}" class="preview-image"><div class="remove-file-btn" onclick="removeFile()">X</div></div>`;
+                 previewItem.classList.add('image-preview');
+                 previewItem.innerHTML = `<img src="${fileInfoForDisplay.dataUrl}" alt="${file.name}"><button class="remove-preview-btn" onclick="removeFile()">&times;</button>`;
             } else {
-                 previewHtml = `<div class="preview-container"><div class="p-2 bg-gray-100 rounded-lg text-sm">${file.name}</div><div class="remove-file-btn" onclick="removeFile()">X</div></div>`;
+                 previewItem.classList.add('doc-preview');
+                 previewItem.innerHTML = `<div class="file-icon"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div><span class="file-name">${file.name}</span><button class="remove-preview-btn" onclick="removeFile()">&times;</button>`;
             }
-            filePreview.innerHTML = previewHtml;
-            filePreview.classList.remove('hidden');
+            filePreviewContainer.appendChild(previewItem);
         }
-
-        function removeFile() {
+        
+        window.removeFile = function() {
             fileData = null;
             fileType = null;
-            fileInput.value = ''; // Reset the file input
-            filePreview.innerHTML = '';
-            filePreview.classList.add('hidden');
+            fileInfoForDisplay = null;
+            fileInput.value = '';
+            filePreviewContainer.innerHTML = '';
+            if (messageInput.value.trim() === '') {
+                sendBtn.classList.add('hidden');
+                micBtn.classList.remove('hidden');
+                voiceModeBtn.classList.remove('hidden');
+            }
         }
 
         async function sendMessage() {
-            const text = userInput.value.trim();
+            const text = messageInput.value.trim();
             if (!text && !fileData) return;
 
-            addMessage(text, 'user', filePreview.innerHTML);
-            userInput.value = '';
+            if (document.body.classList.contains('initial-view')) {
+                document.body.classList.remove('initial-view');
+                welcomeMessageContainer.classList.add('hidden');
+                chatContainer.classList.remove('hidden');
+            }
             
-            // Temporary store and then clear file data after adding to message
+            const modeForThisMessage = currentMode;
+            addMessage(text, 'user', fileInfoForDisplay, modeForThisMessage);
+
+            // Reset UI
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
             const currentFileData = fileData;
             const currentFileType = fileType;
             removeFile();
-
-            // Add a "thinking" message
-            const thinkingMessage = addMessage('...', 'bot');
             
+            if (modeForThisMessage !== 'voice_mode') {
+                deactivateWebSearch();
+                currentMode = null;
+            }
+            
+            const typingIndicator = addTypingIndicator();
+
             try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        text: text,
-                        fileData: currentFileData,
-                        fileType: currentFileType
-                    })
-                });
+                // NOTE: This is a placeholder for a backend call.
+                // In a real application, you would send the data to your server.
+                const response = await new Promise(resolve => setTimeout(() => {
+                    let aiResponse = "This is a simulated response.";
+                    if (text.toLowerCase().includes("hello") || text.toLowerCase().includes("hi")) {
+                        aiResponse = "Hello there! How can I help you today?";
+                    } else if (currentFileData) {
+                        aiResponse = "I've received your file. Let me analyze it.";
+                    } else if (modeForThisMessage === 'web_search') {
+                         aiResponse = "Searching the web for your query... Here's what I found.";
+                    }
+                    resolve({ ok: true, json: () => Promise.resolve({ response: aiResponse }) });
+                }, 1000));
+
+
+                typingIndicator.remove();
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    throw new Error(`Server responded with status ${response.status}`);
                 }
 
-                const data = await response.json();
-                thinkingMessage.querySelector('.message-content').innerHTML = data.response;
-                
+                const result = await response.json();
+                addMessage(result.response, 'ai');
+
+                if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
+                    speak(result.response, startListening);
+                }
+
             } catch (error) {
                 console.error('Error:', error);
-                thinkingMessage.querySelector('.message-content').innerHTML = "Sorry, something went wrong on the server. Please try again.";
-                thinkingMessage.querySelector('.message-content').style.backgroundColor = '#ef4444';
-                thinkingMessage.querySelector('.message-content').style.color = 'white';
-
-            } finally {
-                chatBox.scrollTop = chatBox.scrollHeight;
+                typingIndicator.remove();
+                addMessage(`Sorry, something went wrong. Please try again.`, 'system');
+                if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
+                    setTimeout(startListening, 1000);
+                }
             }
         }
         
-        function addMessage(text, sender, filePreviewHtml = '') {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}-message`;
-            
-            let fileHtml = '';
-            if (sender === 'user' && filePreviewHtml) {
-                // We remove the close button for the message in the chat history
-                fileHtml = filePreviewHtml.replace(/<div class="remove-file-btn".*?<\/div>/, '');
+        function addMessage(text, sender, fileInfo = null, mode = null) {
+            if (sender === 'user') {
+                const messageBubble = document.createElement('div');
+                let fileHtml = '';
+                if (fileInfo) {
+                    if (fileInfo.type.startsWith('image/')) {
+                         fileHtml = `<img src="${fileInfo.dataUrl}" alt="User upload" class="rounded-lg mb-2 max-w-xs">`;
+                    } else {
+                        fileHtml = `<div class="flex items-center bg-blue-100 rounded-lg p-2 mb-2"><svg class="h-6 w-6 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg><span class="text-sm text-blue-800">${fileInfo.name}</span></div>`;
+                    }
+                }
+                
+                let modeHtml = '';
+                if (mode === 'web_search' || mode === 'mic_input' || mode === 'voice_mode') {
+                    let modeText = 'Google Search';
+                    if (mode === 'mic_input') modeText = 'Voice Input';
+                    if (mode === 'voice_mode') modeText = 'Voice Mode';
+                    
+                    modeHtml = `<div class="mt-2 flex items-center gap-1.5"><div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div><span class="text-xs text-white/80">${modeText}</span></div>`;
+                }
+
+                messageBubble.innerHTML = fileHtml + `<div>${text}</div>` + modeHtml;
+                messageBubble.className = 'message-bubble user-message ml-auto';
+                chatContainer.appendChild(messageBubble);
+
+            } else if (sender === 'ai') {
+                const aiMessageContainer = document.createElement('div');
+                aiMessageContainer.className = 'ai-message-container';
+                const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
+                const messageBubble = document.createElement('div');
+                messageBubble.className = 'message-bubble ai-message';
+                
+                let contentHtml = markdownConverter.makeHtml(text);
+
+                const actionsHtml = `
+                    <div class="message-actions">
+                        <button class="action-btn copy-btn" title="Copy text"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg></button>
+                        <button class="action-btn" title="Good response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></button>
+                        <button class="action-btn" title="Bad response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg></button>
+                    </div>
+                `;
+                messageBubble.innerHTML = contentHtml + actionsHtml;
+                
+                aiMessageContainer.innerHTML = avatar;
+                aiMessageContainer.appendChild(messageBubble);
+                chatContainer.appendChild(aiMessageContainer);
+                
+                messageBubble.querySelector('.copy-btn').addEventListener('click', (e) => {
+                    const button = e.currentTarget;
+                    // Use execCommand for broader compatibility in sandboxed environments
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        button.innerHTML = 'Copied!';
+                    } catch (err) {
+                        console.error('Fallback: Oops, unable to copy', err);
+                        button.innerHTML = 'Error!';
+                    }
+                    document.body.removeChild(textarea);
+
+                    setTimeout(() => {
+                        button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
+                    }, 1500);
+                });
+
+            } else if (sender === 'system') {
+                const messageBubble = document.createElement('div');
+                messageBubble.textContent = text;
+                messageBubble.className = 'message-bubble system-message';
+                chatContainer.appendChild(messageBubble);
+            }
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const typingIndicatorContainer = document.createElement('div');
+            typingIndicatorContainer.className = 'ai-message-container typing-indicator';
+            const avatar = `<div class="ai-avatar"><svg class="h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 00-5 5 5 5 0 005 5 5 5 0 005-5 5 5 0 00-5-5zM12 14a9 9 0 00-9 9h18a9 9 0 00-9-9z"/></svg></div>`;
+            const typingBubble = `<div class="message-bubble ai-message">Sofia is typing...</div>`;
+            typingIndicatorContainer.innerHTML = avatar + typingBubble;
+            chatContainer.appendChild(typingIndicatorContainer);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return typingIndicatorContainer;
+        }
+
+        // --- Feature Toggles ---
+        function activateWebSearch() {
+            currentMode = 'web_search';
+            const indicator = document.createElement('div');
+            indicator.className = 'mode-indicator ml-2';
+            indicator.innerHTML = `
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                <span>Web Search Active</span>
+                <button id="close-search-mode-btn" class="ml-2 p-1 rounded-full hover:bg-indigo-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-indigo-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            `;
+            modeIndicatorContainer.innerHTML = '';
+            modeIndicatorContainer.appendChild(indicator);
+            document.getElementById('close-search-mode-btn').addEventListener('click', deactivateWebSearch);
+            webSearchToggleBtn.classList.add('text-blue-600');
+            messageInput.focus();
+        }
+        
+        function deactivateWebSearch() {
+            currentMode = null;
+            modeIndicatorContainer.innerHTML = '';
+            webSearchToggleBtn.classList.remove('text-blue-600');
+        }
+
+        webSearchToggleBtn.addEventListener('click', () => {
+            if (currentMode === 'web_search') {
+                deactivateWebSearch();
+            } else {
+                activateWebSearch();
+            }
+        });
+
+        // --- Voice Functions ---
+        function speak(text, onEndCallback) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const cleanedText = text.replace(/[*_`#]/g, '');
+                const utterance = new SpeechSynthesisUtterance(cleanedText);
+                utterance.lang = 'en-US';
+                utterance.onstart = () => voiceStatusText.textContent = "Sofia is speaking...";
+                utterance.onend = () => { if(onEndCallback) onEndCallback(); };
+                utterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance.onerror', event);
+                    if(onEndCallback) onEndCallback();
+                };
+                window.speechSynthesis.speak(utterance);
+            } else {
+                 addMessage('Sorry, my voice response is not available on your browser.', 'system');
+                if (onEndCallback) onEndCallback();
+            }
+        }
+
+        function startListening() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                addMessage('Speech recognition is not supported in this browser.', 'system');
+                return;
             }
 
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.innerHTML = `${fileHtml}<div>${text}</div>`;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                if (isVoiceConversationActive) {
+                    voiceStatusText.textContent = "Listening...";
+                } else {
+                    micBtn.classList.add('text-red-500');
+                }
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove('text-red-500');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+                messageInput.dispatchEvent(new Event('input')); // Trigger input event to show send button
+                sendMessage();
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error !== 'aborted') {
+                    addMessage(`Speech recognition error: ${event.error}`, 'system');
+                }
+                if (isVoiceConversationActive) {
+                    stopVoiceConversation();
+                }
+            };
             
-            messageDiv.appendChild(contentDiv);
-            chatBox.appendChild(messageDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            return messageDiv;
+            recognition.start();
         }
+
+        micBtn.addEventListener('click', () => {
+            currentMode = 'mic_input';
+            isVoiceConversationActive = false;
+            startListening();
+        });
+
+        function stopVoiceConversation() {
+            isVoiceConversationActive = false;
+            voiceOverlay.classList.add('hidden');
+            if (recognition) {
+                recognition.abort();
+            }
+            window.speechSynthesis.cancel();
+            currentMode = null;
+        }
+
+        voiceModeBtn.addEventListener('click', () => {
+            window.speechSynthesis.cancel();
+            
+            currentMode = 'voice_mode';
+            isVoiceConversationActive = true;
+            voiceOverlay.classList.remove('hidden');
+            voiceOverlay.classList.add('flex');
+            // MODIFICATION: Speak a confirmation message first to "unlock" the speech API,
+            // then start listening. This is more reliable on mobile browsers.
+            speak("Voice mode activated", startListening);
+        });
+
+        stopVoiceBtn.addEventListener('click', () => {
+            if (recognition) {
+                recognition.stop(); 
+            }
+        });
+        
+        cancelVoiceBtn.addEventListener('click', stopVoiceConversation);
 
     </script>
 </body>
