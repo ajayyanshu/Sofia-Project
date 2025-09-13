@@ -15,7 +15,7 @@
             overscroll-behavior: none;
         }
         body {
-            overflow: hidden; /* Re-enabled to prevent page scrolling */
+            overflow: hidden;
             overscroll-behavior: none;
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
@@ -177,7 +177,7 @@
                 </div>
             </div>
              <button id="new-chat-btn" class="sidebar-item w-full text-left">
-                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002 2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 <span>New chat</span>
             </button>
             <button class="sidebar-item w-full text-left">
@@ -200,7 +200,7 @@
     </aside>
 
     <!-- Main Chat Area -->
-    <div id="main-content" class="flex flex-col h-screen flex-1">
+    <div class="flex flex-col h-full flex-1">
         <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
             <div class="flex items-center gap-2">
                 <button id="menu-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Menu">
@@ -290,7 +290,6 @@
         const stopVoiceBtn = document.getElementById('stop-voice-btn');
         const cancelVoiceBtn = document.getElementById('cancel-voice-btn');
         const voiceStatusText = document.getElementById('voice-status-text');
-        const mainContent = document.getElementById('main-content');
 
         const markdownConverter = new showdown.Converter();
         let fileData = null;
@@ -299,15 +298,6 @@
         let currentMode = null; 
         let recognition;
         let isVoiceConversationActive = false;
-
-        // --- Mobile Viewport Height Fix ---
-        function setAppHeight() {
-            if(mainContent) {
-                mainContent.style.height = window.innerHeight + 'px';
-            }
-        }
-        window.addEventListener('resize', setAppHeight);
-        document.addEventListener('DOMContentLoaded', setAppHeight);
 
         function clearChat() {
             chatContainer.innerHTML = '';
@@ -438,59 +428,6 @@
             }
         }
 
-        async function callGeminiAPI(text, fileData, fileType, mode) {
-            const apiKey = ""; // Will be provided by the environment
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-            let parts = [{ text: text }];
-
-            if (fileData && fileType && fileType.startsWith('image/')) {
-                parts.push({
-                    inlineData: {
-                        mimeType: fileType,
-                        data: fileData
-                    }
-                });
-            }
-
-            const payload = {
-                contents: [{ parts: parts }],
-            };
-
-            if (mode === 'web_search') {
-                payload.tools = [{ "google_search": {} }];
-            }
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                     const errorBody = await response.text();
-                     console.error("API Error Response:", errorBody);
-                     throw new Error(`API Error: ${response.status}`);
-                }
-
-                const result = await response.json();
-                const candidate = result.candidates?.[0];
-
-                if (candidate && candidate.content?.parts?.[0]?.text) {
-                    return candidate.content.parts[0].text;
-                } else {
-                    console.error("Invalid API response structure:", result);
-                    return "Sorry, I received an unexpected response. Please try again.";
-                }
-
-            } catch (error) {
-                console.error('Error calling Gemini API:', error);
-                throw error;
-            }
-        }
-
-
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text && !fileData) return;
@@ -507,7 +444,6 @@
             // Reset UI
             messageInput.value = '';
             messageInput.style.height = 'auto';
-            messageInput.dispatchEvent(new Event('input')); // Recalculate size and button visibility
             const currentFileData = fileData;
             const currentFileType = fileType;
             removeFile();
@@ -520,20 +456,34 @@
             const typingIndicator = addTypingIndicator();
 
             try {
-                const aiResponseText = await callGeminiAPI(text, currentFileData, currentFileType, modeForThisMessage);
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        fileData: currentFileData,
+                        fileType: currentFileType,
+                        mode: modeForThisMessage
+                    })
+                });
 
                 typingIndicator.remove();
-                addMessage(aiResponseText, 'ai');
+
+                if (!response.ok) {
+                    throw new Error(`Server responded with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                addMessage(result.response, 'ai');
 
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    speak(aiResponseText, startListening);
+                    speakText(result.response, startListening);
                 }
 
             } catch (error) {
-                console.error('Full Error Object:', error);
-                const userFriendlyError = "I'm having trouble connecting right now. Please check your network connection and try again in a moment.";
+                console.error('Error:', error);
                 typingIndicator.remove();
-                addMessage(userFriendlyError, 'system');
+                addMessage(`Sorry, something went wrong. Please try again.`, 'system');
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
                     setTimeout(startListening, 1000);
                 }
@@ -589,23 +539,12 @@
                 
                 messageBubble.querySelector('.copy-btn').addEventListener('click', (e) => {
                     const button = e.currentTarget;
-                    // Use execCommand for broader compatibility in sandboxed environments
-                    const textarea = document.createElement('textarea');
-                    textarea.value = text;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    try {
-                        document.execCommand('copy');
+                    navigator.clipboard.writeText(text).then(() => {
                         button.innerHTML = 'Copied!';
-                    } catch (err) {
-                        console.error('Fallback: Oops, unable to copy', err);
-                        button.innerHTML = 'Error!';
-                    }
-                    document.body.removeChild(textarea);
-
-                    setTimeout(() => {
-                        button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
-                    }, 1500);
+                        setTimeout(() => {
+                            button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
+                        }, 1500);
+                    });
                 });
 
             } else if (sender === 'system') {
@@ -664,7 +603,7 @@
         });
 
         // --- Voice Functions ---
-        function speak(text, onEndCallback) {
+        function speakText(text, onEndCallback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const cleanedText = text.replace(/[*_`#]/g, '');
@@ -709,7 +648,6 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
-                messageInput.dispatchEvent(new Event('input')); // Trigger input event to show send button
                 sendMessage();
             };
 
@@ -743,15 +681,16 @@
         }
 
         voiceModeBtn.addEventListener('click', () => {
+            if ('speechSynthesis' in window && window.speechSynthesis.getVoices().length === 0) {
+                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+            }
             window.speechSynthesis.cancel();
             
             currentMode = 'voice_mode';
             isVoiceConversationActive = true;
             voiceOverlay.classList.remove('hidden');
             voiceOverlay.classList.add('flex');
-            // MODIFICATION: Speak a confirmation message first to "unlock" the speech API,
-            // then start listening. This is more reliable on mobile browsers.
-            speak("Voice mode activated", startListening);
+            startListening();
         });
 
         stopVoiceBtn.addEventListener('click', () => {
