@@ -95,6 +95,13 @@ def chat():
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
 
+        # NEW: Smart check to see if the user intended to send a file.
+        file_keywords = ['image', 'pdf', 'document', 'file', 'this']
+        if any(keyword in user_message.lower() for keyword in file_keywords) and not file_data:
+            return jsonify({
+                'response': "It looks like you're referring to a file, but I didn't receive one. Please try uploading the file again with your message."
+            })
+
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt_parts = []
         if user_message:
@@ -111,13 +118,11 @@ def chat():
                     return jsonify({'response': response.text})
                 else:
                     return jsonify({
-                        'response':
-                        "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
+                        'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
                     })
             else:
                 return jsonify({
-                    'response':
-                    "That doesn't look like a valid YouTube link. Please provide the full URL."
+                    'response': "That doesn't look like a valid YouTube link. Please provide the full URL."
                 })
 
         # Priority 2: Check for keywords to get a file from GitHub
@@ -135,13 +140,11 @@ def chat():
                     )
                 else:
                     return jsonify({
-                        'response':
-                        f"Sorry, I downloaded '{matched_filename}' but could not extract any text from it. It might be a scanned document."
+                        'response': f"Sorry, I downloaded '{matched_filename}' but could not extract any text from it. It might be a scanned document."
                     })
             else:
                 return jsonify({
-                    'response':
-                    f"Sorry, I could not download '{matched_filename}' from GitHub."
+                    'response': f"Sorry, I could not download '{matched_filename}' from GitHub."
                 })
 
         # Priority 3: Handle a direct file upload
@@ -159,8 +162,7 @@ def chat():
                         file_processed = True
                     else:
                         return jsonify({
-                            'response':
-                            "Sorry, I could not extract any text from the uploaded PDF. It might be a scanned document."
+                            'response': "Sorry, I could not extract any text from the uploaded PDF. It might be a scanned document."
                         })
 
                 elif 'word' in file_type or 'vnd.openxmlformats-officedocument.wordprocessingml.document' in file_type:
@@ -172,8 +174,7 @@ def chat():
                         file_processed = True
                     else:
                         return jsonify({
-                            'response':
-                            "Sorry, the uploaded DOCX file appears to be empty."
+                            'response': "Sorry, the uploaded DOCX file appears to be empty."
                         })
 
                 elif 'image' in file_type:
@@ -183,15 +184,13 @@ def chat():
 
                 if not file_processed:
                     return jsonify({
-                        'response':
-                        f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."
+                        'response': f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."
                     })
 
             except Exception as e:
                 print(f"Error decoding or processing file data: {e}")
                 return jsonify({
-                    'response':
-                    "Sorry, there was an error processing the uploaded file. It might be corrupted."
+                    'response': "Sorry, there was an error processing the uploaded file. It might be corrupted."
                 })
 
         # Generate AI Response
