@@ -471,7 +471,7 @@
                 typingIndicator.remove();
 
                 if (!response.ok) {
-                    // This will catch HTTP errors like 404, 500
+                    // This will catch HTTP errors like 404, 500, and 405
                     throw new Error(`Server responded with status: ${response.status}`);
                 }
 
@@ -487,12 +487,12 @@
                 console.error('API Call Error:', error);
                 typingIndicator.remove();
                 
-                // 1. Display a more detailed error message to the user
-                addMessage(`Error: Could not connect to the AI. (${error.message}). Displaying a simulated response.`, 'system');
+                // 1. Display a more detailed error message to the user, including the 405 status
+                addMessage(`Error: Could not connect to the AI (${error.message}). This might be a server configuration issue. Displaying a simulated response.`, 'system');
 
                 // 2. Fallback to a simulated response after a short delay
                 setTimeout(() => {
-                    const simulatedResponse = `This is a simulated response because the real AI is unavailable. You said: "${text}"`;
+                    const simulatedResponse = `This is a simulated response as the AI backend is not reachable. You said: "${text}"`;
                     addMessage(simulatedResponse, 'ai');
                     
                     if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
