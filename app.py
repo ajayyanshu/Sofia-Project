@@ -71,7 +71,7 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
-# --- Main Chat Logic ---
+# --- Main Chat Logic (FIXED) ---
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
@@ -81,68 +81,67 @@ def chat():
         file_type = data.get('fileType')
         
         model = genai.GenerativeModel('gemini-1.5-flash')
-        document_text = ""
-        context_message = ""
-        ai_response = ""
+        
+        # NEW: Create a list to hold all parts of the prompt (text, image, docs)
+        prompt_parts = []
+        if user_message:
+            prompt_parts.append(user_message)
 
-        # Priority 1: Check for a YouTube Link
+        # Priority 1: Handle a YouTube Link
         if "youtube.com" in user_message or "youtu.be" in user_message:
             video_id = get_video_id(user_message)
             if video_id:
                 transcript = get_youtube_transcript(video_id)
                 if transcript:
-                    prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
-                    response = model.generate_content(prompt)
-                    ai_response = response.text
+                    # For YouTube, we create a specific prompt and return early
+                    youtube_prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
+                    response = model.generate_content(youtube_prompt)
+                    return jsonify({'response': response.text})
                 else:
-                    ai_response = "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
+                    return jsonify({'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."})
             else:
-                ai_response = "That doesn't look like a valid YouTube link. Please provide the full URL."
-            return jsonify({'response': ai_response})
+                return jsonify({'response': "That doesn't look like a valid YouTube link. Please provide the full URL."})
 
         # Priority 2: Check for keywords to get a file from GitHub
-        matched_filename = None
-        for keyword, filename in PDF_KEYWORDS.items():
-            if keyword in user_message.lower():
-                matched_filename = filename
-                break
+        matched_filename = next((filename for keyword, filename in PDF_KEYWORDS.items() if keyword in user_message.lower()), None)
         
         if matched_filename:
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
-                document_text = extract_text_from_pdf(file_bytes)
-                context_message = f"Based on the document '{matched_filename}'"
+                pdf_text = extract_text_from_pdf(file_bytes)
+                # NEW: Add the PDF text to our prompt list instead of a separate variable
+                prompt_parts.append(f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---")
             else:
-                ai_response = f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."
-                return jsonify({'response': ai_response})
+                return jsonify({'response': f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."})
 
         # Priority 3: Handle a direct file upload from the user
-        elif file_data:
+        if file_data:
             file_bytes = base64.b64decode(file_data)
             if 'pdf' in file_type:
-                document_text = extract_text_from_pdf(file_bytes)
-                context_message = "Based on the uploaded PDF"
+                pdf_text = extract_text_from_pdf(file_bytes)
+                # NEW: Add the PDF text to our prompt list
+                prompt_parts.append(f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---")
             elif 'image' in file_type:
                 image = Image.open(io.BytesIO(file_bytes))
-                response = model.generate_content([user_message, image])
-                return jsonify({'response': response.text})
+                # NEW: Add the image object to our prompt list
+                prompt_parts.append(image)
 
         # --- Generate AI Response ---
-        if document_text:
-            prompt = f"{context_message}, please answer the following question: '{user_message}'\n\nDocument Content:\n---\n{document_text}"
-            response = model.generate_content(prompt)
-            ai_response = response.text
-        else:
-            response = model.generate_content(user_message)
-            ai_response = response.text
+        # NEW: Generate content using the combined list of all inputs
+        if not prompt_parts:
+             return jsonify({'response': "Please ask a question or upload a file."})
+
+        print(f"DEBUG: Sending to Gemini API: {len(prompt_parts)} parts.") # Helpful for debugging
+        response = model.generate_content(prompt_parts)
+        ai_response = response.text
             
         return jsonify({'response': ai_response})
 
     except Exception as e:
         print(f"A critical error occurred: {e}")
-        return jsonify({'error': 'An internal error occurred.'}), 500
+        # NEW: Provide a more detailed error message for debugging
+        return jsonify({'error': f'An internal error occurred: {str(e)}'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
