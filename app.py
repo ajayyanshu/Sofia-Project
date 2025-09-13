@@ -14,13 +14,15 @@ from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__, template_folder='templates')
 
-# --- Hardcoded API Keys ---
-# ⚠️ This is NOT recommended for security reasons. Use environment variables for production.
-GOOGLE_API_KEY = "AIzaSyCLyorq2keBX6k5J5ZUX_I7YaUQ8apRgL4"
-YOUTUBE_API_KEY = "AIzaSyBnuUNg3S9n5jczlw_4p8hr-8zrAEKNfbI"  # Added YouTube Key
+# --- Securely Load API Keys from Render Environment ---
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 
 # --- Configure API Services ---
-genai.configure(api_key=GOOGLE_API_KEY)
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+else:
+    print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
 
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
