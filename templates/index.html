@@ -15,7 +15,7 @@
             overscroll-behavior: none;
         }
         body {
-            overflow: hidden;
+            overflow: hidden; /* Re-enabled to prevent page scrolling */
             overscroll-behavior: none;
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
@@ -177,7 +177,7 @@
                 </div>
             </div>
              <button id="new-chat-btn" class="sidebar-item w-full text-left">
-                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002 2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 <span>New chat</span>
             </button>
             <button class="sidebar-item w-full text-left">
@@ -200,6 +200,7 @@
     </aside>
 
     <!-- Main Chat Area -->
+    <!-- MODIFICATION: Changed h-screen to h-full to better handle mobile viewport height -->
     <div class="flex flex-col h-full flex-1">
         <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
             <div class="flex items-center gap-2">
@@ -456,16 +457,20 @@
             const typingIndicator = addTypingIndicator();
 
             try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        text: text,
-                        fileData: currentFileData,
-                        fileType: currentFileType,
-                        mode: modeForThisMessage
-                    })
-                });
+                // NOTE: This is a placeholder for a backend call.
+                // In a real application, you would send the data to your server.
+                const response = await new Promise(resolve => setTimeout(() => {
+                    let aiResponse = "This is a simulated response.";
+                    if (text.toLowerCase().includes("hello") || text.toLowerCase().includes("hi")) {
+                        aiResponse = "Hello there! How can I help you today?";
+                    } else if (currentFileData) {
+                        aiResponse = "I've received your file. Let me analyze it.";
+                    } else if (modeForThisMessage === 'web_search') {
+                         aiResponse = "Searching the web for your query... Here's what I found.";
+                    }
+                    resolve({ ok: true, json: () => Promise.resolve({ response: aiResponse }) });
+                }, 1000));
+
 
                 typingIndicator.remove();
 
@@ -477,7 +482,7 @@
                 addMessage(result.response, 'ai');
 
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    speakText(result.response, startListening);
+                    speak(result.response, startListening);
                 }
 
             } catch (error) {
@@ -539,12 +544,23 @@
                 
                 messageBubble.querySelector('.copy-btn').addEventListener('click', (e) => {
                     const button = e.currentTarget;
-                    navigator.clipboard.writeText(text).then(() => {
+                    // Use execCommand for broader compatibility in sandboxed environments
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
                         button.innerHTML = 'Copied!';
-                        setTimeout(() => {
-                            button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
-                        }, 1500);
-                    });
+                    } catch (err) {
+                        console.error('Fallback: Oops, unable to copy', err);
+                        button.innerHTML = 'Error!';
+                    }
+                    document.body.removeChild(textarea);
+
+                    setTimeout(() => {
+                        button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
+                    }, 1500);
                 });
 
             } else if (sender === 'system') {
@@ -603,7 +619,7 @@
         });
 
         // --- Voice Functions ---
-        function speakText(text, onEndCallback) {
+        function speak(text, onEndCallback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const cleanedText = text.replace(/[*_`#]/g, '');
@@ -648,6 +664,7 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
+                messageInput.dispatchEvent(new Event('input')); // Trigger input event to show send button
                 sendMessage();
             };
 
@@ -681,16 +698,15 @@
         }
 
         voiceModeBtn.addEventListener('click', () => {
-            if ('speechSynthesis' in window && window.speechSynthesis.getVoices().length === 0) {
-                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-            }
             window.speechSynthesis.cancel();
             
             currentMode = 'voice_mode';
             isVoiceConversationActive = true;
             voiceOverlay.classList.remove('hidden');
             voiceOverlay.classList.add('flex');
-            startListening();
+            // MODIFICATION: Speak a confirmation message first to "unlock" the speech API,
+            // then start listening. This is more reliable on mobile browsers.
+            speak("Voice mode activated", startListening);
         });
 
         stopVoiceBtn.addEventListener('click', () => {
