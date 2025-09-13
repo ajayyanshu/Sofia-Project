@@ -5,6 +5,7 @@ import re
 import requests
 
 import fitz  # PyMuPDF
+import docx
 from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
 from PIL import Image
@@ -45,6 +46,14 @@ def extract_text_from_pdf(pdf_bytes):
         print(f"Error extracting PDF text: {e}")
         return ""
 
+def extract_text_from_docx(docx_bytes):
+    try:
+        document = docx.Document(io.BytesIO(docx_bytes))
+        return "\n".join([para.text for para in document.paragraphs])
+    except Exception as e:
+        print(f"Error extracting DOCX text: {e}")
+        return ""
+
 def get_file_from_github(filename):
     url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
     try:
@@ -56,14 +65,11 @@ def get_file_from_github(filename):
         print(f"Error downloading from GitHub: {e}")
         return None
 
-# --- New YouTube Helper Functions ---
 def get_video_id(video_url):
-    """Extracts the YouTube video ID from a URL."""
     video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
     return video_id_match.group(1) if video_id_match else None
 
 def get_youtube_transcript(video_id):
-    """Gets the transcript for a given video ID."""
     try:
         transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
         return " ".join([d['text'] for d in transcript_list])
@@ -71,29 +77,26 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
-# --- Main Chat Logic (FIXED) ---
+# --- Main Chat Logic (FIXED AGAIN) ---
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
         data = request.json
         user_message = data.get('text', '')
         file_data = data.get('fileData')
-        file_type = data.get('fileType')
+        file_type = data.get('fileType', '')
         
         model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # NEW: Create a list to hold all parts of the prompt (text, image, docs)
         prompt_parts = []
         if user_message:
             prompt_parts.append(user_message)
 
-        # Priority 1: Handle a YouTube Link
+        # Priority 1: Handle a YouTube Link (This part returns directly)
         if "youtube.com" in user_message or "youtu.be" in user_message:
             video_id = get_video_id(user_message)
             if video_id:
                 transcript = get_youtube_transcript(video_id)
                 if transcript:
-                    # For YouTube, we create a specific prompt and return early
                     youtube_prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
                     response = model.generate_content(youtube_prompt)
                     return jsonify({'response': response.text})
@@ -104,34 +107,43 @@ def chat():
 
         # Priority 2: Check for keywords to get a file from GitHub
         matched_filename = next((filename for keyword, filename in PDF_KEYWORDS.items() if keyword in user_message.lower()), None)
-        
         if matched_filename:
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
                 pdf_text = extract_text_from_pdf(file_bytes)
-                # NEW: Add the PDF text to our prompt list instead of a separate variable
                 prompt_parts.append(f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---")
             else:
                 return jsonify({'response': f"Sorry, I found the keyword for '{matched_filename}' but could not download it from GitHub."})
 
-        # Priority 3: Handle a direct file upload from the user
+        # Priority 3: Handle a direct file upload (PDF, Image, AND DOCX)
         if file_data:
             file_bytes = base64.b64decode(file_data)
             if 'pdf' in file_type:
                 pdf_text = extract_text_from_pdf(file_bytes)
-                # NEW: Add the PDF text to our prompt list
                 prompt_parts.append(f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---")
+            
+            elif 'word' in file_type or file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                docx_text = extract_text_from_docx(file_bytes)
+                prompt_parts.append(f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---")
+            
             elif 'image' in file_type:
                 image = Image.open(io.BytesIO(file_bytes))
-                # NEW: Add the image object to our prompt list
                 prompt_parts.append(image)
 
-        # --- Generate AI Response ---
-        # NEW: Generate content using the combined list of all inputs
+        # Generate AI Response
         if not prompt_parts:
              return jsonify({'response': "Please ask a question or upload a file."})
 
-        print(f"DEBUG: Sending to Gemini API: {len(prompt_parts)} parts.") # Helpful for debugging
+        # NEW FIX: Check if the prompt only contains an image and no text.
+        # If so, add a default instruction for the AI model.
+        has_text = any(isinstance(part, str) and part.strip() for part in prompt_parts)
+        has_image = any(isinstance(part, Image.Image) for part in prompt_parts)
+
+        if has_image and not has_text:
+            # Add a default prompt if there's an image but no text query.
+            prompt_parts.insert(0, "What is in this image? Describe it in detail.")
+
+        print(f"DEBUG: Sending to Gemini API with parts: {prompt_parts}")
         response = model.generate_content(prompt_parts)
         ai_response = response.text
             
@@ -139,9 +151,9 @@ def chat():
 
     except Exception as e:
         print(f"A critical error occurred: {e}")
-        # NEW: Provide a more detailed error message for debugging
         return jsonify({'error': f'An internal error occurred: {str(e)}'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
