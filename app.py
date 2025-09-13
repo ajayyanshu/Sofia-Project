@@ -95,13 +95,6 @@ def chat():
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
 
-        # NEW: Smart check to see if the user intended to send a file.
-        file_keywords = ['image', 'pdf', 'document', 'file', 'this']
-        if any(keyword in user_message.lower() for keyword in file_keywords) and not file_data:
-            return jsonify({
-                'response': "It looks like you're referring to a file, but I didn't receive one. Please try uploading the file again with your message."
-            })
-
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt_parts = []
         if user_message:
