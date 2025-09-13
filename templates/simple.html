@@ -15,7 +15,7 @@
             overscroll-behavior: none;
         }
         body {
-            /* overflow: hidden; -- This was causing issues on mobile with the keyboard */
+            overflow: hidden;
             overscroll-behavior: none;
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
@@ -177,11 +177,11 @@
                 </div>
             </div>
              <button id="new-chat-btn" class="sidebar-item w-full text-left">
-                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002 2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 <span>New chat</span>
             </button>
             <button class="sidebar-item w-full text-left">
-                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 R- -  V-  -         h h" /></svg>
                 <span>Library</span>
             </button>
         </div>
@@ -200,9 +200,8 @@
     </aside>
 
     <!-- Main Chat Area -->
-    <!-- MODIFICATION: Changed h-full to h-screen to better handle mobile viewport height -->
-    <div class="flex flex-col h-screen flex-1">
-        <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
+    <div class="flex flex-col h-full flex-1 min-w-0">
+        <header class="w-full flex justify-between items-center py-4 px-4 sm:px-6 bg-white border-b border-gray-200 z-10">
             <div class="flex items-center gap-2">
                 <button id="menu-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Menu">
                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -246,7 +245,7 @@
                     <textarea id="message-input" rows="1" placeholder="Ask anything" class="flex-1 min-w-0 px-2 sm:px-4 py-2 bg-transparent focus:outline-none text-gray-700" aria-label="Ask AI Chatbot"></textarea>
                     
                     <button id="web-search-toggle-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
                     </button>
 
                     <button id="mic-btn" class="p-2 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
@@ -457,41 +456,54 @@
             const typingIndicator = addTypingIndicator();
 
             try {
-                // NOTE: This is a placeholder for a backend call.
-                // In a real application, you would send the data to your server.
-                const response = await new Promise(resolve => setTimeout(() => {
-                    let aiResponse = "This is a simulated response.";
-                    if (text.toLowerCase().includes("hello") || text.toLowerCase().includes("hi")) {
-                        aiResponse = "Hello there! How can I help you today?";
-                    } else if (currentFileData) {
-                        aiResponse = "I've received your file. Let me analyze it.";
-                    } else if (modeForThisMessage === 'web_search') {
-                         aiResponse = "Searching the web for your query... Here's what I found.";
-                    }
-                    resolve({ ok: true, json: () => Promise.resolve({ response: aiResponse }) });
-                }, 1000));
-
+                // Attempt the real API call
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        fileData: currentFileData,
+                        fileType: currentFileType,
+                        mode: modeForThisMessage
+                    })
+                });
 
                 typingIndicator.remove();
 
                 if (!response.ok) {
-                    throw new Error(`Server responded with status ${response.status}`);
+                    // Handle specific error for daily limit
+                    if (response.status === 429) {
+                        addMessage("Sorry, the daily limit for the AI service has been reached. Please try again tomorrow.", 'system');
+                        return; // Exit the function
+                    }
+                    // Handle other HTTP errors
+                    throw new Error(`Server responded with status: ${response.status}`);
                 }
 
                 const result = await response.json();
                 addMessage(result.response, 'ai');
 
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    speak(result.response, startListening);
+                    speakText(result.response, startListening);
                 }
 
             } catch (error) {
-                console.error('Error:', error);
+                // This will catch network errors or the thrown error from above
+                console.error('API Call Error:', error);
                 typingIndicator.remove();
-                addMessage(`Sorry, something went wrong. Please try again.`, 'system');
-                if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    setTimeout(startListening, 1000);
-                }
+                
+                // Fallback for general errors (but not 429, which is handled above)
+                addMessage(`Error: Could not connect to the AI (${error.message}). This might be a server configuration issue. Displaying a simulated response.`, 'system');
+
+                // Fallback to a simulated response after a short delay
+                setTimeout(() => {
+                    const simulatedResponse = `This is a simulated response as the AI backend is not reachable. You said: "${text}"`;
+                    addMessage(simulatedResponse, 'ai');
+                    
+                    if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
+                        speakText(simulatedResponse, startListening);
+                    }
+                }, 500);
             }
         }
         
@@ -544,23 +556,12 @@
                 
                 messageBubble.querySelector('.copy-btn').addEventListener('click', (e) => {
                     const button = e.currentTarget;
-                    // Use execCommand for broader compatibility in sandboxed environments
-                    const textarea = document.createElement('textarea');
-                    textarea.value = text;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    try {
-                        document.execCommand('copy');
+                    navigator.clipboard.writeText(text).then(() => {
                         button.innerHTML = 'Copied!';
-                    } catch (err) {
-                        console.error('Fallback: Oops, unable to copy', err);
-                        button.innerHTML = 'Error!';
-                    }
-                    document.body.removeChild(textarea);
-
-                    setTimeout(() => {
-                        button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
-                    }, 1500);
+                        setTimeout(() => {
+                            button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
+                        }, 1500);
+                    });
                 });
 
             } else if (sender === 'system') {
@@ -589,7 +590,7 @@
             const indicator = document.createElement('div');
             indicator.className = 'mode-indicator ml-2';
             indicator.innerHTML = `
-                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 48 48"><path fill="#4CAF50" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FFC107" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#FF3D00" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.902,35.636,44,29.598,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
                 <span>Web Search Active</span>
                 <button id="close-search-mode-btn" class="ml-2 p-1 rounded-full hover:bg-indigo-200 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-indigo-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
@@ -619,7 +620,7 @@
         });
 
         // --- Voice Functions ---
-        function speak(text, onEndCallback) {
+        function speakText(text, onEndCallback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const cleanedText = text.replace(/[*_`#]/g, '');
@@ -664,7 +665,6 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 messageInput.value = transcript;
-                messageInput.dispatchEvent(new Event('input')); // Trigger input event to show send button
                 sendMessage();
             };
 
@@ -698,15 +698,16 @@
         }
 
         voiceModeBtn.addEventListener('click', () => {
+            if ('speechSynthesis' in window && window.speechSynthesis.getVoices().length === 0) {
+                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+            }
             window.speechSynthesis.cancel();
             
             currentMode = 'voice_mode';
             isVoiceConversationActive = true;
             voiceOverlay.classList.remove('hidden');
             voiceOverlay.classList.add('flex');
-            // MODIFICATION: Speak a confirmation message first to "unlock" the speech API,
-            // then start listening. This is more reliable on mobile browsers.
-            speak("Voice mode activated", startListening);
+            startListening();
         });
 
         stopVoiceBtn.addEventListener('click', () => {
@@ -720,3 +721,4 @@
     </script>
 </body>
 </html>
+
