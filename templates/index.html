@@ -200,8 +200,8 @@
     </aside>
 
     <!-- Main Chat Area -->
-    <!-- MODIFICATION: Changed h-screen to h-full to better handle mobile viewport height -->
-    <div class="flex flex-col h-full flex-1">
+    <!-- MODIFICATION: Changed h-full back to h-screen for better mobile viewport handling -->
+    <div class="flex flex-col h-screen flex-1">
         <header class="w-full flex justify-between items-center py-4 px-6 bg-white border-b border-gray-200 z-10">
             <div class="flex items-center gap-2">
                 <button id="menu-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Menu">
@@ -429,6 +429,59 @@
             }
         }
 
+        async function callGeminiAPI(text, fileData, fileType, mode) {
+            const apiKey = ""; // Will be provided by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            let parts = [{ text: text }];
+
+            if (fileData && fileType && fileType.startsWith('image/')) {
+                parts.push({
+                    inlineData: {
+                        mimeType: fileType,
+                        data: fileData
+                    }
+                });
+            }
+
+            const payload = {
+                contents: [{ parts: parts }],
+            };
+
+            if (mode === 'web_search') {
+                payload.tools = [{ "google_search": {} }];
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                     const errorBody = await response.text();
+                     console.error("API Error Response:", errorBody);
+                     throw new Error(`API Error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    return candidate.content.parts[0].text;
+                } else {
+                    console.error("Invalid API response structure:", result);
+                    return "Sorry, I received an unexpected response. Please try again.";
+                }
+
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                throw error;
+            }
+        }
+
+
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text && !fileData) return;
@@ -445,6 +498,7 @@
             // Reset UI
             messageInput.value = '';
             messageInput.style.height = 'auto';
+            messageInput.dispatchEvent(new Event('input')); // Recalculate size and button visibility
             const currentFileData = fileData;
             const currentFileType = fileType;
             removeFile();
@@ -457,32 +511,13 @@
             const typingIndicator = addTypingIndicator();
 
             try {
-                // NOTE: This is a placeholder for a backend call.
-                // In a real application, you would send the data to your server.
-                const response = await new Promise(resolve => setTimeout(() => {
-                    let aiResponse = "This is a simulated response.";
-                    if (text.toLowerCase().includes("hello") || text.toLowerCase().includes("hi")) {
-                        aiResponse = "Hello there! How can I help you today?";
-                    } else if (currentFileData) {
-                        aiResponse = "I've received your file. Let me analyze it.";
-                    } else if (modeForThisMessage === 'web_search') {
-                         aiResponse = "Searching the web for your query... Here's what I found.";
-                    }
-                    resolve({ ok: true, json: () => Promise.resolve({ response: aiResponse }) });
-                }, 1000));
-
+                const aiResponseText = await callGeminiAPI(text, currentFileData, currentFileType, modeForThisMessage);
 
                 typingIndicator.remove();
-
-                if (!response.ok) {
-                    throw new Error(`Server responded with status ${response.status}`);
-                }
-
-                const result = await response.json();
-                addMessage(result.response, 'ai');
+                addMessage(aiResponseText, 'ai');
 
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    speak(result.response, startListening);
+                    speak(aiResponseText, startListening);
                 }
 
             } catch (error) {
