@@ -456,6 +456,7 @@
             const typingIndicator = addTypingIndicator();
 
             try {
+                // Attempt the real API call
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -470,7 +471,8 @@
                 typingIndicator.remove();
 
                 if (!response.ok) {
-                    throw new Error(`Server responded with status ${response.status}`);
+                    // This will catch HTTP errors like 404, 500
+                    throw new Error(`Server responded with status: ${response.status}`);
                 }
 
                 const result = await response.json();
@@ -481,12 +483,22 @@
                 }
 
             } catch (error) {
-                console.error('Error:', error);
+                // This will catch network errors or the thrown error from above
+                console.error('API Call Error:', error);
                 typingIndicator.remove();
-                addMessage(`Sorry, something went wrong. Please try again.`, 'system');
-                if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    setTimeout(startListening, 1000);
-                }
+                
+                // 1. Display a more detailed error message to the user
+                addMessage(`Error: Could not connect to the AI. (${error.message}). Displaying a simulated response.`, 'system');
+
+                // 2. Fallback to a simulated response after a short delay
+                setTimeout(() => {
+                    const simulatedResponse = `This is a simulated response because the real AI is unavailable. You said: "${text}"`;
+                    addMessage(simulatedResponse, 'ai');
+                    
+                    if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
+                        speakText(simulatedResponse, startListening);
+                    }
+                }, 500);
             }
         }
         
