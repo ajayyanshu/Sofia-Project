@@ -110,7 +110,7 @@
         .cloud::after { width: 120px; height: 120px; top: -20px; right: 20px; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .message-actions { position: absolute; bottom: 0.5rem; right: 0.75rem; display: flex; gap: 0.5rem; opacity: 0.7; }
-        .action-btn { background: none; border: none; cursor: pointer; color: #6b7280; padding: 0.25rem; border-radius: 9999px; transition: background-color 0.2s; }
+        .action-btn { background: none; border: none; cursor: pointer; color: #6b7280; padding: 0.25rem; border-radius: 9999px; transition: background-color 0.2s, color 0.2s; }
         .action-btn:hover { background-color: #d1d5db; }
         .menu-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.2s; }
         .menu-item:hover { background-color: #f3f4f6; }
@@ -211,11 +211,32 @@
             <div class="p-2 text-sm text-gray-600">Your chat history will appear here.</div>
         </div>
 
-        <div class="p-4 border-t border-gray-200">
-             <button class="sidebar-item w-full text-left">
+        <div class="p-4 border-t border-gray-200 relative">
+             <button id="user-menu-btn" class="sidebar-item w-full text-left">
                 <img src="https://placehold.co/32x32/E2E8F0/4A5568?text=A" alt="User Avatar" class="h-8 w-8 rounded-full">
                 <span>Ajay Kumar</span>
             </button>
+            <div id="user-menu" class="hidden absolute bottom-full mb-2 w-60 bg-white border border-gray-200 rounded-xl shadow-lg p-2 z-20">
+                <a href="#" class="menu-item w-full text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-gray-500">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.485.4.665 1.066.26 1.431l-1.296 2.247a1.125 1.125 0 01-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 01-.26-1.431l1.296-2.247a1.125 1.125 0 011.37-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="text-sm font-medium text-gray-700">Settings</span>
+                </a>
+                <a href="#" class="menu-item w-full text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-gray-500">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                    </svg>
+                    <span class="text-sm font-medium text-gray-700">Help</span>
+                </a>
+                <a href="#" class="menu-item w-full text-left">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-gray-500">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                    </svg>
+                    <span class="text-sm font-medium text-gray-700">Log out</span>
+                </a>
+            </div>
         </div>
     </aside>
 
@@ -310,6 +331,8 @@
         const stopVoiceBtn = document.getElementById('stop-voice-btn');
         const cancelVoiceBtn = document.getElementById('cancel-voice-btn');
         const voiceStatusText = document.getElementById('voice-status-text');
+        const userMenuBtn = document.getElementById('user-menu-btn');
+        const userMenu = document.getElementById('user-menu');
 
         const markdownConverter = new showdown.Converter();
         let fileData = null;
@@ -379,10 +402,18 @@
             e.stopPropagation();
             addMenu.classList.toggle('hidden');
         });
+
+        userMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userMenu.classList.toggle('hidden');
+        });
         
         window.addEventListener('click', (e) => {
              if (!addMenu.classList.contains('hidden') && !addBtn.contains(e.target)) {
                 addMenu.classList.add('hidden');
+            }
+            if (userMenu && !userMenu.classList.contains('hidden') && !userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+                userMenu.classList.add('hidden');
             }
         });
 
@@ -560,28 +591,77 @@
                 messageBubble.className = 'message-bubble ai-message';
                 
                 let contentHtml = markdownConverter.makeHtml(text);
-
+                
                 const actionsHtml = `
                     <div class="message-actions">
-                        <button class="action-btn copy-btn" title="Copy text"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg></button>
-                        <button class="action-btn" title="Good response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></button>
-                        <button class="action-btn" title="Bad response"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg></button>
+                        <button class="action-btn copy-btn" title="Copy text">
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>
+                        </button>
+                        <button class="action-btn like-btn" title="Good response">
+                           <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.821 2.311l-1.055 1.636a1 1 0 00-1.423 .23z"/></svg>
+                        </button>
+                        <button class="action-btn dislike-btn" title="Bad response">
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.106-1.79l-.05-.025A4 4 0 0011.057 2H5.642a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.821-2.311l1.055-1.636a1 1 0 001.423-.23z"/></svg>
+                        </button>
+                        <button class="action-btn share-btn" title="Share">
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>
+                        </button>
+                        <button class="action-btn speak-btn" title="Speak">
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd" /></svg>
+                        </button>
                     </div>
                 `;
+
                 messageBubble.innerHTML = contentHtml + actionsHtml;
                 
                 aiMessageContainer.innerHTML = avatar;
                 aiMessageContainer.appendChild(messageBubble);
                 chatContainer.appendChild(aiMessageContainer);
-                
+
+                // Event Listeners for actions
                 messageBubble.querySelector('.copy-btn').addEventListener('click', (e) => {
                     const button = e.currentTarget;
+                    const originalContent = button.innerHTML;
                     navigator.clipboard.writeText(text).then(() => {
-                        button.innerHTML = 'Copied!';
+                        button.innerHTML = '<span class="text-xs">Copied!</span>';
                         setTimeout(() => {
-                            button.innerHTML = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>`;
-                        }, 1500);
+                            button.innerHTML = originalContent;
+                        }, 2000);
                     });
+                });
+
+                messageBubble.querySelector('.like-btn').addEventListener('click', (e) => {
+                    e.currentTarget.classList.toggle('text-blue-600');
+                    messageBubble.querySelector('.dislike-btn').classList.remove('text-red-600');
+                });
+
+                messageBubble.querySelector('.dislike-btn').addEventListener('click', (e) => {
+                    e.currentTarget.classList.toggle('text-red-600');
+                    messageBubble.querySelector('.like-btn').classList.remove('text-blue-600');
+                });
+
+                messageBubble.querySelector('.share-btn').addEventListener('click', async () => {
+                    const button = messageBubble.querySelector('.share-btn');
+                    const originalContent = button.innerHTML;
+                    if (navigator.share) {
+                        try {
+                            await navigator.share({ title: 'Sofia 2.0 AI Chat', text: text });
+                        } catch (error) {
+                            console.error('Error sharing:', error);
+                            // Fallback if user cancels share
+                            navigator.clipboard.writeText(text);
+                            button.innerHTML = '<span class="text-xs">Copied!</span>';
+                            setTimeout(() => { button.innerHTML = originalContent; }, 2000);
+                        }
+                    } else {
+                        navigator.clipboard.writeText(text);
+                        button.innerHTML = '<span class="text-xs">Copied!</span>';
+                        setTimeout(() => { button.innerHTML = originalContent; }, 2000);
+                    }
+                });
+
+                messageBubble.querySelector('.speak-btn').addEventListener('click', () => {
+                    speakText(text, null);
                 });
 
             } else if (sender === 'system') {
@@ -595,12 +675,13 @@
 
         function addTypingIndicator() {
             const typingIndicatorContainer = document.createElement('div');
-            typingIndicatorContainer.className = 'ai-message-container typing-indicator';
+            typingIndicatorContainer.className = 'ai-message-container typing-indicator items-center';
             const animatedAvatarHTML = `
                 <div class="ai-avatar-animated">
                     <div class="orbiting-circle"></div>
                     <span class="globe text-2xl">🌎</span>
                 </div>
+                <span class="text-gray-600 font-medium ml-2">Just a sec...</span>
             `;
             typingIndicatorContainer.innerHTML = animatedAvatarHTML;
             chatContainer.appendChild(typingIndicatorContainer);
