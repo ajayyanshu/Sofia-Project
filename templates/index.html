@@ -805,23 +805,62 @@
             
             const typingIndicator = addTypingIndicator();
 
-            // --- SIMULATED API CALL ---
-            setTimeout(() => {
+            try {
+                const apiKey = ""; // API key is handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const parts = [{ text: text }];
+                if (currentFileData && currentFileType && currentFileType.startsWith('image/')) {
+                    parts.push({
+                        inlineData: {
+                            mimeType: currentFileType,
+                            data: currentFileData
+                        }
+                    });
+                }
+
+                const payload = {
+                    contents: [{ parts: parts }]
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                
                 typingIndicator.remove();
-                const simulatedResponse = `This is a simulated response to your message: "${text}". The backend is not connected in this demo.`;
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                const aiResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
+                
                 const aiMessage = {
-                    text: simulatedResponse,
+                    text: aiResponseText,
                     sender: 'ai'
                 };
                 addMessage(aiMessage);
                 currentChat.push(aiMessage);
                 saveChatSession();
 
-
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    speakText(simulatedResponse, startListening);
+                    speakText(aiResponseText, startListening);
                 }
-            }, 1500 + Math.random() * 1000);
+
+            } catch (error) {
+                typingIndicator.remove();
+                console.error("API call failed:", error);
+                const errorMessage = {
+                    text: `Sorry, there was an error connecting to the AI. (${error.message})`,
+                    sender: 'system'
+                };
+                addMessage(errorMessage);
+                currentChat.push(errorMessage);
+                saveChatSession();
+            }
         }
         
         function addMessage({text, sender, fileInfo = null, mode = null}) {
@@ -1185,4 +1224,5 @@
     </script>
 </body>
 </html>
+
 
