@@ -593,7 +593,7 @@
                 profileSettingsContent.classList.add('hidden');
                 settingsContentTitle.textContent = translations[currentLang].general;
             } else if (tab === 'profile') {
-                profileTabBtn.classList.add('active', 'bg-gray-100', 'text-gray-800', 'font-semibold');
+                profileTabBtn.classList.add('active', 'bg-ray-100', 'text-gray-800', 'font-semibold');
                 profileSettingsContent.classList.remove('hidden');
                 generalSettingsContent.classList.add('hidden');
                 settingsContentTitle.textContent = translations[currentLang].profile;
@@ -638,7 +638,7 @@
                 settings: '設定', general: '一般', profile: 'プロフィール', theme: 'テーマ', light: 'ライト', dark: 'ダーク', system: 'システム', language: '言語', profileImage: 'プロフィール画像', upload: 'アップロード', username: 'ユーザー名', newChat: '新しいチャット', library: 'ライブラリ', chatHistory: 'チャット履歴', chatHistoryEmpty: 'チャット履歴はここに表示されます。', help: 'ヘルプ', logOut: 'ログアウト', welcome: '何かお手伝いできますか？', addFiles: '写真とファイルを追加', askAnything: '何でも聞いてください', search: '検索', sofiaTitle: 'ソフィア 2.0'
             },
             'ko': {
-                settings: '설정', general: '일반', profile: '프로필', theme: '테마', light: '라이트', dark: '다크', system: '시스템', language: '언어', profileImage: '프로필 이미지', upload: '업로드', username: '사용자 이름', newChat: '새 채팅', library: '라이브러리', chatHistory: '채팅 기록', chatHistoryEmpty: '채팅 기록이 여기에 표시됩니다.', help: '도움말', logOut: '로그아웃', welcome: '무엇을 도와드릴까요?', addFiles: '사진 및 파일 추가', askAnything: '무엇이든 물어보세요', search: '검색', sofiaTitle: '소피아 2.0'
+                settings: '설정', general: '일반', profile: '프로필', theme: '테마', light: '라이트', dark: '다크', system: 'システム', language: '언어', profileImage: '프로필 이미지', upload: '업로드', username: '사용자 이름', newChat: '새 채팅', library: '라이브러리', chatHistory: '채팅 기록', chatHistoryEmpty: '채팅 기록이 여기에 표시됩니다.', help: '도움말', logOut: '로그아웃', welcome: '무엇을 도와드릴까요?', addFiles: '사진 및 파일 추가', askAnything: '무엇이든 물어보세요', search: '검색', sofiaTitle: '소피아 2.0'
             },
             'pt': {
                 settings: 'Configurações', general: 'Geral', profile: 'Perfil', theme: 'Tema', light: 'Claro', dark: 'Escuro', system: 'Sistema', language: 'Idioma', profileImage: 'Imagem de perfil', upload: 'Carregar', username: 'Nome de usuário', newChat: 'Novo chat', library: 'Biblioteca', chatHistory: 'Histórico de chat', chatHistoryEmpty: 'Seu histórico de chat aparecerá aqui.', help: 'Ajuda', logOut: 'Sair', welcome: 'Como posso ajudar?', addFiles: 'Adicionar fotos e arquivos', askAnything: 'Pergunte qualquer cosa', search: 'Pesquisar', sofiaTitle: 'Sofia 2.0'
@@ -806,37 +806,29 @@
             const typingIndicator = addTypingIndicator();
 
             try {
-                const apiKey = ""; // API key is handled by the environment
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-                const parts = [{ text: text }];
-                if (currentFileData && currentFileType && currentFileType.startsWith('image/')) {
-                    parts.push({
-                        inlineData: {
-                            mimeType: currentFileType,
-                            data: currentFileData
-                        }
-                    });
-                }
-
-                const payload = {
-                    contents: [{ parts: parts }]
-                };
-
-                const response = await fetch(apiUrl, {
+                // The URL now points to the /chat endpoint of your Python backend.
+                // For local testing, it would be 'http://127.0.0.1:5000/chat'.
+                // On Render, this relative path '/chat' should work if frontend is served by Flask
+                // or you might need the full Render service URL if served separately.
+                const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify({
+                        text: text,
+                        fileData: currentFileData, 
+                        fileType: currentFileType
+                    })
                 });
                 
                 typingIndicator.remove();
 
                 if (!response.ok) {
-                    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                     const errorData = await response.json().catch(() => ({})); // Gracefully handle non-JSON error responses
+                    throw new Error(errorData.error || `Server Error: ${response.status}`);
                 }
 
                 const result = await response.json();
-                const aiResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
+                const aiResponseText = result.response || "Sorry, I couldn't get a response.";
                 
                 const aiMessage = {
                     text: aiResponseText,
@@ -853,8 +845,10 @@
             } catch (error) {
                 typingIndicator.remove();
                 console.error("API call failed:", error);
+                
+                const errorMessageText = `The AI service is currently unavailable. Please try again later.`;
                 const errorMessage = {
-                    text: `Sorry, there was an error connecting to the AI. (${error.message})`,
+                    text: errorMessageText,
                     sender: 'system'
                 };
                 addMessage(errorMessage);
