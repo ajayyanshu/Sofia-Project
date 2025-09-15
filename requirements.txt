@@ -6,3 +6,9 @@ Pillow
 youtube-transcript-api
 requests
 python-docx
+flask_cors
+flask_pymongo
+flask_bcrypt
+flask_jwt_extended
+python-dotenv
+dnspython
