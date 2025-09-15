@@ -1,81 +1,70 @@
-import google.generativeai as genai
 import os
+import io
 from PIL import Image
-from io import BytesIO
-import base64
+import google.generativeai as genai
 
-# --- Configuration ---
-# It's best practice to load your API key from environment variables
-# In Render, you would set GEMINI_API_KEY in your environment settings.
-try:
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-except KeyError:
-    print("Error: GEMINI_API_KEY environment variable not set.")
-    # Add a fallback or exit if the key isn't found
-    exit()
+def setup_api_key():
+    """Securely configures the API key from environment variables."""
+    try:
+        api_key = os.environ["GEMINI_API_KEY"]
+        genai.configure(api_key=api_key)
+        return True
+    except KeyError:
+        print("Error: The GEMINI_API_KEY environment variable is not set.")
+        return False
 
-
-def create_image_from_prompt(prompt, output_filename="generated_image.png"):
+def generate_image_from_prompt(prompt_text):
     """
-    Generates an image from a text prompt using the Gemini API
-    and saves it to a file.
+    Generates an image from a text prompt using the official Gemini API method.
 
     Args:
-        prompt (str): The text description for the image to create.
-        output_filename (str): The filename to save the generated image as.
+        prompt_text (str): The text description for the image.
 
     Returns:
-        str: The path to the saved image file, or None if generation failed.
+        bytes: The raw image data in bytes if successful, otherwise None.
     """
-    print(f"Generating image with prompt: '{prompt}'...")
+    print(f"Attempting to generate image for prompt: '{prompt_text}'")
+    
+    # Initialize the Gemini Model for image generation
+    model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
 
+    # Generate the content based on the prompt
+    response = model.generate_content(prompt_text)
+
+    # The response contains the image data directly in the first part
     try:
-        # Use the correct model for image generation
-        model = genai.GenerativeModel('gemini-2.5-flash-image-preview')
+        # Extract the first candidate's content part which holds the image
+        image_part = response.candidates[0].content.parts[0]
 
-        # The payload for text-to-image generation is simpler.
-        # We just send the prompt and specify that we want an image back.
-        response = model.generate_content(
-            contents=prompt,
-            generation_config={
-                "response_mime_type": "image/png",
-            }
-        )
-
-        # The image data comes back as base64-encoded bytes in the first part
-        if response.candidates and response.candidates[0].content.parts:
-            image_part = response.candidates[0].content.parts[0]
-            
-            # Check if the part contains inline image data
-            if image_part.inline_data:
-                image_bytes = image_part.inline_data.data
-                
-                # Decode the base64 string to bytes
-                image_data = base64.b64decode(image_bytes)
-                
-                # Create an image object from the bytes
-                image = Image.open(BytesIO(image_data))
-                
-                # Save the image to the specified file
-                image.save(output_filename)
-                print(f"Image successfully saved as {output_filename}")
-                return output_filename
-            else:
-                print("Error: API response did not contain image data.")
-                return None
+        # Check if the part contains the expected inline_data
+        if image_part.inline_data:
+            return image_part.inline_data.data
         else:
-            # This will print any blocking reason if the prompt was rejected
-            print("Error: Image generation failed. Response:", response)
+            # Handle cases where the model returns text (e.g., safety rejection)
+            print("API did not return image data. Response:", image_part.text)
             return None
-
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+            
+    except (IndexError, AttributeError) as e:
+        print(f"Error processing API response: {e}")
+        print("Full response:", response)
         return None
 
-# --- Example Usage ---
+# --- Example of how to use this code ---
 if __name__ == "__main__":
-    # The prompt from your screenshot
-    user_prompt = "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"
-    
-    # Call the function to generate and save the image
-    create_image_from_prompt(user_prompt)
+    # First, ensure the API key is set up
+    if setup_api_key():
+        # The prompt from your example
+        user_prompt = "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"
+        
+        # Call the function to get the image data
+        image_data = generate_image_from_prompt(user_prompt)
+
+        if image_data:
+            # If we got data, open it with Pillow and save it
+            try:
+                image = Image.open(io.BytesIO(image_data))
+                output_filename = "generated_image.png"
+                image.save(output_filename)
+                print(f"Image successfully generated and saved as '{output_filename}'")
+            except Exception as e:
+                print(f"Failed to save the image: {e}")
