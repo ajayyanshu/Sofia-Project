@@ -52,3 +52,10 @@ class Database:
             upsert=True
         )
 
+    def delete_chat_history(self, user_id):
+        """
+        Deletes the entire chat history document for a given user.
+        This is a new function to provide more control over the chat history feature.
+        """
+        return self.mongo.db.chats.delete_one({'user_id': ObjectId(user_id)})
+
