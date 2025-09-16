@@ -1,61 +1,91 @@
-from flask_bcrypt import Bcrypt
-from bson import ObjectId
-
-# Initialize Bcrypt here or pass it from the app
-bcrypt = Bcrypt()
+import datetime
+from bson.objectid import ObjectId
 
 class Database:
     """
-    This class handles all database operations for the application.
-    It centralizes the logic for interacting with MongoDB collections.
+    Handles all interactions with the MongoDB database.
+    This class separates the database logic from the web server logic in app.py.
     """
     def __init__(self, mongo):
         """
-        Initializes the Database class with the Flask-PyMongo instance.
-        
-        :param mongo: The initialized PyMongo instance from the Flask app.
+        Initializes the Database class with a connection to MongoDB.
+
+        Args:
+            mongo: The Flask-PyMongo instance from the main app.
         """
         self.mongo = mongo
+        # Define collections for easier access
+        self.users = self.mongo.db.users
+        self.chats = self.mongo.db.chats
 
-    # --- User Collection Methods ---
+    def create_user(self, username, hashed_password):
+        """
+        Inserts a new user into the users collection.
+
+        Args:
+            username (str): The username for the new account.
+            hashed_password (str): The encrypted password.
+
+        Returns:
+            ObjectId: The ID of the newly inserted user, or None on failure.
+        """
+        try:
+            return self.users.insert_one({
+                'username': username,
+                'password': hashed_password,
+                'created_at': datetime.datetime.utcnow()
+            }).inserted_id
+        except Exception as e:
+            print(f"Error creating user: {e}")
+            return None
 
     def find_user_by_username(self, username):
-        """Finds a single user by their username."""
-        return self.mongo.db.users.find_one({"username": username})
-
-    def create_user(self, username, password):
-        """Hashes a password and creates a new user in the database."""
-        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-        return self.mongo.db.users.insert_one({
-            'username': username,
-            'password': hashed_password
-        })
-
-    def check_user_password(self, user_password_hash, password):
-        """Checks if the provided password matches the stored hash."""
-        return bcrypt.check_password_hash(user_password_hash, password)
-
-    # --- Chat Collection Methods ---
-
-    def get_user_chat_history(self, user_id):
-        """Retrieves the full chat history for a given user ID."""
-        return self.mongo.db.chats.find_one({'user_id': ObjectId(user_id)})
-
-    def save_chat_messages(self, user_id, user_message, ai_message):
         """
-        Saves a pair of user and AI messages to the user's chat history.
-        Uses 'upsert=True' to create a chat document if one doesn't exist.
+        Finds a single user by their username.
+
+        Args:
+            username (str): The username to search for.
+
+        Returns:
+            dict: The user document if found, otherwise None.
         """
-        self.mongo.db.chats.update_one(
+        return self.users.find_one({'username': username})
+
+    def save_chat_message(self, user_id, message_document):
+        """
+        Saves a new chat message or updates the chat history for a user.
+        A chat document is created if one doesn't exist for the user.
+
+        Args:
+            user_id (str): The ObjectId of the user as a string.
+            message_document (dict): The message to save (e.g., {"role": "user", "parts": [...]})
+        """
+        # Find the user's chat document or create a new one
+        self.chats.update_one(
             {'user_id': ObjectId(user_id)},
-            {'$push': {'messages': {'$each': [user_message, ai_message]}}},
-            upsert=True
+            {
+                '$push': {'history': message_document},
+                '$setOnInsert': {
+                    'user_id': ObjectId(user_id),
+                    'created_at': datetime.datetime.utcnow()
+                },
+                '$set': {'last_updated': datetime.datetime.utcnow()}
+            },
+            upsert=True  # This creates the document if it doesn't exist
         )
 
-    def delete_chat_history(self, user_id):
+    def get_user_chat_history(self, user_id):
         """
-        Deletes the entire chat history document for a given user.
-        This is a new function to provide more control over the chat history feature.
+        Retrieves the entire chat history for a specific user.
+
+        Args:
+            user_id (str): The ObjectId of the user as a string.
+
+        Returns:
+            list: A list of chat message documents, or an empty list if not found.
         """
-        return self.mongo.db.chats.delete_one({'user_id': ObjectId(user_id)})
+        chat_document = self.chats.find_one({'user_id': ObjectId(user_id)})
+        if chat_document and 'history' in chat_document:
+            return chat_document['history']
+        return []
 
