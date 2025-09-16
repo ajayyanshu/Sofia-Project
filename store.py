@@ -88,4 +88,3 @@ class Database:
         if chat_document and 'history' in chat_document:
             return chat_document['history']
         return []
-
