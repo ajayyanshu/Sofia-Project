@@ -13,3 +13,4 @@ flask_jwt_extended
 python-dotenv
 dnspython
 pymongo[srv]
+pymongo
