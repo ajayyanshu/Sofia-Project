@@ -3,6 +3,8 @@ import io
 import os
 import re
 import sys
+import traceback
+import datetime
 
 import docx
 import fitz  # PyMuPDF
@@ -11,18 +13,91 @@ import requests
 from flask import Flask, jsonify, render_template, request
 from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
+from dotenv import load_dotenv
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
+
+# Load environment variables for local development
+load_dotenv()
 
 app = Flask(__name__, template_folder='templates')
 
-# --- Securely Load API Keys from Render Environment ---
+# --- Securely Load API Keys ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY") # Restored this line as requested
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
+    sys.exit(1)
+
+# Inform if the YouTube API key is present (optional, but good for debugging)
+if not YOUTUBE_API_KEY:
+    print("INFO: YOUTUBE_API_KEY environment variable not found. Transcript feature will still work.")
+else:
+    print("INFO: YOUTUBE_API_KEY loaded successfully.")
+
+
+# --- MongoDB Database Connection Logic ---
+
+def init_db():
+    """
+    Initializes and returns a connection to the MongoDB database.
+    If it fails, it will stop the application.
+    """
+    mongo_uri = os.environ.get("MONGO_URI")
+
+    if not mongo_uri:
+        print("\n" + "="*60)
+        print("❌ FATAL ERROR: MONGO_URI environment variable not found.")
+        print("   The application cannot start without the database connection string.")
+        print("   Please check this variable in your Render Environment settings.")
+        print("="*60 + "\n")
+        sys.exit(1) # Stop the application
+    
+    try:
+        print("--- Attempting to connect to MongoDB ---")
+        client = MongoClient(mongo_uri)
+        # The ismaster command is cheap and does not require auth.
+        client.admin.command('ismaster') 
+        db = client['collegeproject']
+        print(f"✅ MongoDB connection successful. Connected to database: '{db.name}'")
+
+        if 'chat_history' not in db.list_collection_names():
+            db.create_collection('chat_history')
+            print("--- Created 'chat_history' collection. ---")
+        return db
+
+    except Exception as e:
+        print("\n" + "="*60)
+        print(f"❌ FATAL ERROR: Could not connect to MongoDB.")
+        print(f"   Please check your MONGO_URI, IP Access List, and user permissions.")
+        print(f"   DETAILS: {e}")
+        print("="*60 + "\n")
+        sys.exit(1) # Stop the application
+
+def save_chat_history(db, user_msg, ai_msg):
+    """Saves a chat record to MongoDB."""
+    if not db:
+        print("⚠️ Database connection is not available. Cannot save chat history.")
+        return
+    try:
+        print("--- Attempting to save chat history... ---")
+        chat_history_collection = db.chat_history
+        chat_record = {
+            'user_message': user_msg, 
+            'ai_response': ai_msg, 
+            'timestamp': datetime.datetime.utcnow()
+        }
+        result = chat_history_collection.insert_one(chat_record)
+        print(f"📝 Chat history saved successfully with ID: {result.inserted_id}")
+    except Exception as e:
+        print(f"⚠️ DATABASE SAVE FAILED: {e}")
+
+# --- Initialize Database on Startup ---
+db = init_db()
 
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -91,34 +166,7 @@ def get_youtube_transcript(video_id):
 # --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
-    # --- NEW DIAGNOSTIC CODE ---
-    # This block will log the exact request data to help us debug the file upload issue.
-    try:
-        print("[DIAGNOSTIC] --- New Request Received ---")
-        print(f"[DIAGNOSTIC] Request Headers: {request.headers}")
-        if request.is_json:
-            raw_data = request.get_json()
-            print(f"[DIAGNOSTIC] Raw JSON received: {raw_data}")
-            # Check for expected keys and log if they exist and their type
-            if 'text' in raw_data:
-                print(f"[DIAGNOSTIC] 'text' key found. Type: {type(raw_data.get('text'))}")
-            else:
-                print("[DIAGNOSTIC] 'text' key NOT found.")
-            if 'fileData' in raw_data and raw_data.get('fileData'):
-                print(f"[DIAGNOSTIC] 'fileData' key found and is NOT empty. Length: {len(raw_data.get('fileData'))}")
-            else:
-                print("[DIAGNOSTIC] 'fileData' key is MISSING or EMPTY.")
-            if 'fileType' in raw_data:
-                 print(f"[DIAGNOSTIC] 'fileType' key found. Value: {raw_data.get('fileType')}")
-            else:
-                 print("[DIAGNOSTIC] 'fileType' key NOT found.")
-        else:
-            print("[DIAGNOSTIC] Request is NOT JSON. Raw data: {request.data}")
-        print("[DIAGNOSTIC] --- End of Diagnostic Info ---")
-    except Exception as diag_e:
-        print(f"[DIAGNOSTIC] Error during diagnostic logging: {diag_e}")
-    # --- END OF DIAGNOSTIC CODE ---
-
+    user_message = "" # Initialize to ensure it's always defined
     try:
         data = request.json
         user_message = data.get('text', '')
@@ -138,7 +186,9 @@ def chat():
                 if transcript:
                     youtube_prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
                     response = model.generate_content(youtube_prompt)
-                    return jsonify({'response': response.text})
+                    ai_response = response.text
+                    save_chat_history(db, user_message, ai_response)
+                    return jsonify({'response': ai_response})
                 else:
                     return jsonify({
                         'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
@@ -232,18 +282,25 @@ def chat():
         response = model.generate_content(prompt_parts)
         ai_response = response.text
 
+        # --- Save the interaction to MongoDB ---
+        save_chat_history(db, user_message, ai_response)
+
         return jsonify({'response': ai_response})
 
     except Exception as e:
-        print(f"A critical error occurred: {e}")
+        print(f"A critical error occurred in /chat endpoint: {e}")
+        traceback.print_exc() # Print detailed error for debugging
         if "429" in str(e) and "quota" in str(e).lower():
             user_facing_error = "Sorry, the daily limit for the AI service has been reached. Please try again tomorrow."
         else:
             user_facing_error = "Sorry, something went wrong. Please try again."
+        
+        # Still try to save the error event
+        save_chat_history(db, user_message, f"ERROR: {user_facing_error}")
+        
         return jsonify({'response': user_facing_error})
 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
