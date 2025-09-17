@@ -31,9 +31,14 @@ def init_db():
     db = None
     mongo_uri = os.environ.get("MONGO_URI")
 
+    # --- UPDATED LOGIC: Make MONGO_URI mandatory ---
     if not mongo_uri:
-        print("⚠️ WARNING: MONGO_URI environment variable not found. Database features will be disabled.")
-        return None
+        print("\n" + "="*60)
+        print("❌ FATAL ERROR: MONGO_URI environment variable not found.")
+        print("   The application cannot start without the database connection string.")
+        print("   Please set this variable in your .env file or your hosting provider's dashboard (e.g., Render).")
+        print("="*60 + "\n")
+        sys.exit(1) # Stop the application immediately
     
     try:
         print("Attempting to connect to MongoDB...")
