@@ -24,7 +24,7 @@ app = Flask(__name__, template_folder='templates')
 
 # --- Securely Load API Keys ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY") # Restored this line as requested
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
@@ -32,13 +32,6 @@ if GOOGLE_API_KEY:
 else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
     sys.exit(1)
-
-# Inform if the YouTube API key is present (optional, but good for debugging)
-if not YOUTUBE_API_KEY:
-    print("INFO: YOUTUBE_API_KEY environment variable not found. Transcript feature will still work.")
-else:
-    print("INFO: YOUTUBE_API_KEY loaded successfully.")
-
 
 # --- MongoDB Database Connection Logic ---
 
@@ -304,3 +297,4 @@ def chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
