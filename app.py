@@ -36,7 +36,7 @@ else:
 
 # --- Configure MongoDB Connection (More Robust) ---
 db = None
-if not MONGO_URI:
+if not MONO_URI:
     print("⚠️ WARNING: MONGO_URI environment variable not found. Database features will be disabled.")
 else:
     try:
@@ -44,8 +44,8 @@ else:
         client = MongoClient(MONGO_URI)
         client.admin.command('ismaster')
         
-        # --- IMPORTANT CHANGE: Automatically get DB from URI ---
-        db = client.get_database()
+        # --- FINAL FIX: Using the correct database name 'collegeproject' ---
+        db = client['collegeproject']
         
         print(f"✅ MongoDB connection successful. Connected to database: '{db.name}'")
 
