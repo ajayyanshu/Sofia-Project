@@ -6,6 +6,10 @@ import sys
 import traceback
 import datetime
 
+from dotenv import load_dotenv
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
+
 import docx
 import fitz  # PyMuPDF
 import google.generativeai as genai
@@ -13,27 +17,11 @@ import requests
 from flask import Flask, jsonify, render_template, request
 from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
-from dotenv import load_dotenv
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
 
 # Load environment variables for local development
 load_dotenv()
 
-app = Flask(__name__, template_folder='templates')
-
-# --- Securely Load API Keys ---
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
-
-# --- Configure API Services ---
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-else:
-    print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
-    sys.exit(1)
-
-# --- MongoDB Database Connection Logic ---
+# --- MERGED FROM MONGODB.PY: Database Connection Logic ---
 
 def init_db():
     """
@@ -53,8 +41,7 @@ def init_db():
     try:
         print("--- Attempting to connect to MongoDB ---")
         client = MongoClient(mongo_uri)
-        # The ismaster command is cheap and does not require auth.
-        client.admin.command('ismaster') 
+        client.admin.command('ismaster') # A cheap command to verify connection
         db = client['collegeproject']
         print(f"✅ MongoDB connection successful. Connected to database: '{db.name}'")
 
@@ -79,17 +66,24 @@ def save_chat_history(db, user_msg, ai_msg):
     try:
         print("--- Attempting to save chat history... ---")
         chat_history_collection = db.chat_history
-        chat_record = {
-            'user_message': user_msg, 
-            'ai_response': ai_msg, 
-            'timestamp': datetime.datetime.utcnow()
-        }
+        chat_record = {'user_message': user_msg, 'ai_response': ai_msg, 'timestamp': datetime.datetime.utcnow()}
         result = chat_history_collection.insert_one(chat_record)
         print(f"📝 Chat history saved successfully with ID: {result.inserted_id}")
     except Exception as e:
         print(f"⚠️ DATABASE SAVE FAILED: {e}")
 
-# --- Initialize Database on Startup ---
+
+# --- Main Application Setup ---
+
+app = Flask(__name__, template_folder='templates')
+
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+else:
+    print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
+
+# --- INITIALIZE DATABASE ON STARTUP ---
 db = init_db()
 
 # --- GitHub PDF Configuration ---
@@ -104,13 +98,12 @@ PDF_KEYWORDS = {
     "2025 hindi paper": "2025 - Hindi (7402-01).pdf"
 }
 
+# --- Flask Routes and Helper Functions ---
 
 @app.route('/')
 def home():
     return render_template('coming_soon.html')
 
-
-# --- Helper Functions for File Processing ---
 def extract_text_from_pdf(pdf_bytes):
     try:
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -119,7 +112,6 @@ def extract_text_from_pdf(pdf_bytes):
         print(f"Error extracting PDF text: {e}")
         return ""
 
-
 def extract_text_from_docx(docx_bytes):
     try:
         document = docx.Document(io.BytesIO(docx_bytes))
@@ -127,7 +119,6 @@ def extract_text_from_docx(docx_bytes):
     except Exception as e:
         print(f"Error extracting DOCX text: {e}")
         return ""
-
 
 def get_file_from_github(filename):
     url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
@@ -140,12 +131,9 @@ def get_file_from_github(filename):
         print(f"Error downloading from GitHub: {e}")
         return None
 
-
 def get_video_id(video_url):
-    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})",
-                               video_url)
+    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
     return video_id_match.group(1) if video_id_match else None
-
 
 def get_youtube_transcript(video_id):
     try:
@@ -155,11 +143,29 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
-
-# --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
-    user_message = "" # Initialize to ensure it's always defined
+    # --- DIAGNOSTIC CODE ---
+    try:
+        print("[DIAGNOSTIC] --- New Request Received ---")
+        if request.is_json:
+            raw_data = request.get_json()
+            print(f"[DIAGNOSTIC] Raw JSON received: {raw_data}")
+            if 'text' in raw_data:
+                print(f"[DIAGNOSTIC] 'text' key found. Type: {type(raw_data.get('text'))}")
+            if 'fileData' in raw_data and raw_data.get('fileData'):
+                print(f"[DIAGNOSTIC] 'fileData' key found and is NOT empty.")
+            else:
+                print("[DIAGNOSTIC] 'fileData' key is MISSING or EMPTY.")
+            if 'fileType' in raw_data:
+                 print(f"[DIAGNOSTIC] 'fileType' key found. Value: {raw_data.get('fileType')}")
+        else:
+            print("[DIAGNOSTIC] Request is NOT JSON.")
+        print("[DIAGNOSTIC] --- End of Diagnostic Info ---")
+    except Exception as diag_e:
+        print(f"[DIAGNOSTIC] Error during diagnostic logging: {diag_e}")
+    # --- END OF DIAGNOSTIC CODE ---
+
     try:
         data = request.json
         user_message = data.get('text', '')
@@ -177,120 +183,58 @@ def chat():
             if video_id:
                 transcript = get_youtube_transcript(video_id)
                 if transcript:
-                    youtube_prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
+                    youtube_prompt = f"Please provide a detailed summary of the following YouTube transcript:\n\n{transcript}"
                     response = model.generate_content(youtube_prompt)
-                    ai_response = response.text
-                    save_chat_history(db, user_message, ai_response)
-                    return jsonify({'response': ai_response})
-                else:
-                    return jsonify({
-                        'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
-                    })
-            else:
-                return jsonify({
-                    'response': "That doesn't look like a valid YouTube link. Please provide the full URL."
-                })
+                    ai_response_text = response.text
+                    save_chat_history(db, user_message, ai_response_text)
+                    return jsonify({'response': ai_response_text})
 
         # Priority 2: Check for keywords to get a file from GitHub
-        matched_filename = next(
-            (filename
-             for keyword, filename in PDF_KEYWORDS.items()
-             if keyword in user_message.lower()), None)
+        matched_filename = next((fn for kw, fn in PDF_KEYWORDS.items() if kw in user_message.lower()), None)
         if matched_filename:
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
                 pdf_text = extract_text_from_pdf(file_bytes)
                 if pdf_text.strip():
-                    prompt_parts.append(
-                        f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---"
-                    )
-                else:
-                    return jsonify({
-                        'response': f"Sorry, I downloaded '{matched_filename}' but could not extract any text from it. It might be a scanned document."
-                    })
-            else:
-                return jsonify({
-                    'response': f"Sorry, I could not download '{matched_filename}' from GitHub."
-                })
+                    prompt_parts.append(f"\n--- Document: {matched_filename} ---\n{pdf_text}")
 
         # Priority 3: Handle a direct file upload
         if file_data:
             try:
                 file_bytes = base64.b64decode(file_data)
-                file_processed = False
-
                 if 'pdf' in file_type:
                     pdf_text = extract_text_from_pdf(file_bytes)
-                    if pdf_text.strip():
-                        prompt_parts.append(
-                            f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---"
-                        )
-                        file_processed = True
-                    else:
-                        return jsonify({
-                            'response': "Sorry, I could not extract any text from the uploaded PDF. It might be a scanned document."
-                        })
-
+                    prompt_parts.append(f"\n--- Uploaded PDF ---\n{pdf_text}")
                 elif 'word' in file_type or 'vnd.openxmlformats-officedocument.wordprocessingml.document' in file_type:
                     docx_text = extract_text_from_docx(file_bytes)
-                    if docx_text.strip():
-                        prompt_parts.append(
-                            f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---"
-                        )
-                        file_processed = True
-                    else:
-                        return jsonify({
-                            'response': "Sorry, the uploaded DOCX file appears to be empty."
-                        })
-
+                    prompt_parts.append(f"\n--- Uploaded Document ---\n{docx_text}")
                 elif 'image' in file_type:
                     image = Image.open(io.BytesIO(file_bytes))
                     prompt_parts.append(image)
-                    file_processed = True
-
-                if not file_processed:
-                    return jsonify({
-                        'response': f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."
-                    })
-
             except Exception as e:
                 print(f"Error decoding or processing file data: {e}")
-                return jsonify({
-                    'response': "Sorry, there was an error processing the uploaded file. It might be corrupted."
-                })
+                return jsonify({'response': "Sorry, there was an error processing the uploaded file."})
 
         # Generate AI Response
         if not prompt_parts:
-            return jsonify(
-                {'response': "Please ask a question or upload a file."})
-
-        has_text = any(
-            isinstance(part, str) and part.strip() for part in prompt_parts)
-        has_image = any(isinstance(part, Image.Image) for part in prompt_parts)
-
-        if has_image and not has_text:
-            prompt_parts.insert(0,
-                                "What is in this image? Describe it in detail.")
+            return jsonify({'response': "Please ask a question or upload a file."})
 
         response = model.generate_content(prompt_parts)
         ai_response = response.text
 
-        # --- Save the interaction to MongoDB ---
+        # --- SAVE TO MONGODB ---
         save_chat_history(db, user_message, ai_response)
 
         return jsonify({'response': ai_response})
 
     except Exception as e:
-        print(f"A critical error occurred in /chat endpoint: {e}")
-        traceback.print_exc() # Print detailed error for debugging
+        print(f"A critical error occurred: {e}")
+        traceback.print_exc()
+        # Check for specific API errors to provide better user feedback
         if "429" in str(e) and "quota" in str(e).lower():
             user_facing_error = "Sorry, the daily limit for the AI service has been reached. Please try again tomorrow."
         else:
-            user_facing_error = "Sorry, something went wrong. Please try again."
-        
-        # Still try to save the error event
-        save_chat_history(db, user_message, f"ERROR: {user_facing_error}")
-        
+            user_facing_error = "The AI service is currently unavailable. Please try again later."
         return jsonify({'response': user_facing_error})
 
 
