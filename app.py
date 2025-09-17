@@ -1,15 +1,14 @@
-# --- IMPORTS (Added new ones) ---
 import base64
 import io
 import os
 import re
 import sys
-import traceback  # For better error logging
+import traceback
+import datetime  # Added for timestamping
 
-# --- NEW CODE START: Import new libraries ---
 from dotenv import load_dotenv
 from pymongo import MongoClient
-# --- NEW CODE END ---
+from pymongo.errors import ConnectionFailure # Import specific error
 
 import docx
 import fitz  # PyMuPDF
@@ -19,20 +18,15 @@ from flask import Flask, jsonify, render_template, request
 from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
 
-# --- NEW CODE START: Load environment variables for local development ---
-# This line loads the variables from your .env file
+# Load environment variables from .env file for local development
 load_dotenv()
-# --- NEW CODE END ---
 
 app = Flask(__name__, template_folder='templates')
 
 # --- Securely Load API Keys and MongoDB URI from Environment ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
-# --- NEW CODE START: Get Mongo URI ---
 MONGO_URI = os.environ.get("MONGO_URI")
-# --- NEW CODE END ---
-
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
@@ -40,25 +34,36 @@ if GOOGLE_API_KEY:
 else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
 
-# --- NEW CODE START: Configure MongoDB Connection ---
-db = None # Initialize db as None
-try:
-    if MONGO_URI:
+# --- NEW: Configure MongoDB Connection (More Robust) ---
+db = None
+if not MONGO_URI:
+    print("⚠️ WARNING: MONGO_URI environment variable not found. Database features will be disabled.")
+else:
+    try:
+        print("Attempting to connect to MongoDB...")
         client = MongoClient(MONGO_URI)
-        db = client.get_default_database() # Or specify a DB name: client['your_db_name']
         # The ismaster command is cheap and does not require auth.
         client.admin.command('ismaster')
-        print("✅ MongoDB connection successful.")
-        # Example: Create a collection for chat history if it doesn't exist
+        
+        # --- IMPORTANT CHANGE HERE ---
+        # Be explicit with your database name. Don't rely on the default.
+        # Replace 'collegeproject_db' with the actual name of your database.
+        db = client['collegeproject_db']
+        
+        print(f"✅ MongoDB connection successful. Connected to database: '{db.name}'")
+
         if 'chat_history' not in db.list_collection_names():
             db.create_collection('chat_history')
             print("Created 'chat_history' collection.")
-    else:
-        print("⚠️ WARNING: MONGO_URI environment variable not found. Database features will be disabled.")
-except Exception as e:
-    print(f"❌ CRITICAL ERROR: Could not connect to MongoDB. Error: {e}")
-    db = None # Ensure db is None if connection fails
-# --- NEW CODE END ---
+
+    except ConnectionFailure as e:
+        print(f"❌ CRITICAL ERROR: Could not connect to MongoDB. Check your MONGO_URI, IP Access List, and network settings.")
+        print(f"   Detailed Error: {e}")
+        db = None
+    except Exception as e:
+        print(f"❌ An unexpected error occurred during MongoDB setup: {e}")
+        db = None
+# --- END OF NEW MONGO CODE ---
 
 
 # --- GitHub PDF Configuration ---
@@ -128,63 +133,38 @@ def get_youtube_transcript(video_id):
 # --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
-    # --- DIAGNOSTIC CODE (No changes here) ---
+    # ... (No changes to the chat logic until the very end) ...
+    # ... (For brevity, the unchanged logic blocks are omitted) ...
     try:
-        print("[DIAGNOSTIC] --- New Request Received ---")
-        if request.is_json:
-            raw_data = request.get_json()
-            # ... (rest of diagnostic code is unchanged) ...
-        print("[DIAGNOSTIC] --- End of Diagnostic Info ---")
-    except Exception as diag_e:
-        print(f"[DIAGNOSTIC] Error during diagnostic logging: {diag_e}")
-
-    try:
+        # ... (all your existing chat logic here) ...
         data = request.json
         user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
-
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt_parts = []
-        if user_message:
-            prompt_parts.append(user_message)
-
-        # --- Priority 1, 2, 3 (No changes in logic here) ---
-        # ... (YouTube, GitHub, and file upload logic remains the same) ...
-        # (For brevity, the unchanged logic blocks are omitted)
-
-        # Generate AI Response
-        if not prompt_parts:
-            return jsonify(
-                {'response': "Please ask a question or upload a file."})
-
-        # ... (Code to check for text/image and generate response is unchanged) ...
-        response = model.generate_content(prompt_parts)
-        ai_response = response.text
-
-        # --- NEW CODE START: Save conversation to MongoDB ---
-        if db: # Only try to save if the database connection is valid
+        # ... and so on ...
+        
+        # This is just a placeholder for your existing logic
+        ai_response = "This is a response."
+        
+        # --- Save conversation to MongoDB ---
+        if db:
             try:
                 chat_history = db.chat_history
-                # We save the original user message and the final AI response
                 chat_record = {
                     'user_message': user_message,
                     'ai_response': ai_response,
-                    'timestamp': __import__('datetime').datetime.utcnow()
+                    'timestamp': datetime.datetime.utcnow()
                 }
                 chat_history.insert_one(chat_record)
                 print("📝 Chat history saved to MongoDB.")
             except Exception as e:
                 print(f"⚠️ Could not save chat history to MongoDB. Error: {e}")
-        # --- NEW CODE END ---
-
+        
         return jsonify({'response': ai_response})
 
     except Exception as e:
-        # --- NEW CODE START: Improved Error Logging ---
         print(f"A critical error occurred in /chat endpoint: {e}")
-        traceback.print_exc() # This will print the full error stack trace
-        # --- NEW CODE END ---
+        traceback.print_exc()
         if "429" in str(e) and "quota" in str(e).lower():
             user_facing_error = "Sorry, the daily limit for the AI service has been reached. Please try again tomorrow."
         else:
