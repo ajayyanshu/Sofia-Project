@@ -36,7 +36,8 @@ else:
 
 # --- Configure MongoDB Connection (More Robust) ---
 db = None
-if not MONO_URI:
+# --- FIX: Corrected variable name from MONO_URI to MONGO_URI ---
+if not MONGO_URI:
     print("⚠️ WARNING: MONGO_URI environment variable not found. Database features will be disabled.")
 else:
     try:
