@@ -3,12 +3,6 @@ import io
 import os
 import re
 import sys
-import traceback
-import datetime
-
-from dotenv import load_dotenv
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
 
 import docx
 import fitz  # PyMuPDF
@@ -18,50 +12,17 @@ from flask import Flask, jsonify, render_template, request
 from PIL import Image
 from youtube_transcript_api import YouTubeTranscriptApi
 
-# Load environment variables from .env file for local development
-load_dotenv()
-
 app = Flask(__name__, template_folder='templates')
 
-# --- Securely Load API Keys and MongoDB URI from Environment ---
+# --- Securely Load API Keys from Render Environment ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
-MONGO_URI = os.environ.get("MONGO_URI")
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
-
-# --- Configure MongoDB Connection (More Robust) ---
-db = None
-# --- FIX: Corrected variable name from MONO_URI to MONGO_URI ---
-if not MONGO_URI:
-    print("⚠️ WARNING: MONGO_URI environment variable not found. Database features will be disabled.")
-else:
-    try:
-        print("Attempting to connect to MongoDB...")
-        client = MongoClient(MONGO_URI)
-        client.admin.command('ismaster')
-        
-        # --- FINAL FIX: Using the correct database name 'collegeproject' ---
-        db = client['collegeproject']
-        
-        print(f"✅ MongoDB connection successful. Connected to database: '{db.name}'")
-
-        if 'chat_history' not in db.list_collection_names():
-            db.create_collection('chat_history')
-            print("Created 'chat_history' collection.")
-
-    except ConnectionFailure as e:
-        print(f"❌ CRITICAL ERROR: Could not connect to MongoDB. Check your MONGO_URI, IP Access List, and network settings.")
-        print(f"   Detailed Error: {e}")
-        db = None
-    except Exception as e:
-        print(f"❌ An unexpected error occurred during MongoDB setup: {e}")
-        traceback.print_exc()
-        db = None
 
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -81,7 +42,7 @@ def home():
     return render_template('coming_soon.html')
 
 
-# --- Helper Functions ---
+# --- Helper Functions for File Processing ---
 def extract_text_from_pdf(pdf_bytes):
     try:
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -105,6 +66,7 @@ def get_file_from_github(filename):
     try:
         response = requests.get(url)
         response.raise_for_status()
+        print(f"Successfully downloaded {filename} from GitHub.")
         return response.content
     except requests.exceptions.RequestException as e:
         print(f"Error downloading from GitHub: {e}")
@@ -112,7 +74,8 @@ def get_file_from_github(filename):
 
 
 def get_video_id(video_url):
-    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
+    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})",
+                               video_url)
     return video_id_match.group(1) if video_id_match else None
 
 
@@ -128,6 +91,34 @@ def get_youtube_transcript(video_id):
 # --- Main Chat Logic ---
 @app.route('/chat', methods=['POST'])
 def chat():
+    # --- NEW DIAGNOSTIC CODE ---
+    # This block will log the exact request data to help us debug the file upload issue.
+    try:
+        print("[DIAGNOSTIC] --- New Request Received ---")
+        print(f"[DIAGNOSTIC] Request Headers: {request.headers}")
+        if request.is_json:
+            raw_data = request.get_json()
+            print(f"[DIAGNOSTIC] Raw JSON received: {raw_data}")
+            # Check for expected keys and log if they exist and their type
+            if 'text' in raw_data:
+                print(f"[DIAGNOSTIC] 'text' key found. Type: {type(raw_data.get('text'))}")
+            else:
+                print("[DIAGNOSTIC] 'text' key NOT found.")
+            if 'fileData' in raw_data and raw_data.get('fileData'):
+                print(f"[DIAGNOSTIC] 'fileData' key found and is NOT empty. Length: {len(raw_data.get('fileData'))}")
+            else:
+                print("[DIAGNOSTIC] 'fileData' key is MISSING or EMPTY.")
+            if 'fileType' in raw_data:
+                 print(f"[DIAGNOSTIC] 'fileType' key found. Value: {raw_data.get('fileType')}")
+            else:
+                 print("[DIAGNOSTIC] 'fileType' key NOT found.")
+        else:
+            print("[DIAGNOSTIC] Request is NOT JSON. Raw data: {request.data}")
+        print("[DIAGNOSTIC] --- End of Diagnostic Info ---")
+    except Exception as diag_e:
+        print(f"[DIAGNOSTIC] Error during diagnostic logging: {diag_e}")
+    # --- END OF DIAGNOSTIC CODE ---
+
     try:
         data = request.json
         user_message = data.get('text', '')
@@ -139,61 +130,116 @@ def chat():
         if user_message:
             prompt_parts.append(user_message)
 
+        # Priority 1: Handle a YouTube Link
         if "youtube.com" in user_message or "youtu.be" in user_message:
             video_id = get_video_id(user_message)
             if video_id:
                 transcript = get_youtube_transcript(video_id)
                 if transcript:
-                    youtube_prompt = f"Summarize the following YouTube transcript:\n\n{transcript}"
+                    youtube_prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
                     response = model.generate_content(youtube_prompt)
                     return jsonify({'response': response.text})
-            # Fall through if transcript fails, maybe it's a general question
+                else:
+                    return jsonify({
+                        'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
+                    })
+            else:
+                return jsonify({
+                    'response': "That doesn't look like a valid YouTube link. Please provide the full URL."
+                })
 
-        matched_filename = next((fn for kw, fn in PDF_KEYWORDS.items() if kw in user_message.lower()), None)
+        # Priority 2: Check for keywords to get a file from GitHub
+        matched_filename = next(
+            (filename
+             for keyword, filename in PDF_KEYWORDS.items()
+             if keyword in user_message.lower()), None)
         if matched_filename:
             file_bytes = get_file_from_github(matched_filename)
             if file_bytes:
                 pdf_text = extract_text_from_pdf(file_bytes)
                 if pdf_text.strip():
-                    prompt_parts.append(f"\n--- Document: {matched_filename} ---\n{pdf_text}")
+                    prompt_parts.append(
+                        f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---"
+                    )
+                else:
+                    return jsonify({
+                        'response': f"Sorry, I downloaded '{matched_filename}' but could not extract any text from it. It might be a scanned document."
+                    })
+            else:
+                return jsonify({
+                    'response': f"Sorry, I could not download '{matched_filename}' from GitHub."
+                })
 
+        # Priority 3: Handle a direct file upload
         if file_data:
-            file_bytes = base64.b64decode(file_data)
-            if 'pdf' in file_type:
-                pdf_text = extract_text_from_pdf(file_bytes)
-                prompt_parts.append(f"\n--- Uploaded PDF ---\n{pdf_text}")
-            elif 'word' in file_type:
-                docx_text = extract_text_from_docx(file_bytes)
-                prompt_parts.append(f"\n--- Uploaded Document ---\n{docx_text}")
-            elif 'image' in file_type:
-                image = Image.open(io.BytesIO(file_bytes))
-                prompt_parts.append(image)
+            try:
+                file_bytes = base64.b64decode(file_data)
+                file_processed = False
 
+                if 'pdf' in file_type:
+                    pdf_text = extract_text_from_pdf(file_bytes)
+                    if pdf_text.strip():
+                        prompt_parts.append(
+                            f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---"
+                        )
+                        file_processed = True
+                    else:
+                        return jsonify({
+                            'response': "Sorry, I could not extract any text from the uploaded PDF. It might be a scanned document."
+                        })
+
+                elif 'word' in file_type or 'vnd.openxmlformats-officedocument.wordprocessingml.document' in file_type:
+                    docx_text = extract_text_from_docx(file_bytes)
+                    if docx_text.strip():
+                        prompt_parts.append(
+                            f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---"
+                        )
+                        file_processed = True
+                    else:
+                        return jsonify({
+                            'response': "Sorry, the uploaded DOCX file appears to be empty."
+                        })
+
+                elif 'image' in file_type:
+                    image = Image.open(io.BytesIO(file_bytes))
+                    prompt_parts.append(image)
+                    file_processed = True
+
+                if not file_processed:
+                    return jsonify({
+                        'response': f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."
+                    })
+
+            except Exception as e:
+                print(f"Error decoding or processing file data: {e}")
+                return jsonify({
+                    'response': "Sorry, there was an error processing the uploaded file. It might be corrupted."
+                })
+
+        # Generate AI Response
         if not prompt_parts:
-            return jsonify({'response': "Please ask a question or upload a file."})
+            return jsonify(
+                {'response': "Please ask a question or upload a file."})
+
+        has_text = any(
+            isinstance(part, str) and part.strip() for part in prompt_parts)
+        has_image = any(isinstance(part, Image.Image) for part in prompt_parts)
+
+        if has_image and not has_text:
+            prompt_parts.insert(0,
+                                "What is in this image? Describe it in detail.")
 
         response = model.generate_content(prompt_parts)
         ai_response = response.text
 
-        if db:
-            try:
-                chat_history = db.chat_history
-                chat_record = {
-                    'user_message': user_message,
-                    'ai_response': ai_response,
-                    'timestamp': datetime.datetime.utcnow()
-                }
-                chat_history.insert_one(chat_record)
-                print("📝 Chat history saved to MongoDB.")
-            except Exception as e:
-                print(f"⚠️ Could not save chat history to MongoDB. Error: {e}")
-
         return jsonify({'response': ai_response})
 
     except Exception as e:
-        print(f"A critical error occurred in /chat endpoint: {e}")
-        traceback.print_exc()
-        user_facing_error = "Sorry, something went wrong. Please try again."
+        print(f"A critical error occurred: {e}")
+        if "429" in str(e) and "quota" in str(e).lower():
+            user_facing_error = "Sorry, the daily limit for the AI service has been reached. Please try again tomorrow."
+        else:
+            user_facing_error = "Sorry, something went wrong. Please try again."
         return jsonify({'response': user_facing_error})
 
 
