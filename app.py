@@ -123,7 +123,7 @@ def call_openrouter_api(user_message):
                 "X-Title": "AI Assistant" # Optional: Replace with your app name
             },
             json={
-                "model": "deepseek/deepseek-chat",
+                "model": "deepseek/deepseek-r1-0528:free",
                 "messages": [{"role": "user", "content": user_message}]
             }
         )
