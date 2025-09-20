@@ -109,8 +109,8 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
-# --- NEW: Helper Function for OpenRouter API ---
-def call_openrouter_api(user_message):
+# --- Helper Function for OpenRouter API (Now accepts a model name) ---
+def call_openrouter_api(user_message, model_name):
     if not OPENROUTER_API_KEY:
         return None # Signal to fallback to Gemini
 
@@ -123,7 +123,8 @@ def call_openrouter_api(user_message):
                 "X-Title": "AI Assistant" # Optional: Replace with your app name
             },
             json={
-                "model": "deepseek/deepseek-r1-0528:free",
+                # --- MODEL IS NOW A VARIABLE ---
+                "model": model_name,
                 "messages": [{"role": "user", "content": user_message}]
             }
         )
@@ -147,6 +148,8 @@ def chat():
         user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
+        # --- NEW: Get model from request, with a default value ---
+        model_to_use = data.get('model', 'deepseek/deepseek-chat') 
 
         ai_response = ""
         api_used = ""
@@ -158,8 +161,9 @@ def chat():
 
         # --- Route 1: Text-only chat to OpenRouter/DeepSeek ---
         if not is_multimodal_request and user_message.strip():
-            print("Routing to OpenRouter for text-only request.")
-            ai_response = call_openrouter_api(user_message)
+            print(f"Routing to OpenRouter with model: {model_to_use}")
+            # --- NEW: Pass the model name to the function ---
+            ai_response = call_openrouter_api(user_message, model_to_use)
             if ai_response:
                 api_used = "OpenRouter"
 
@@ -211,6 +215,7 @@ def chat():
                     "user_message": user_message,
                     "ai_response": ai_response,
                     "api_used": api_used,
+                    "model_used": model_to_use if api_used == "OpenRouter" else "gemini-1.5-flash",
                     "has_file": bool(file_data),
                     "file_type": file_type if file_data else None,
                     "timestamp": datetime.utcnow()
@@ -229,4 +234,17 @@ def chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+```
+
+### How to Use This
+
+Your frontend application (the HTML/JavaScript part) now needs to send the model name in its request.
+
+When you send a request for a simple text chat, your JSON should look like this:
+
+```json
+{
+  "text": "Hello, how are you?",
+  "model": "mistralai/mistral-7b-instruct:free"
+}
 
