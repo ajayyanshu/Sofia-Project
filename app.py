@@ -209,6 +209,7 @@ def chat():
             ai_response = response.text
 
         # --- Save to MongoDB (runs for both routes) ---
+        # --- FIX: Removed extra 'and' that was causing a SyntaxError ---
         if chat_history_collection is not None and ai_response:
             try:
                 chat_history_collection.insert_one({
@@ -234,17 +235,4 @@ def chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-```
-
-### How to Use This
-
-Your frontend application (the HTML/JavaScript part) now needs to send the model name in its request.
-
-When you send a request for a simple text chat, your JSON should look like this:
-
-```json
-{
-  "text": "Hello, how are you?",
-  "model": "mistralai/mistral-7b-instruct:free"
-}
 
