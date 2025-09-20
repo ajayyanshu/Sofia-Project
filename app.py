@@ -20,9 +20,8 @@ app = Flask(__name__, template_folder='templates')
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
-# --- NEW: Load specific keys for each model ---
+# --- Use a single default key for OpenRouter ---
 OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
-OPENROUTER_API_KEY_R1 = os.environ.get("OPENROUTER_API_KEY_R1")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 # --- Configure API Services ---
@@ -32,9 +31,7 @@ else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
 
 if not OPENROUTER_API_KEY_V3:
-    print("WARNING: OPENROUTER_API_KEY_V3 not found. DeepSeek V3 model will not be available.")
-if not OPENROUTER_API_KEY_R1:
-    print("WARNING: OPENROUTER_API_KEY_R1 not found. DeepSeek R1 model will not be available.")
+    print("WARNING: OPENROUTER_API_KEY_V3 not found. OpenRouter will be skipped.")
 if not GROQ_API_KEY:
     print("WARNING: GROQ_API_KEY not found. Groq API will be skipped.")
 
@@ -103,7 +100,7 @@ def get_file_from_github(filename):
 
 
 def get_video_id(video_url):
-    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})",
+    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0--9_-]{11})",
                                video_url)
     return video_id_match.group(1) if video_id_match else None
 
@@ -116,10 +113,11 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
-# --- Helper Function for OpenRouter API (now accepts a specific key) ---
-def call_openrouter_api(user_message, model_name, api_key):
+# --- Helper Function for OpenRouter API (Simplified) ---
+def call_openrouter_api(user_message):
+    api_key = OPENROUTER_API_KEY_V3
+    model_name = "deepseek/deepseek-chat"
     if not api_key:
-        print(f"API key for model {model_name} is missing.")
         return None
     try:
         response = requests.post(
@@ -165,8 +163,7 @@ def call_groq_api(user_message):
 def chat():
     try:
         data = request.json
-        user_message_original = data.get('text', '')
-        user_message_processed = user_message_original
+        user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
         
@@ -174,41 +171,23 @@ def chat():
         api_used = ""
         model_logged = ""
         
-        # --- NEW: Logic to select both the model and the correct API key ---
-        key_to_use = None
-        model_to_use = "deepseek/deepseek-chat" # Default model
-        
-        if "use deepseek r1" in user_message_original.lower():
-            model_to_use = "deepseek/deepseek-r1-0528:free"
-            key_to_use = OPENROUTER_API_KEY_R1
-            user_message_processed = re.sub(r"use deepseek r1", "", user_message_original, flags=re.IGNORECASE).strip()
-            print(f"User selected DeepSeek R1. Using R1 key.")
-        elif "use deepseek v3" in user_message_original.lower() or "use deepseek chat" in user_message_original.lower():
-            model_to_use = "deepseek/deepseek-chat"
-            key_to_use = OPENROUTER_API_KEY_V3
-            user_message_processed = re.sub(r"use deepseek (v3|chat)", "", user_message_original, flags=re.IGNORECASE).strip()
-            print(f"User selected DeepSeek V3/Chat. Using V3 key.")
-        else:
-            # Default to V3 key if no specific model is requested
-            key_to_use = OPENROUTER_API_KEY_V3
-
-        is_youtube_link = "youtube.com" in user_message_original or "youtu.be" in user_message_original
-        matched_github_keyword = any(keyword in user_message_original.lower() for keyword in PDF_KEYWORDS)
+        is_youtube_link = "youtube.com" in user_message or "youtu.be" in user_message
+        matched_github_keyword = any(keyword in user_message.lower() for keyword in PDF_KEYWORDS)
         is_multimodal_request = bool(file_data) or is_youtube_link or matched_github_keyword
 
-        # --- Route 1: Text-only chat with fallbacks ---
-        if not is_multimodal_request and user_message_processed.strip():
-            # 1st attempt: OpenRouter
-            print(f"Routing to OpenRouter with model: {model_to_use}")
-            ai_response = call_openrouter_api(user_message_processed, model_to_use, key_to_use)
+        # --- Route 1: Text-only chat with automatic fallbacks ---
+        if not is_multimodal_request and user_message.strip():
+            # 1st attempt: OpenRouter (DeepSeek)
+            print("Routing to OpenRouter with DeepSeek model.")
+            ai_response = call_openrouter_api(user_message)
             if ai_response:
                 api_used = "OpenRouter"
-                model_logged = model_to_use
+                model_logged = "deepseek/deepseek-chat"
             
             # 2nd attempt: Groq API
             if not ai_response:
                 print("OpenRouter failed, trying Groq as a second option.")
-                ai_response = call_groq_api(user_message_processed)
+                ai_response = call_groq_api(user_message)
                 if ai_response:
                     api_used = "Groq"
                     model_logged = "llama3-8b-8192"
@@ -220,18 +199,18 @@ def chat():
             model_logged = "gemini-1.5-flash"
             model = genai.GenerativeModel(model_logged)
             prompt_parts = []
-            if user_message_processed:
-                prompt_parts.append(user_message_processed)
+            if user_message:
+                prompt_parts.append(user_message)
 
             # Handle multimodal inputs
             if is_youtube_link:
-                video_id = get_video_id(user_message_original)
+                video_id = get_video_id(user_message)
                 if video_id:
                     transcript = get_youtube_transcript(video_id)
                     prompt_parts = [f"Summarize this YouTube video transcript:\n\n{transcript}"] if transcript else []
                 if not prompt_parts: return jsonify({'response': "Sorry, couldn't get the transcript for that video."})
             elif matched_github_keyword:
-                filename = next((fname for kw, fname in PDF_KEYWORDS.items() if kw in user_message_original.lower()), None)
+                filename = next((fname for kw, fname in PDF_KEYWORDS.items() if kw in user_message.lower()), None)
                 file_bytes = get_file_from_github(filename)
                 if file_bytes: prompt_parts.append(f"\n--- Document: {filename} ---\n{extract_text_from_pdf(file_bytes)}")
                 else: return jsonify({'response': f"Sorry, I could not download '{filename}'."})
@@ -254,7 +233,7 @@ def chat():
         if chat_history_collection is not None and ai_response:
             try:
                 chat_history_collection.insert_one({
-                    "user_message": user_message_original, "ai_response": ai_response,
+                    "user_message": user_message, "ai_response": ai_response,
                     "api_used": api_used, "model_used": model_logged,
                     "has_file": bool(file_data), "file_type": file_type if file_data else None,
                     "timestamp": datetime.utcnow()
