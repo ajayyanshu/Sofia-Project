@@ -100,7 +100,8 @@ def get_file_from_github(filename):
 
 
 def get_video_id(video_url):
-    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0--9_-]{11})",
+    # --- FIX: Corrected the regex from '0--9' to '0-9' ---
+    video_id_match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})",
                                video_url)
     return video_id_match.group(1) if video_id_match else None
 
@@ -140,9 +141,10 @@ def call_groq_api(user_message):
     if not GROQ_API_KEY:
         return None
     try:
+        # --- FIX: Removed manual 'Content-Type' header. The 'requests' library handles this automatically. ---
         response = requests.post(
             url="https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
             json={
                 "model": "llama3-8b-8192",
                 "messages": [{"role": "user", "content": user_message}]
