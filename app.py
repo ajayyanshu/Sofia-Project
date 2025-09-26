@@ -297,7 +297,8 @@ def chat():
 
     except Exception as e:
         print(f"A critical error occurred: {e}")
-        user_facing_error = "Sorry, something went wrong. Please try again."
+        # --- FIX: Updated the user-facing error message ---
+        user_facing_error = "The AI service is currently unavailable. Please try again later."
         return jsonify({'response': user_facing_error})
 
 
