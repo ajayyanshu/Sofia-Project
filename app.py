@@ -54,7 +54,7 @@ else:
 GITHUB_USER = "ajayyanshu"
 # NOTE: It's best to avoid spaces in repository names. If you use "sofia project",
 # the code below will handle it, but renaming to "sofia-project" is recommended.
-GITHUB_REPO = "sofia project"
+GITHUB_REPO = "Sofia-Project"
 GITHUB_FOLDER_PATH = "upload pdf"
 PDF_KEYWORDS = {
     "2016 hindi paper": "2016 - Hindi (7402-01).pdf",
