@@ -27,6 +27,8 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
+    # --- DEBUGGING LINE: This will print the installed version to your server logs ---
+    print(f"✅ Loaded google-generativeai version: {genai.__version__}")
 else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
 
@@ -200,7 +202,7 @@ def chat():
             print("Routing to Gemini for multimodal request or as a final fallback.")
             api_used = "Gemini"
             
-            # --- Using the stable 'gemini-pro-vision' model name ---
+            # --- Using the stable 'gemini-1.5-flash-latest' model name ---
             model_logged = "gemini-1.5-flash-latest" 
             
             model = genai.GenerativeModel(model_logged)
