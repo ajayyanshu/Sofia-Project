@@ -836,7 +836,9 @@
             const typingIndicator = addTypingIndicator();
 
             try {
-                const response = await fetch('/chat', {
+                // IMPORTANT: This URL points to a local development server. 
+                // When you deploy, you'll need to change this to your actual backend URL.
+                const response = await fetch('http://127.0.0.1:5000/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1181,7 +1183,9 @@
             saveToDbBtn.disabled = true;
 
             try {
-                const response = await fetch('/save-chat', {
+                // IMPORTANT: This URL points to a local development server. 
+                // When you deploy, you'll need to change this to your actual backend URL.
+                const response = await fetch('http://127.0.0.1:5000/save-chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ messages: currentChat })
