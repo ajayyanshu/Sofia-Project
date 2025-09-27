@@ -1,6 +1,6 @@
 flask
 gunicorn
-google-generativeai
+google-generativeai>=0.8.0
 PyMuPDF
 Pillow
 youtube-transcript-api
