@@ -3,13 +3,15 @@ import io
 import os
 import re
 import sys
+from datetime import datetime
 
 import docx
 import fitz  # PyMuPDF
 import google.generativeai as genai
-import requests
+import requests # Still needed for get_file_from_github and OpenRouter
 from flask import Flask, jsonify, render_template, request
 from PIL import Image
+from pymongo import MongoClient
 from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__, template_folder='templates')
@@ -17,6 +19,10 @@ app = Flask(__name__, template_folder='templates')
 # --- Securely Load API Keys from Render Environment ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
+MONGO_URI = os.environ.get("MONGO_URI")
+# --- Use a single default key for OpenRouter ---
+OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
@@ -24,8 +30,30 @@ if GOOGLE_API_KEY:
 else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
 
+if not OPENROUTER_API_KEY_V3:
+    print("WARNING: OPENROUTER_API_KEY_V3 not found. OpenRouter will be skipped.")
+if not GROQ_API_KEY:
+    print("WARNING: GROQ_API_KEY not found. Groq API will be skipped.")
+
+
+# --- MongoDB Configuration ---
+chat_history_collection = None
+if MONGO_URI:
+    try:
+        mongo_client = MongoClient(MONGO_URI)
+        db = mongo_client.get_database("ai_assistant_db")
+        chat_history_collection = db.get_collection("chat_history")
+        print("✅ Successfully connected to MongoDB.")
+    except Exception as e:
+        print(f"CRITICAL ERROR: Could not connect to MongoDB. Chat history will not be saved. Error: {e}")
+else:
+    print("WARNING: MONGO_URI environment variable not found. Chat history will not be saved.")
+
+
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
+# NOTE: It's best to avoid spaces in repository names. If you use "sofia project",
+# the code below will handle it, but renaming to "sofia-project" is recommended.
 GITHUB_REPO = "collegeproject"
 GITHUB_FOLDER_PATH = "upload pdf"
 PDF_KEYWORDS = {
@@ -62,7 +90,8 @@ def extract_text_from_docx(docx_bytes):
 
 
 def get_file_from_github(filename):
-    url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
+    # --- This code correctly handles spaces in the repo name ---
+    url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO.replace(' ', '%20')}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -87,159 +116,140 @@ def get_youtube_transcript(video_id):
         print(f"Error getting YouTube transcript: {e}")
         return None
 
+# --- Helper Function for OpenRouter API (Simplified) ---
+def call_openrouter_api(user_message):
+    api_key = OPENROUTER_API_KEY_V3
+    model_name = "deepseek/deepseek-chat"
+    if not api_key:
+        return None
+    try:
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"model": model_name, "messages": [{"role": "user", "content": user_message}]}
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']['content']
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling OpenRouter API for model {model_name}: {e}")
+        return None
+    except (KeyError, IndexError) as e:
+        print(f"Error parsing OpenRouter API response: {e}")
+        return None
 
-# --- Main Chat Logic ---
+# --- Helper Function for Groq API ---
+def call_groq_api(user_message):
+    if not GROQ_API_KEY:
+        return None
+    try:
+        response = requests.post(
+            url="https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            json={
+                "model": "llama3-8b-8192",
+                "messages": [{"role": "user", "content": user_message}]
+            }
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']['content']
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling Groq API: {e}")
+        return None
+    except (KeyError, IndexError) as e:
+        print(f"Error parsing Groq API response: {e}")
+        return None
+
+# --- Main Chat Logic (with intelligent routing) ---
 @app.route('/chat', methods=['POST'])
 def chat():
-    # --- NEW DIAGNOSTIC CODE ---
-    # This block will log the exact request data to help us debug the file upload issue.
-    try:
-        print("[DIAGNOSTIC] --- New Request Received ---")
-        print(f"[DIAGNOSTIC] Request Headers: {request.headers}")
-        if request.is_json:
-            raw_data = request.get_json()
-            print(f"[DIAGNOSTIC] Raw JSON received: {raw_data}")
-            # Check for expected keys and log if they exist and their type
-            if 'text' in raw_data:
-                print(f"[DIAGNOSTIC] 'text' key found. Type: {type(raw_data.get('text'))}")
-            else:
-                print("[DIAGNOSTIC] 'text' key NOT found.")
-            if 'fileData' in raw_data and raw_data.get('fileData'):
-                print(f"[DIAGNOSTIC] 'fileData' key found and is NOT empty. Length: {len(raw_data.get('fileData'))}")
-            else:
-                print("[DIAGNOSTIC] 'fileData' key is MISSING or EMPTY.")
-            if 'fileType' in raw_data:
-                 print(f"[DIAGNOSTIC] 'fileType' key found. Value: {raw_data.get('fileType')}")
-            else:
-                 print("[DIAGNOSTIC] 'fileType' key NOT found.")
-        else:
-            print("[DIAGNOSTIC] Request is NOT JSON. Raw data: {request.data}")
-        print("[DIAGNOSTIC] --- End of Diagnostic Info ---")
-    except Exception as diag_e:
-        print(f"[DIAGNOSTIC] Error during diagnostic logging: {diag_e}")
-    # --- END OF DIAGNOSTIC CODE ---
-
     try:
         data = request.json
         user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
+        
+        ai_response = ""
+        api_used = ""
+        model_logged = ""
+        
+        is_youtube_link = "youtube.com" in user_message or "youtu.be" in user_message
+        matched_github_keyword = any(keyword in user_message.lower() for keyword in PDF_KEYWORDS)
+        is_multimodal_request = bool(file_data) or is_youtube_link or matched_github_keyword
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt_parts = []
-        if user_message:
-            prompt_parts.append(user_message)
+        # --- Route 1: Text-only chat with automatic fallbacks ---
+        if not is_multimodal_request and user_message.strip():
+            # 1st attempt: OpenRouter (DeepSeek)
+            print("Routing to OpenRouter with DeepSeek model.")
+            ai_response = call_openrouter_api(user_message)
+            if ai_response:
+                api_used = "OpenRouter"
+                model_logged = "deepseek/deepseek-chat"
+            
+            # 2nd attempt: Groq API
+            if not ai_response:
+                print("OpenRouter failed, trying Groq as a second option.")
+                ai_response = call_groq_api(user_message)
+                if ai_response:
+                    api_used = "Groq"
+                    model_logged = "llama3-8b-8192"
 
-        # Priority 1: Handle a YouTube Link
-        if "youtube.com" in user_message or "youtu.be" in user_message:
-            video_id = get_video_id(user_message)
-            if video_id:
-                transcript = get_youtube_transcript(video_id)
-                if transcript:
-                    youtube_prompt = f"Please provide a detailed and easy-to-understand summary of the following YouTube video transcript:\n\nTranscript:\n---\n{transcript}"
-                    response = model.generate_content(youtube_prompt)
-                    return jsonify({'response': response.text})
-                else:
-                    return jsonify({
-                        'response': "Sorry, I couldn't get the transcript for that video. It might be a live stream, or captions may be disabled."
-                    })
-            else:
-                return jsonify({
-                    'response': "That doesn't look like a valid YouTube link. Please provide the full URL."
-                })
+        # --- Route 2: Fallback or Multimodal to Gemini ---
+        if not ai_response:
+            print("Routing to Gemini for multimodal request or as a final fallback.")
+            api_used = "Gemini"
+            # --- Changed to another free, multimodal model as requested ---
+            model_logged = "gemini-1.5-flash-latest"
+            model = genai.GenerativeModel(model_logged)
+            prompt_parts = []
+            if user_message:
+                prompt_parts.append(user_message)
 
-        # Priority 2: Check for keywords to get a file from GitHub
-        matched_filename = next(
-            (filename
-             for keyword, filename in PDF_KEYWORDS.items()
-             if keyword in user_message.lower()), None)
-        if matched_filename:
-            file_bytes = get_file_from_github(matched_filename)
-            if file_bytes:
-                pdf_text = extract_text_from_pdf(file_bytes)
-                if pdf_text.strip():
-                    prompt_parts.append(
-                        f"\n\n--- Start of Document: {matched_filename} ---\n{pdf_text}\n--- End of Document ---"
-                    )
-                else:
-                    return jsonify({
-                        'response': f"Sorry, I downloaded '{matched_filename}' but could not extract any text from it. It might be a scanned document."
-                    })
-            else:
-                return jsonify({
-                    'response': f"Sorry, I could not download '{matched_filename}' from GitHub."
-                })
-
-        # Priority 3: Handle a direct file upload
-        if file_data:
-            try:
+            # Handle multimodal inputs
+            if is_youtube_link:
+                video_id = get_video_id(user_message)
+                if video_id:
+                    transcript = get_youtube_transcript(video_id)
+                    prompt_parts = [f"Summarize this YouTube video transcript:\n\n{transcript}"] if transcript else []
+                if not prompt_parts: return jsonify({'response': "Sorry, couldn't get the transcript for that video."})
+            elif matched_github_keyword:
+                filename = next((fname for kw, fname in PDF_KEYWORDS.items() if kw in user_message.lower()), None)
+                file_bytes = get_file_from_github(filename)
+                if file_bytes: prompt_parts.append(f"\n--- Document: {filename} ---\n{extract_text_from_pdf(file_bytes)}")
+                else: return jsonify({'response': f"Sorry, I could not download '{filename}'."})
+            elif file_data:
                 file_bytes = base64.b64decode(file_data)
-                file_processed = False
+                if 'pdf' in file_type: prompt_parts.append(f"\n--- Uploaded PDF ---\n{extract_text_from_pdf(file_bytes)}")
+                elif 'word' in file_type: prompt_parts.append(f"\n--- Uploaded Document ---\n{extract_text_from_docx(file_bytes)}")
+                elif 'image' in file_type: prompt_parts.append(Image.open(io.BytesIO(file_bytes)))
+                else: return jsonify({'response': f"Sorry, unsupported file type '{file_type}'."})
+            
+            if not prompt_parts: return jsonify({'response': "Please ask a question or upload a file."})
 
-                if 'pdf' in file_type:
-                    pdf_text = extract_text_from_pdf(file_bytes)
-                    if pdf_text.strip():
-                        prompt_parts.append(
-                            f"\n\n--- Start of Uploaded PDF ---\n{pdf_text}\n--- End of Uploaded PDF ---"
-                        )
-                        file_processed = True
-                    else:
-                        return jsonify({
-                            'response': "Sorry, I could not extract any text from the uploaded PDF. It might be a scanned document."
-                        })
+            if any(isinstance(p, Image.Image) for p in prompt_parts) and not any(isinstance(p, str) and p.strip() for p in prompt_parts):
+                prompt_parts.insert(0, "Describe this image in detail.")
 
-                elif 'word' in file_type or 'vnd.openxmlformats-officedocument.wordprocessingml.document' in file_type:
-                    docx_text = extract_text_from_docx(file_bytes)
-                    if docx_text.strip():
-                        prompt_parts.append(
-                            f"\n\n--- Start of Uploaded Document ---\n{docx_text}\n--- End of Uploaded Document ---"
-                        )
-                        file_processed = True
-                    else:
-                        return jsonify({
-                            'response': "Sorry, the uploaded DOCX file appears to be empty."
-                        })
+            response = model.generate_content(prompt_parts)
+            ai_response = response.text
 
-                elif 'image' in file_type:
-                    image = Image.open(io.BytesIO(file_bytes))
-                    prompt_parts.append(image)
-                    file_processed = True
-
-                if not file_processed:
-                    return jsonify({
-                        'response': f"Sorry, I don't know how to handle the file type '{file_type}'. Please upload a PDF, DOCX, or image file."
-                    })
-
-            except Exception as e:
-                print(f"Error decoding or processing file data: {e}")
-                return jsonify({
-                    'response': "Sorry, there was an error processing the uploaded file. It might be corrupted."
+        # --- Save to MongoDB (runs for all routes) ---
+        if chat_history_collection is not None and ai_response:
+            try:
+                chat_history_collection.insert_one({
+                    "user_message": user_message, "ai_response": ai_response,
+                    "api_used": api_used, "model_used": model_logged,
+                    "has_file": bool(file_data), "file_type": file_type if file_data else None,
+                    "timestamp": datetime.utcnow()
                 })
-
-        # Generate AI Response
-        if not prompt_parts:
-            return jsonify(
-                {'response': "Please ask a question or upload a file."})
-
-        has_text = any(
-            isinstance(part, str) and part.strip() for part in prompt_parts)
-        has_image = any(isinstance(part, Image.Image) for part in prompt_parts)
-
-        if has_image and not has_text:
-            prompt_parts.insert(0,
-                                "What is in this image? Describe it in detail.")
-
-        response = model.generate_content(prompt_parts)
-        ai_response = response.text
+            except Exception as e:
+                print(f"Error saving chat to MongoDB: {e}")
 
         return jsonify({'response': ai_response})
 
     except Exception as e:
         print(f"A critical error occurred: {e}")
-        if "429" in str(e) and "quota" in str(e).lower():
-            user_facing_error = "Sorry, the daily limit for the AI service has been reached. Please try again tomorrow."
-        else:
-            user_facing_error = "Sorry, something went wrong. Please try again."
+        user_facing_error = "Sorry, something went wrong. Please try again."
         return jsonify({'response': user_facing_error})
 
 
