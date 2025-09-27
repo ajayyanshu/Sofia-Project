@@ -200,9 +200,8 @@ def chat():
             print("Routing to Gemini for multimodal request or as a final fallback.")
             api_used = "Gemini"
             
-            # --- IMPORTANT: Replace this placeholder with a real model name ---
-            # --- Run get_models.py and paste one of the results here ---
-            model_logged = "PASTE_YOUR_MODEL_NAME_HERE" 
+            # --- Using the stable 'gemini-pro-vision' model name ---
+            model_logged = "gemini-pro-vision" 
             
             model = genai.GenerativeModel(model_logged)
             prompt_parts = []
