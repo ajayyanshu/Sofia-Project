@@ -26,11 +26,9 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
-    # --- FIX: Explicitly set the API version to 'v1' to override environment issues ---
-    genai.configure(
-        api_key=GOOGLE_API_KEY,
-        client_options={"api_version": "v1"}
-    )
+    # --- FIX: Removed the incompatible client_options parameter. ---
+    # The modern library handles API versioning automatically.
+    genai.configure(api_key=GOOGLE_API_KEY)
     print(f"✅ Loaded google-generativeai version: {genai.__version__}")
 else:
     print("CRITICAL ERROR: GOOGLE_API_KEY environment variable not found.")
