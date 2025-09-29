@@ -204,7 +204,7 @@ def chat():
             api_used = "Gemini"
             
             # --- Using the stable 'gemini-1.5-flash-latest' model name ---
-            model_logged = "gemini-1.5-flash-latest" 
+            model_logged = "gemini-2.0-flash-exp" 
             
             model = genai.GenerativeModel(model_logged)
             prompt_parts = []
