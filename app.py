@@ -9,31 +9,39 @@ from datetime import datetime
 import docx
 import fitz  # PyMuPDF
 import google.generativeai as genai
-import requests 
-from flask import Flask, jsonify, render_template, request
+import requests # Still needed for get_file_from_github and OpenRouter
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 from PIL import Image
 from pymongo import MongoClient
 from youtube_transcript_api import YouTubeTranscriptApi
 
 # --- Google Drive API Imports ---
-from google.oauth2.service_account import Credentials
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request as GoogleRequest
 
 
 app = Flask(__name__, template_folder='templates')
 
-# --- Securely Load API Keys and Config from Render Environment ---
+# --- Securely Load API Keys from Render Environment ---
+# IMPORTANT: Add these to your Render environment variables
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-for-prod")
+# This JSON content comes from the credentials.json file from Google Cloud Console
+GOOGLE_DRIVE_CREDS_JSON = os.environ.get("GOOGLE_DRIVE_CREDS_JSON")
+# This must match one of the "Authorized redirect URIs" in your Google Cloud Console
+# For Render, it will be your full app URL + /oauth2callback
+REDIRECT_URI = os.environ.get("REDIRECT_URI") 
+
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
 OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# --- New: Google Drive Credentials and File ID ---
-GOOGLE_DRIVE_CREDS_JSON = os.environ.get("GOOGLE_DRIVE_CREDS_JSON")
-DRIVE_FILE_ID = "1G86soMom_Ifbfg7liqtBWWzdr9ChtZoU"
-
+# --- Google Drive Scopes (permissions your app will ask for) ---
+# Using read-only for safety. Change if you need to write files.
+SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
@@ -46,6 +54,8 @@ if not OPENROUTER_API_KEY_V3:
     print("WARNING: OPENROUTER_API_KEY_V3 not found. OpenRouter will be skipped.")
 if not GROQ_API_KEY:
     print("WARNING: GROQ_API_KEY not found. Groq API will be skipped.")
+if not all([GOOGLE_DRIVE_CREDS_JSON, REDIRECT_URI]):
+    print("WARNING: GOOGLE_DRIVE_CREDS_JSON or REDIRECT_URI environment variables not set. Drive integration will be disabled.")
 
 
 # --- MongoDB Configuration ---
@@ -60,58 +70,8 @@ if MONGO_URI:
         print(f"CRITICAL ERROR: Could not connect to MongoDB. Chat history will not be saved. Error: {e}")
 else:
     print("WARNING: MONGO_URI environment variable not found. Chat history will not be saved.")
-    
-# --- New: Google Drive Helper Functions ---
 
-def get_drive_service():
-    """Authenticates and returns a Google Drive service object."""
-    if not GOOGLE_DRIVE_CREDS_JSON:
-        print("CRITICAL ERROR: GOOGLE_DRIVE_CREDS_JSON environment variable not found.")
-        return None
-    try:
-        creds_info = json.loads(GOOGLE_DRIVE_CREDS_JSON)
-        creds = Credentials.from_service_account_info(creds_info, scopes=['https://www.googleapis.com/auth/drive'])
-        service = build('drive', 'v3', credentials=creds)
-        print("✅ Successfully authenticated with Google Drive API.")
-        return service
-    except Exception as e:
-        print(f"CRITICAL ERROR: Could not authenticate with Google Drive. Error: {e}")
-        return None
 
-def get_users_from_drive_file(service, file_id):
-    """Downloads and reads the user JSON file from Google Drive."""
-    if not service:
-        return []
-    try:
-        request = service.files().get_media(fileId=file_id)
-        file_io = io.BytesIO()
-        downloader = MediaIoBaseDownload(file_io, request)
-        done = False
-        while done is False:
-            status, done = downloader.next_chunk()
-        file_io.seek(0)
-        users = json.load(file_io)
-        print(f"✅ Successfully loaded {len(users)} users from Google Drive.")
-        return users
-    except Exception as e:
-        print(f"ERROR: Could not read users file from Google Drive. Error: {e}")
-        return [] # Return empty list on failure
-
-def save_users_to_drive_file(service, file_id, users_data):
-    """Uploads updated user data to the JSON file in Google Drive."""
-    if not service:
-        return False
-    try:
-        file_content = json.dumps(users_data, indent=4).encode('utf-8')
-        file_io = io.BytesIO(file_content)
-        media = MediaIoBaseUpload(file_io, mimetype='application/json', resumable=True)
-        service.files().update(fileId=file_id, media_body=media).execute()
-        print(f"✅ Successfully saved {len(users_data)} users to Google Drive.")
-        return True
-    except Exception as e:
-        print(f"ERROR: Could not save users file to Google Drive. Error: {e}")
-        return False
-        
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
 GITHUB_REPO = "collegeproject"
@@ -124,39 +84,93 @@ PDF_KEYWORDS = {
     "2025 hindi paper": "2025 - Hindi (7402-01).pdf"
 }
 
+# --- Google Drive Helper ---
+def get_google_flow():
+    """Builds a Google OAuth Flow object from environment variables."""
+    if not all([GOOGLE_DRIVE_CREDS_JSON, REDIRECT_URI]):
+        raise ValueError("Google OAuth environment variables are not fully configured.")
+    
+    try:
+        # Parse the JSON string from the environment variable
+        client_config = json.loads(GOOGLE_DRIVE_CREDS_JSON)
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON format in GOOGLE_DRIVE_CREDS_JSON.")
+    
+    # Check if the redirect URI from your environment is listed in your credentials
+    if REDIRECT_URI not in client_config.get("web", {}).get("redirect_uris", []):
+         print(f"WARNING: The REDIRECT_URI '{REDIRECT_URI}' is not in the list of authorized URIs in your credentials JSON. This may cause an error.")
 
+    return Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+
+# --- Routes ---
 @app.route('/')
 def home():
-    return render_template('index.html')
-
-# --- New: User Authentication Routes ---
-@app.route('/users', methods=['GET'])
-def get_users():
-    drive_service = get_drive_service()
-    users = get_users_from_drive_file(drive_service, DRIVE_FILE_ID)
-    return jsonify(users)
-
-@app.route('/users', methods=['POST'])
-def add_user():
-    new_user_data = request.json
-    drive_service = get_drive_service()
-    
-    # Read existing users
-    existing_users = get_users_from_drive_file(drive_service, DRIVE_FILE_ID)
-    
-    # Check for duplicates
-    for user in existing_users:
-        if user.get('email') == new_user_data.get('email'):
-            return jsonify({'success': False, 'error': 'User already exists'}), 409
+    files = []
+    is_connected = False
+    if 'google_credentials' in session:
+        try:
+            creds = Credentials.from_authorized_user_info(session['google_credentials'], SCOPES)
             
-    # Add new user and save
-    existing_users.append(new_user_data)
-    success = save_users_to_drive_file(drive_service, DRIVE_FILE_ID, existing_users)
-    
-    if success:
-        return jsonify({'success': True})
-    else:
-        return jsonify({'success': False, 'error': 'Failed to save user data to Google Drive'}), 500
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(GoogleRequest())
+                session['google_credentials'] = {
+                    'token': creds.token, 'refresh_token': creds.refresh_token,
+                    'token_uri': creds.token_uri, 'client_id': creds.client_id,
+                    'client_secret': creds.client_secret, 'scopes': creds.scopes
+                }
+
+            service = build('drive', 'v3', credentials=creds)
+            results = service.files().list(
+                pageSize=15, fields="files(id, name, webViewLink, iconLink)").execute()
+            files = results.get('files', [])
+            is_connected = True
+        except Exception as e:
+            print(f"Error accessing Google Drive: {e}")
+            session.pop('google_credentials', None)
+            
+    return render_template('index.html', files=files, is_connected=is_connected)
+
+@app.route('/authorize_google_drive')
+def authorize_google_drive():
+    try:
+        flow = get_google_flow()
+        authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+        session['state'] = state
+        return redirect(authorization_url)
+    except ValueError as e:
+        return str(e), 500
+    except Exception as e:
+        print(f"Error in authorize_google_drive: {e}")
+        return "Authorization failed.", 500
+
+@app.route('/oauth2callback')
+def oauth2callback():
+    state = session.get('state')
+    if not state or state != request.args.get('state'):
+        return 'State mismatch error.', 400
+
+    try:
+        flow = get_google_flow()
+        flow.fetch_token(authorization_response=request.url)
+        creds = flow.credentials
+        
+        # Storing credentials in session is okay for simple apps.
+        # For production, you MUST save these to a secure, encrypted user database.
+        # NEVER expose the refresh_token on the client-side.
+        session['google_credentials'] = {
+            'token': creds.token, 'refresh_token': creds.refresh_token,
+            'token_uri': creds.token_uri, 'client_id': creds.client_id,
+            'client_secret': creds.client_secret, 'scopes': creds.scopes
+        }
+        return redirect(url_for('home'))
+    except Exception as e:
+        print(f"Error in oauth2callback: {e}")
+        return "Failed to fetch authorization token.", 500
+
+@app.route('/disconnect_google_drive')
+def disconnect_google_drive():
+    session.pop('google_credentials', None)
+    return redirect(url_for('home'))
 
 
 # --- Helper Functions for File Processing ---
@@ -285,26 +299,26 @@ def chat():
         if not ai_response:
             print("Routing to Gemini for multimodal request or as a final fallback.")
             api_used = "Gemini"
-            
-            model_logged = "gemini-2.0-flash-exp" 
-            
+            model_logged = "gemini-1.5-flash-latest" 
             model = genai.GenerativeModel(model_logged)
             prompt_parts = []
             if user_message:
                 prompt_parts.append(user_message)
 
-            # Handle multimodal inputs
             if is_youtube_link:
                 video_id = get_video_id(user_message)
-                if video_id:
-                    transcript = get_youtube_transcript(video_id)
-                    prompt_parts = [f"Summarize this YouTube video transcript:\n\n{transcript}"] if transcript else []
-                if not prompt_parts: return jsonify({'response': "Sorry, couldn't get the transcript for that video."})
+                transcript = get_youtube_transcript(video_id) if video_id else None
+                if transcript:
+                    prompt_parts = [f"Summarize this YouTube video transcript:\n\n{transcript}"]
+                else:
+                    return jsonify({'response': "Sorry, couldn't get the transcript for that video."})
             elif matched_github_keyword:
                 filename = next((fname for kw, fname in PDF_KEYWORDS.items() if kw in user_message.lower()), None)
-                file_bytes = get_file_from_github(filename)
-                if file_bytes: prompt_parts.append(f"\n--- Document: {filename} ---\n{extract_text_from_pdf(file_bytes)}")
-                else: return jsonify({'response': f"Sorry, I could not download '{filename}'."})
+                file_bytes = get_file_from_github(filename) if filename else None
+                if file_bytes:
+                    prompt_parts.append(f"\n--- Document: {filename} ---\n{extract_text_from_pdf(file_bytes)}")
+                else:
+                     return jsonify({'response': f"Sorry, I could not download the requested document."})
             elif file_data:
                 file_bytes = base64.b64decode(file_data)
                 if 'pdf' in file_type: prompt_parts.append(f"\n--- Uploaded PDF ---\n{extract_text_from_pdf(file_bytes)}")
@@ -320,7 +334,6 @@ def chat():
             response = model.generate_content(prompt_parts)
             ai_response = response.text
 
-        # --- Save to MongoDB (runs for all routes) ---
         if chat_history_collection is not None and ai_response:
             try:
                 chat_history_collection.insert_one({
@@ -336,10 +349,11 @@ def chat():
 
     except Exception as e:
         print(f"A critical error occurred: {e}")
-        user_facing_error = "Sorry, something went wrong. Please try again."
-        return jsonify({'response': user_facing_error})
+        return jsonify({'response': "Sorry, something went wrong. Please try again."})
 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    # Use threaded=False if you see issues with some libraries, but True is generally better for performance
+    app.run(host='0.0.0.0', port=port, threaded=True)
+
