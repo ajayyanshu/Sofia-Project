@@ -3,31 +3,40 @@ import io
 import os
 import re
 import sys
+import json
 from datetime import datetime
 
 import docx
 import fitz  # PyMuPDF
 import google.generativeai as genai
-import requests # Still needed for get_file_from_github and OpenRouter
+import requests 
 from flask import Flask, jsonify, render_template, request
 from PIL import Image
 from pymongo import MongoClient
 from youtube_transcript_api import YouTubeTranscriptApi
 
+# --- Google Drive API Imports ---
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+
+
 app = Flask(__name__, template_folder='templates')
 
-# --- Securely Load API Keys from Render Environment ---
+# --- Securely Load API Keys and Config from Render Environment ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
-# --- Use a single default key for OpenRouter ---
 OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
+# --- New: Google Drive Credentials and File ID ---
+GOOGLE_DRIVE_CREDS_JSON = os.environ.get("GOOGLE_DRIVE_CREDS_JSON")
+DRIVE_FILE_ID = "1G86soMom_Ifbfg7liqtBWWzdr9ChtZoU"
+
+
 # --- Configure API Services ---
 if GOOGLE_API_KEY:
-    # --- FIX: Removed the incompatible client_options parameter. ---
-    # The modern library handles API versioning automatically.
     genai.configure(api_key=GOOGLE_API_KEY)
     print(f"✅ Loaded google-generativeai version: {genai.__version__}")
 else:
@@ -51,12 +60,60 @@ if MONGO_URI:
         print(f"CRITICAL ERROR: Could not connect to MongoDB. Chat history will not be saved. Error: {e}")
 else:
     print("WARNING: MONGO_URI environment variable not found. Chat history will not be saved.")
+    
+# --- New: Google Drive Helper Functions ---
 
+def get_drive_service():
+    """Authenticates and returns a Google Drive service object."""
+    if not GOOGLE_DRIVE_CREDS_JSON:
+        print("CRITICAL ERROR: GOOGLE_DRIVE_CREDS_JSON environment variable not found.")
+        return None
+    try:
+        creds_info = json.loads(GOOGLE_DRIVE_CREDS_JSON)
+        creds = Credentials.from_service_account_info(creds_info, scopes=['https://www.googleapis.com/auth/drive'])
+        service = build('drive', 'v3', credentials=creds)
+        print("✅ Successfully authenticated with Google Drive API.")
+        return service
+    except Exception as e:
+        print(f"CRITICAL ERROR: Could not authenticate with Google Drive. Error: {e}")
+        return None
 
+def get_users_from_drive_file(service, file_id):
+    """Downloads and reads the user JSON file from Google Drive."""
+    if not service:
+        return []
+    try:
+        request = service.files().get_media(fileId=file_id)
+        file_io = io.BytesIO()
+        downloader = MediaIoBaseDownload(file_io, request)
+        done = False
+        while done is False:
+            status, done = downloader.next_chunk()
+        file_io.seek(0)
+        users = json.load(file_io)
+        print(f"✅ Successfully loaded {len(users)} users from Google Drive.")
+        return users
+    except Exception as e:
+        print(f"ERROR: Could not read users file from Google Drive. Error: {e}")
+        return [] # Return empty list on failure
+
+def save_users_to_drive_file(service, file_id, users_data):
+    """Uploads updated user data to the JSON file in Google Drive."""
+    if not service:
+        return False
+    try:
+        file_content = json.dumps(users_data, indent=4).encode('utf-8')
+        file_io = io.BytesIO(file_content)
+        media = MediaIoBaseUpload(file_io, mimetype='application/json', resumable=True)
+        service.files().update(fileId=file_id, media_body=media).execute()
+        print(f"✅ Successfully saved {len(users_data)} users to Google Drive.")
+        return True
+    except Exception as e:
+        print(f"ERROR: Could not save users file to Google Drive. Error: {e}")
+        return False
+        
 # --- GitHub PDF Configuration ---
 GITHUB_USER = "ajayyanshu"
-# NOTE: It's best to avoid spaces in repository names. If you use "sofia project",
-# the code below will handle it, but renaming to "sofia-project" is recommended.
 GITHUB_REPO = "collegeproject"
 GITHUB_FOLDER_PATH = "upload pdf"
 PDF_KEYWORDS = {
@@ -71,6 +128,35 @@ PDF_KEYWORDS = {
 @app.route('/')
 def home():
     return render_template('index.html')
+
+# --- New: User Authentication Routes ---
+@app.route('/users', methods=['GET'])
+def get_users():
+    drive_service = get_drive_service()
+    users = get_users_from_drive_file(drive_service, DRIVE_FILE_ID)
+    return jsonify(users)
+
+@app.route('/users', methods=['POST'])
+def add_user():
+    new_user_data = request.json
+    drive_service = get_drive_service()
+    
+    # Read existing users
+    existing_users = get_users_from_drive_file(drive_service, DRIVE_FILE_ID)
+    
+    # Check for duplicates
+    for user in existing_users:
+        if user.get('email') == new_user_data.get('email'):
+            return jsonify({'success': False, 'error': 'User already exists'}), 409
+            
+    # Add new user and save
+    existing_users.append(new_user_data)
+    success = save_users_to_drive_file(drive_service, DRIVE_FILE_ID, existing_users)
+    
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Failed to save user data to Google Drive'}), 500
 
 
 # --- Helper Functions for File Processing ---
@@ -93,7 +179,6 @@ def extract_text_from_docx(docx_bytes):
 
 
 def get_file_from_github(filename):
-    # --- This code correctly handles spaces in the repo name ---
     url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO.replace(' ', '%20')}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
     try:
         response = requests.get(url)
@@ -183,14 +268,12 @@ def chat():
 
         # --- Route 1: Text-only chat with automatic fallbacks ---
         if not is_multimodal_request and user_message.strip():
-            # 1st attempt: OpenRouter (DeepSeek)
             print("Routing to OpenRouter with DeepSeek model.")
             ai_response = call_openrouter_api(user_message)
             if ai_response:
                 api_used = "OpenRouter"
                 model_logged = "deepseek/deepseek-chat"
             
-            # 2nd attempt: Groq API
             if not ai_response:
                 print("OpenRouter failed, trying Groq as a second option.")
                 ai_response = call_groq_api(user_message)
@@ -203,7 +286,6 @@ def chat():
             print("Routing to Gemini for multimodal request or as a final fallback.")
             api_used = "Gemini"
             
-            # --- Using the stable 'gemini-1.5-flash-latest' model name ---
             model_logged = "gemini-2.0-flash-exp" 
             
             model = genai.GenerativeModel(model_logged)
@@ -261,4 +343,3 @@ def chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
