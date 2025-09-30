@@ -70,7 +70,7 @@ PDF_KEYWORDS = {
 
 @app.route('/')
 def home():
-    return render_template('xyz.html')
+    return render_template('index.html')
 
 
 # --- Helper Functions for File Processing ---
