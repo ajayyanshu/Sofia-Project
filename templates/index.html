@@ -406,23 +406,6 @@
         #toast-notification.show {
             bottom: 2rem;
         }
-        .drive-connect-container {
-            text-align: center;
-        }
-        .drive-connect-container button {
-            background-color: #4285F4;
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 0.5rem;
-            font-size: 1.1rem;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .drive-connect-container button:hover {
-            background-color: #357ae8;
-        }
     </style>
 </head>
 <body class="h-full flex initial-view relative">
@@ -446,10 +429,10 @@
 
 
     <!-- Login/Signup Page -->
-    <div id="auth-container" class="hidden">
+    <div id="auth-container">
         <div class="auth-main-container" id="auth-main-container-el">
             <div class="form-container sign-up-container">
-                <form id="sign-up-form">
+                <form id="sign-up-form" autocomplete="off">
                     <h1 class="text-3xl font-bold mb-4">Create Account</h1>
                     <div class="social-container mb-4">
                         <a href="#" class="social"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M20 10c0-5.523-4.477-10-10-10S0 4.477 0 10c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V10h2.54V7.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V10h2.773l-.443 2.89h-2.33v6.988C16.343 19.128 20 14.991 20 10z" clip-rule="evenodd" /></svg></a>
@@ -457,16 +440,16 @@
                         <a href="#" class="social"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="#0077B5"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
                     </div>
                     <span>or use your email for registration</span>
-                    <input type="text" id="signup-name" placeholder="Name" required />
-                    <input type="email" id="signup-email" placeholder="Email" required />
-                    <input type="password" id="signup-password" placeholder="Password" required />
+                    <input type="text" id="signup-name" placeholder="Name" required autocomplete="name" />
+                    <input type="email" id="signup-email" placeholder="Email" required autocomplete="email" />
+                    <input type="password" id="signup-password" placeholder="Password" required autocomplete="new-password" />
                     <button class="mt-2">Sign Up</button>
                     <p id="signup-error" class="text-red-500 text-sm mt-2 h-5"></p>
                     <a href="#" class="md:hidden mt-4 text-sm" id="mobile-show-signin">Already have an account? Sign In</a>
                 </form>
             </div>
             <div class="form-container sign-in-container">
-                <form id="sign-in-form">
+                <form id="sign-in-form" autocomplete="off">
                     <h1 class="text-3xl font-bold mb-4">Sign in</h1>
                      <div class="social-container mb-4">
                         <a href="#" class="social"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M20 10c0-5.523-4.477-10-10-10S0 4.477 0 10c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V10h2.54V7.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V10h2.773l-.443 2.89h-2.33v6.988C16.343 19.128 20 14.991 20 10z" clip-rule="evenodd" /></svg></a>
@@ -474,8 +457,8 @@
                         <a href="#" class="social"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="#0077B5"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
                     </div>
                     <span>or use your account</span>
-                    <input type="email" id="signin-email" placeholder="Email" required/>
-                    <input type="password" id="signin-password" placeholder="Password" required/>
+                    <input type="email" id="signin-email" placeholder="Email" required autocomplete="email"/>
+                    <input type="password" id="signin-password" placeholder="Password" required autocomplete="current-password"/>
                     <a href="#" class="text-sm my-2">Forgot your password?</a>
                     <button>Sign In</button>
                     <p id="signin-error" class="text-red-500 text-sm mt-2 h-5"></p>
@@ -499,15 +482,6 @@
         </div>
     </div>
     
-    <!-- Initial connection screen -->
-    <div id="drive-connect-container" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="drive-connect-container">
-            <h1 class="text-2xl font-bold mb-4">Welcome to Sofia 2.0</h1>
-            <p class="text-gray-600 mb-6">To begin, please connect your Google Drive to store user data.</p>
-            <button onclick="window.location.href='/authorize_google_drive'">Connect to Google Drive</button>
-        </div>
-    </div>
-
     <div id="app-container" class="h-full w-full flex-col hidden"> <!-- App container -->
         <!-- Sidebar Overlay for mobile -->
         <div id="sidebar-overlay" class="hidden fixed inset-0 z-30 bg-black/50"></div>
@@ -746,55 +720,11 @@
 
 
     <script>
-        // --- Google Drive Integration Setup ---
-        // Dynamically set the backend URL based on the current window location
-        const RENDER_BACKEND_URL = `${window.location.origin}/users`;
+        // --- App State ---
+        let currentUser = null;
 
-        // This function will get all users from your Google Drive file via your backend.
-        async function getUsersFromDrive() {
-            try {
-                const response = await fetch(RENDER_BACKEND_URL);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('Server error response:', errorData);
-                    showToast(`Error: ${errorData.error || 'Could not fetch users.'}`);
-                    throw new Error('Could not fetch users from the server.');
-                }
-                const users = await response.json();
-                return users;
-            } catch (error) {
-                console.error('Error fetching users:', error);
-                // Return an empty array on failure so the app doesn't crash
-                return []; 
-            }
-        }
-
-        // This function will save the updated list of users to your Google Drive file via your backend.
-        async function saveUsersToDrive(users) {
-            try {
-                const response = await fetch(RENDER_BACKEND_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(users),
-                });
-                if (!response.ok) {
-                     const errorData = await response.json();
-                    console.error('Server error response:', errorData);
-                    showToast(`Error: ${errorData.error || 'Could not save users.'}`);
-                    throw new Error('Could not save users to the server.');
-                }
-                return await response.json();
-            } catch (error) {
-                console.error('Error saving users:', error);
-                return { success: false, error: error.message };
-            }
-        }
-        
         // --- Authentication Elements ---
         const authContainer = document.getElementById('auth-container');
-        const driveConnectContainer = document.getElementById('drive-connect-container');
         const appContainer = document.getElementById('app-container');
         const signUpButton = document.getElementById('signUp');
         const signInButton = document.getElementById('signIn');
@@ -808,6 +738,8 @@
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
         const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
         const toastNotification = document.getElementById('toast-notification');
+        const logoutBtn = document.getElementById('logout-btn');
+        const deleteAccountBtn = document.getElementById('delete-account-btn');
 
         // --- App Elements ---
         const sidebarOverlay = document.getElementById('sidebar-overlay');
@@ -849,13 +781,10 @@
         const searchHistoryInput = document.getElementById('search-history-input');
         const tempChatBanner = document.getElementById('temp-chat-banner');
         const saveToDbBtn = document.getElementById('save-to-db-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const deleteAccountBtn = document.getElementById('delete-account-btn');
         const userNameSidebar = document.getElementById('user-name-sidebar');
         const userAvatar = document.getElementById('user-avatar');
         const profileName = document.getElementById('profile-name');
         const profileEmail = document.getElementById('profile-email');
-
 
         const markdownConverter = new showdown.Converter();
         let fileData = null;
@@ -871,7 +800,7 @@
         let currentChat = [];
         let currentChatId = null;
         
-        // --- Auth Logic (using Google Drive simulation) ---
+        // --- NEW API-based Auth Logic ---
         signUpButton.addEventListener('click', () => authMainContainer.classList.add("right-panel-active"));
         signInButton.addEventListener('click', () => authMainContainer.classList.remove("right-panel-active"));
         mobileShowSignup.addEventListener('click', (e) => {
@@ -891,28 +820,29 @@
             const errorEl = document.getElementById('signup-error');
             errorEl.textContent = '';
             
-            const allUsers = await getUsersFromDrive();
+            try {
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, email, password })
+                });
 
-            if (allUsers.find(user => user.email === email)) {
-                errorEl.textContent = 'User with this email already exists.';
-                return;
-            }
-            
-            const newUser = { name, email, password };
-            const updatedUsers = [...allUsers, newUser];
-            
-            const result = await saveUsersToDrive(updatedUsers);
+                const data = await response.json();
 
-            if (result.success) {
-                signUpForm.reset();
-                document.getElementById('signin-email').value = email;
-                authMainContainer.classList.remove("right-panel-active");
-                
-                const signInTitle = signInForm.querySelector('h1');
-                signInTitle.textContent = "Account Created! Please Sign In.";
-                setTimeout(() => { signInTitle.textContent = "Sign in"; }, 3000);
-            } else {
-                errorEl.textContent = "Could not save new user. Please try again.";
+                if (data.success) {
+                    signUpForm.reset();
+                    document.getElementById('signin-email').value = email;
+                    authMainContainer.classList.remove("right-panel-active");
+                    
+                    const signInTitle = signInForm.querySelector('h1');
+                    signInTitle.textContent = "Account Created! Please Sign In.";
+                    setTimeout(() => { signInTitle.textContent = "Sign in"; }, 3000);
+                } else {
+                    errorEl.textContent = data.error || "An unknown error occurred.";
+                }
+            } catch (error) {
+                console.error('Signup Error:', error);
+                errorEl.textContent = "Could not connect to the server.";
             }
         });
 
@@ -922,35 +852,70 @@
             const password = document.getElementById('signin-password').value;
             const errorEl = document.getElementById('signin-error');
             errorEl.textContent = '';
-
-            const allUsers = await getUsersFromDrive();
-            const user = allUsers.find(u => u.email === email && u.password === password);
             
-            if (user) {
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                showApp();
-            } else {
-                errorEl.textContent = 'Invalid email or password.';
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentUser = data.user;
+                    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showApp();
+                } else {
+                    errorEl.textContent = data.error || 'Invalid email or password.';
+                }
+            } catch(error) {
+                console.error('Login Error:', error);
+                errorEl.textContent = "Could not connect to the server.";
             }
         });
 
-        function handleLogout() {
-             localStorage.removeItem('currentUser');
-             // Instead of showing auth, we check for Google Drive connection
-             checkInitialAuthState();
+        async function handleLogout() {
+             try {
+                await fetch('/api/logout', { method: 'POST' });
+             } catch (error) {
+                console.error("Logout failed, but clearing session anyway.", error);
+             } finally {
+                currentUser = null;
+                sessionStorage.removeItem('currentUser');
+                showAuth();
+             }
         }
         
         logoutBtn.addEventListener('click', handleLogout);
         mainLogoutBtn.addEventListener('click', handleLogout);
 
+        async function deleteUserAccount() {
+            try {
+                const response = await fetch('/api/users/delete', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.removeItem(getChatHistoryKey(currentUser.email));
+                    handleLogout();
+                    showToast('Account deleted successfully.');
+                } else {
+                    showToast(data.error || 'Error: Could not delete account.');
+                }
+            } catch (error) {
+                console.error("Delete account error:", error);
+                showToast('Error: Could not connect to the server.');
+            }
+        }
+        
+        // --- UI View Management ---
         function showApp() {
             authContainer.classList.add('hidden');
-            driveConnectContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
             appContainer.classList.add('flex');
             
-            const user = JSON.parse(localStorage.getItem('currentUser'));
+            const user = JSON.parse(sessionStorage.getItem('currentUser'));
             if (user) {
+                currentUser = user;
                 userNameSidebar.textContent = user.name;
                 profileName.textContent = user.name;
                 profileEmail.textContent = user.email;
@@ -961,19 +926,11 @@
         }
         
         function showAuth() {
-            driveConnectContainer.classList.add('hidden');
             authContainer.classList.remove('hidden');
             authContainer.classList.add('flex');
             appContainer.classList.add('hidden');
             appContainer.classList.remove('flex');
         }
-        
-        function showDriveConnect() {
-            driveConnectContainer.classList.remove('hidden');
-            authContainer.classList.add('hidden');
-            appContainer.classList.add('hidden');
-        }
-
 
         // --- Sidebar & Temp Chat Logic ---
         function openSidebar() {
@@ -1284,6 +1241,11 @@
                 
                 typingIndicator.remove();
                 
+                if (response.status === 401) {
+                    addMessage({ text: "Your session has expired. Please log in again.", sender: 'system' });
+                    handleLogout();
+                    return;
+                }
                 if (!response.ok) {
                     throw new Error('Network response was not ok.');
                 }
@@ -1551,14 +1513,13 @@
         cancelVoiceBtn.addEventListener('click', stopVoiceConversation);
 
         // --- Chat History Functions ---
-        function getChatHistoryKey() {
-            const user = JSON.parse(localStorage.getItem('currentUser'));
-            return user ? `chatHistory_${user.email}` : 'chatHistory_guest';
+        function getChatHistoryKey(email) {
+            return email ? `chatHistory_${email}` : 'chatHistory_guest';
         }
 
 
         function saveChatSession() {
-            if (isTemporaryChatActive || currentChat.length === 0) {
+            if (isTemporaryChatActive || currentChat.length === 0 || !currentUser) {
                 return;
             }
 
@@ -1577,7 +1538,7 @@
                 chatHistory.unshift({ id: currentChatId, title: chatTitle, messages: [...currentChat] });
             }
 
-            localStorage.setItem(getChatHistoryKey(), JSON.stringify(chatHistory));
+            localStorage.setItem(getChatHistoryKey(currentUser.email), JSON.stringify(chatHistory));
             renderChatHistorySidebar();
         }
 
@@ -1596,7 +1557,7 @@
                 let chatTitle = currentChat.find(m => m.sender === 'user')?.text.substring(0, 40) || 'Untitled Chat';
 
                 chatHistory.unshift({ id: currentChatId, title: chatTitle, messages: [...currentChat] });
-                localStorage.setItem(getChatHistoryKey(), JSON.stringify(chatHistory));
+                localStorage.setItem(getChatHistoryKey(currentUser.email), JSON.stringify(chatHistory));
                 renderChatHistorySidebar();
 
                 saveToDbBtn.textContent = 'Saved!';
@@ -1609,7 +1570,11 @@
 
 
         function loadChatHistory() {
-            const savedHistory = localStorage.getItem(getChatHistoryKey());
+            if (!currentUser) {
+                chatHistory = [];
+                return;
+            }
+            const savedHistory = localStorage.getItem(getChatHistoryKey(currentUser.email));
             if (savedHistory) {
                 chatHistory = JSON.parse(savedHistory);
             } else {
@@ -1685,10 +1650,7 @@
                     const chatIndex = chatHistory.findIndex(c => c.id === chatId);
                     if (chatIndex > -1) {
                         chatHistory[chatIndex].title = newTitle;
-                        // This assumes chatHistory is a local representation of what's on Drive
-                        // We need to save the whole user object if chat history is part of it.
-                        // For now, let's assume it's just local.
-                        localStorage.setItem(getChatHistoryKey(), JSON.stringify(chatHistory));
+                        localStorage.setItem(getChatHistoryKey(currentUser.email), JSON.stringify(chatHistory));
                     }
                 }
                  renderChatHistorySidebar();
@@ -1711,7 +1673,7 @@
 
             confirmDeleteBtn.onclick = () => {
                 chatHistory = chatHistory.filter(c => c.id !== chatId);
-                localStorage.setItem(getChatHistoryKey(), JSON.stringify(chatHistory));
+                localStorage.setItem(getChatHistoryKey(currentUser.email), JSON.stringify(chatHistory));
 
                 if (currentChatId === chatId) {
                     startNewChat();
@@ -1782,64 +1744,14 @@
             }, 3000);
         }
         
-        async function deleteUserAccount() {
-             const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-             if(!currentUser) return;
-             
-             const allUsers = await getUsersFromDrive();
-             const updatedUsers = allUsers.filter(u => u.email !== currentUser.email);
-             
-             const result = await saveUsersToDrive(updatedUsers);
-
-             if (result.success) {
-                localStorage.removeItem(getChatHistoryKey());
-                handleLogout();
-                showToast('Account deleted successfully.');
-             } else {
-                showToast('Error: Could not delete account.');
-             }
-        }
-
-
-        // --- Initializations ---
-        function checkInitialAuthState() {
-            // This is a simplified check. A robust app would verify the token with the server.
-            const googleCreds = document.cookie.includes('google_credentials'); // A proxy for session check
-             
-            // The logic should be:
-            // 1. Is the application authorized with Google Drive?
-            // If not, show connect button.
-            // If yes, check for a logged-in user.
-            // If user exists, show app.
-            // If no user, show login/signup form.
-
-            // This is a placeholder for the server-side check
-            // For now, let's assume if we are on the page, the server has credentials.
-            if(localStorage.getItem('currentUser')){
+        // --- Initialization ---
+        function initializeApp() {
+            const savedUser = sessionStorage.getItem('currentUser');
+            if(savedUser){
                 showApp();
             } else {
                 showAuth();
             }
-        }
-
-
-        function initializeApp() {
-            // The initial state check needs to know if the server is connected to Drive
-            // Since we can't know that from the client-side directly without an API call,
-            // we will assume the initial view is the login page, and the page flow will handle it.
-            
-            // A better approach would be an endpoint like /api/status that tells the frontend
-            // if the google drive connection is active. For now, we'll use this logic.
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('code')) {
-                 // Came from Google OAuth, probably authorized. Show login page.
-                 showAuth();
-            } else {
-                 // Default view might be the connection button, let's try getting users.
-                 // If it fails, the user will be prompted to connect.
-                 showAuth(); // Start with login page
-            }
-
 
             const savedTheme = localStorage.getItem('theme') || 'system';
             document.getElementById(`theme-${savedTheme}`).click();
@@ -1863,26 +1775,11 @@
                 customConfirmModal.classList.add('hidden');
                 customConfirmModal.classList.remove('flex');
             });
-
         }
 
-        // We can't initialize the app properly until we know if the server is connected to Drive.
-        // Let's change the flow. The Python will render the page. If it needs authorization,
-        // it will be clear. Let's assume the user has to authorize first.
-        // The first screen will be the connection screen. If already connected, the backend will
-        // store it in a session and we can check that.
-        
-        // This is a simplified check for the browser session cookie.
-        if (document.cookie.indexOf('session') !== -1 && document.cookie.indexOf('google_credentials') !== -1) {
-            // Looks like we might be authorized.
-            initializeApp();
-            showAuth();
-        } else {
-             showDriveConnect();
-        }
-
+        // Start the application
+        initializeApp();
 
     </script>
 </body>
 </html>
-
