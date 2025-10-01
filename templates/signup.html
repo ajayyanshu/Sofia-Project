@@ -1,146 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign-Up Page</title>
-    <!-- Tailwind CSS for styling -->
+    <title>Sign Up - Sofia 2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
+        .auth-main-container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+            position: relative;
+            overflow: hidden;
+            width: 420px;
+            max-width: 100%;
+            min-height: 520px;
+        }
+        .form-container form {
+            background-color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 50px;
+            height: 100%;
+            text-align: center;
+        }
+        .auth-main-container input {
+            background-color: #eee;
+            border: none;
+            padding: 12px 15px;
+            margin: 8px 0;
+            width: 100%;
+            border-radius: 8px;
+        }
+        .auth-main-container button {
+            border-radius: 20px;
+            border: 1px solid #FF4B2B;
+            background-color: #FF4B2B;
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 12px 45px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: transform 80ms ease-in;
+            cursor: pointer;
+        }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div class="relative min-h-screen flex items-center justify-center p-4 font-sans overflow-hidden bg-gray-50">
-        <div class="absolute inset-0 z-0">
-            <div class="absolute top-0 -left-48 w-96 h-96 bg-purple-200 rounded-full filter blur-3xl opacity-50"></div>
-            <div class="absolute bottom-0 -right-16 w-96 h-96 bg-indigo-200 rounded-full filter blur-3xl opacity-50"></div>
-        </div>
-        
-        <div class="relative z-10 bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex overflow-hidden">
-            
-            <div class="w-full lg:w-1/2 p-8 sm:p-12">
-                <!-- Sign-Up View -->
-                <div id="signup-view">
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Sign Up</h1>
-                    <p class="text-gray-600 mb-8">
-                        Already have an account? <a href="#" class="text-indigo-600 font-semibold hover:underline">Login</a>
-                    </p>
+<body class="bg-gray-100 flex items-center justify-center h-full">
 
-                    <form id="signup-form">
-                        <div class="mb-5">
-                            <label for="name" class="block text-gray-700 font-semibold mb-2">Full Name</label>
-                            <input type="text" id="name" name="name" placeholder="John Doe" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" />
-                        </div>
-                        <div class="mb-5">
-                            <label for="email" class="block text-gray-700 font-semibold mb-2">Email Address</label>
-                            <input type="email" id="email" name="email" placeholder="you@example.com" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" />
-                        </div>
-                        <div class="mb-8">
-                            <label for="password" class="block text-gray-700 font-semibold mb-2">Password</label>
-                            <input type="password" id="password" name="password" placeholder="Enter 6 character or more" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200" />
-                        </div>
-                        <div>
-                            <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:opacity-90 transition duration-300 shadow-lg">CREATE ACCOUNT</button>
-                        </div>
-                    </form>
-
-                    <div class="mt-8 relative">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-gray-300"></div>
-                        </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-white text-gray-500">or sign up with</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
-                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56,12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26,1.37-1.04,2.53-2.21,3.31v2.77h3.57c2.08-1.92,3.28-4.74,3.28-8.09Z" style="fill:#4285F4"></path><path d="M12,23c2.97,0,5.46-.98,7.28-2.66l-3.57-2.77c-.98,.66-2.23,1.06-3.71,1.06-2.86,0-5.29-1.93-6.16-4.53H2.18v2.84C3.99,20.53,7.7,23,12,23Z" style="fill:#34A853"></path><path d="M5.84,14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43,.35-2.09V7.07H2.18C1.43,8.55,1,10.22,1,12s.43,3.45,1.18,4.93l3.66-2.84Z" style="fill:#FBBC05"></path><path d="M12,5.38c1.62,0,3.06,.56,4.21,1.64l3.15-3.15C17.45,2.09,14.97,1,12,1,7.7,1,3.99,3.47,2.18,7.07l3.66,2.84c.87-2.6,3.3-4.53,6.16-4.53Z" style="fill:#EA4335"></path></svg>
-                            <span class="ml-3 text-gray-700 font-semibold">Google</span>
-                        </button>
-                        <button class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
-                             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22,12c0-5.52-4.48-10-10-10S2,6.48,2,12c0,4.84,3.44,8.87,8,9.8V15H8v-3h2V9.5C10,7.57,11.57,6,13.5,6H16v3h-1.5c-1,0-1,.5-1,1V12h3l-.5,3h-2.5v6.8C18.56,20.87,22,16.84,22,12Z" style="fill:#1877F2"></path></svg>
-                            <span class="ml-3 text-gray-700 font-semibold">Facebook</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- OTP View (hidden by default) -->
-                <div id="otp-view" class="hidden">
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Verify Your Email</h1>
-                    <p class="text-gray-600 mb-8">
-                        Enter the 6-digit code sent to <span id="otp-email" class="font-semibold text-gray-800"></span>
-                    </p>
-                    <form id="otp-form">
-                        <div class="mb-5">
-                            <label for="otp" class="block text-gray-700 font-semibold mb-2">OTP Code</label>
-                            <input type="text" id="otp" name="otp" placeholder="123456" maxLength="6" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 text-center tracking-[1em]" />
-                        </div>
-                        <div>
-                            <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-bold py-3 px-4 rounded-lg hover:opacity-90 transition duration-300 shadow-lg">VERIFY & SIGN UP</button>
-                        </div>
-                    </form>
-                    <p class="text-center text-gray-600 mt-4">
-                        Didn't receive the code? <a href="#" class="text-indigo-600 font-semibold hover:underline">Resend</a>
-                    </p>
-                    <p id="otp-message" class="text-center mt-4 font-semibold text-sm text-red-600"></p>
-                </div>
-            </div>
-            
-            <div class="hidden lg:flex w-1/2 items-center justify-center p-8 bg-indigo-50 relative">
-                <div class="w-full max-w-md">
-                    <img 
-                        src="https://cdn.dribbble.com/users/1598923/screenshots/6659556/media/6797a73d1b440409f27038626f238c11.png" 
-                        alt="Illustration of a person working on a computer" 
-                        class="w-full h-auto object-contain"
-                        onError="this.onerror=null;this.src='https://placehold.co/600x400/a78bfa/ffffff?text=Login+Illustration';"
-                    />
-                </div>
-            </div>
+    <div class="auth-main-container">
+        <div class="form-container">
+            <form id="sign-up-form" autocomplete="off">
+                <h1 class="text-3xl font-bold mb-4">Create Account</h1>
+                <span class="text-sm mb-4">Enter your details to register</span>
+                <input type="text" id="signup-name" placeholder="Name" required autocomplete="name" />
+                <input type="email" id="signup-email" placeholder="Email" required autocomplete="email" />
+                <input type="password" id="signup-password" placeholder="Password" required autocomplete="new-password" />
+                <button class="mt-2">Sign Up</button>
+                <p id="signup-error" class="text-red-500 text-sm mt-2 h-5"></p>
+                <p class="mt-4 text-sm">
+                    Already have an account? 
+                    <a href="/login" class="font-semibold text-blue-600 hover:underline">Sign In</a>
+                </p>
+            </form>
         </div>
     </div>
 
     <script>
-        const signupView = document.getElementById('signup-view');
-        const otpView = document.getElementById('otp-view');
-        const signupForm = document.getElementById('signup-form');
-        const otpForm = document.getElementById('otp-form');
-        const otpEmailSpan = document.getElementById('otp-email');
-        const otpMessageP = document.getElementById('otp-message');
-
-        signupForm.addEventListener('submit', (e) => {
+        const signUpForm = document.getElementById('sign-up-form');
+        signUpForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = signupForm.elements.email.value;
-            if (email) {
-                // In a real app, you would send an OTP here.
-                console.log(`Simulating OTP sent to ${email}`);
-                
-                otpEmailSpan.textContent = email;
-                signupView.classList.add('hidden');
-                otpView.classList.remove('hidden');
-            }
-        });
+            const name = document.getElementById('signup-name').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const errorEl = document.getElementById('signup-error');
+            errorEl.textContent = '';
+            
+            try {
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, email, password })
+                });
 
-        otpForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const otp = otpForm.elements.otp.value;
-            // In a real app, you would verify the OTP here.
-            if (otp === "123456") { // Demo OTP
-                otpMessageP.textContent = 'Success! Your account has been created.';
-                otpMessageP.classList.remove('text-red-600');
-                otpMessageP.classList.add('text-green-600');
-            } else {
-                otpMessageP.textContent = 'Invalid OTP. Please try again.';
-                otpMessageP.classList.remove('text-green-600');
-                otpMessageP.classList.add('text-red-600');
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Redirect to login page on successful signup
+                    window.location.href = '/login';
+                } else {
+                    errorEl.textContent = data.error || "An unknown error occurred.";
+                }
+            } catch (error) {
+                console.error('Signup Error:', error);
+                errorEl.textContent = "Could not connect to the server.";
             }
         });
     </script>
 </body>
 </html>
-
