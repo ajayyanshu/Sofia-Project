@@ -64,12 +64,15 @@ if MONGO_URI:
         mongo_client = MongoClient(MONGO_URI)
         db = mongo_client.get_database("ai_assistant_db")
         chat_history_collection = db.get_collection("chat_history")
-        # users_collection is no longer used, users are managed in users.json on Drive
+        # users_collection is no longer used, users are managed in users.json
         print("✅ Successfully connected to MongoDB for chat history.")
     except Exception as e:
         print(f"CRITICAL ERROR: Could not connect to MongoDB. Error: {e}")
 else:
     print("CRITICAL WARNING: MONGO_URI not found. Chat history will not be saved.")
+
+# --- Local User Storage ---
+LOCAL_USERS_FILE = 'users.json'
 
 # --- Flask-Login Configuration ---
 login_manager = LoginManager()
@@ -87,7 +90,7 @@ class User(UserMixin):
     @staticmethod
     def get(user_id):
         # This function is called by load_user to get a user by their ID (email)
-        all_users = get_all_users_from_drive()
+        all_users = get_all_users()
         user_data = next((user for user in all_users if user['email'] == user_id), None)
         return User(user_data) if user_data else None
 
@@ -109,76 +112,35 @@ PDF_KEYWORDS = {
 }
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
-DRIVE_USER_DATA_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM' 
-DRIVE_CREDENTIALS_LOG_FILENAME = "users.json"
+DRIVE_USER_DATA_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM' # This can be used for other drive features
 
 
-# --- Google Drive Helper Functions for users.json ---
+# --- Helper Functions for local users.json ---
 
-def get_drive_service():
-    """Creates and returns an authenticated Google Drive service object."""
-    creds = get_drive_credentials()
-    if not creds:
-        return None
+def get_all_users():
+    """Fetches and parses the local users.json file."""
+    if not os.path.exists(LOCAL_USERS_FILE):
+        return []
     try:
-        return build('drive', 'v3', credentials=creds)
-    except Exception as e:
-        print(f"Error building Drive service: {e}")
-        return None
-
-def get_all_users_from_drive():
-    """Fetches and parses the users.json file from Google Drive."""
-    service = get_drive_service()
-    if not service:
-        print("DRIVE_READ_FAIL: Could not get Drive service.")
+        with open(LOCAL_USERS_FILE, 'r') as f:
+            # handle empty file case
+            content = f.read()
+            if not content:
+                return []
+            return json.loads(content)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"LOCAL_READ_ERROR: Failed to get or parse {LOCAL_USERS_FILE}: {e}")
         return []
 
+def save_all_users(users_data):
+    """Saves the provided list of users to the local users.json file."""
     try:
-        response = service.files().list(q=f"name='{DRIVE_CREDENTIALS_LOG_FILENAME}' and trashed=false", spaces='drive', fields='files(id)').execute()
-        files = response.get('files', [])
-        
-        if not files:
-            return [] # Return empty list if file doesn't exist
-
-        file_id = files[0].get('id')
-        request_file = service.files().get_media(fileId=file_id)
-        file_content = io.BytesIO()
-        downloader = MediaIoBaseDownload(file_content, request_file)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
-        
-        file_content.seek(0)
-        return json.load(file_content)
-    except Exception as e:
-        print(f"DRIVE_READ_ERROR: Failed to get or parse users.json: {e}")
-        return []
-
-def save_all_users_to_drive(users_data):
-    """Saves the provided list of users to users.json on Google Drive."""
-    service = get_drive_service()
-    if not service:
-        print("DRIVE_WRITE_FAIL: Could not get Drive service.")
-        return False
-
-    try:
-        response = service.files().list(q=f"name='{DRIVE_CREDENTIALS_LOG_FILENAME}' and trashed=false", spaces='drive', fields='files(id)').execute()
-        files = response.get('files', [])
-        
-        updated_content_bytes = json.dumps(users_data, indent=4).encode('utf-8')
-        media = MediaIoBaseUpload(io.BytesIO(updated_content_bytes), mimetype='application/json', resumable=True)
-
-        if files:
-            file_id = files[0].get('id')
-            service.files().update(fileId=file_id, media_body=media).execute()
-        else:
-            file_metadata = {'name': DRIVE_CREDENTIALS_LOG_FILENAME}
-            service.files().create(body=file_metadata, media_body=media).execute()
-        
-        print("DRIVE_WRITE_SUCCESS: Successfully saved users.json.")
+        with open(LOCAL_USERS_FILE, 'w') as f:
+            json.dump(users_data, f, indent=4)
+        print(f"LOCAL_WRITE_SUCCESS: Successfully saved {LOCAL_USERS_FILE}.")
         return True
-    except Exception as e:
-        print(f"DRIVE_WRITE_ERROR: Failed to save users.json: {e}")
+    except IOError as e:
+        print(f"LOCAL_WRITE_ERROR: Failed to save {LOCAL_USERS_FILE}: {e}")
         return False
 
 # --- New API-based Authentication Routes ---
@@ -193,7 +155,7 @@ def api_signup():
     if not all([name, email, password]):
         return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
 
-    all_users = get_all_users_from_drive()
+    all_users = get_all_users()
     if any(user['email'] == email for user in all_users):
         return jsonify({'success': False, 'error': 'User with this email already exists.'}), 409
 
@@ -205,10 +167,11 @@ def api_signup():
     }
     all_users.append(new_user)
     
-    if save_all_users_to_drive(all_users):
+    if save_all_users(all_users):
         return jsonify({'success': True})
     else:
-        return jsonify({'success': False, 'error': 'Could not save new user to Drive.'}), 500
+        # This was the source of the error. Now it points to a local save issue.
+        return jsonify({'success': False, 'error': 'Could not save new user. Please try again.'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
@@ -219,7 +182,7 @@ def api_login():
     if not all([email, password]):
         return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
 
-    all_users = get_all_users_from_drive()
+    all_users = get_all_users()
     user_data = next((user for user in all_users if user['email'] == email), None)
 
     if user_data and user_data['password'] == password:
@@ -239,17 +202,17 @@ def api_logout():
 @login_required
 def api_delete_user():
     user_email_to_delete = current_user.id
-    all_users = get_all_users_from_drive()
+    all_users = get_all_users()
     
     # Filter out the user to be deleted
     updated_users = [user for user in all_users if user.get('email') != user_email_to_delete]
     
     if len(updated_users) < len(all_users):
-        if save_all_users_to_drive(updated_users):
+        if save_all_users(updated_users):
             logout_user()
             return jsonify({'success': True})
         else:
-            return jsonify({'success': False, 'error': 'Could not update user list in Drive.'}), 500
+            return jsonify({'success': False, 'error': 'Could not update user list.'}), 500
     else:
         return jsonify({'success': False, 'error': 'User not found for deletion.'}), 404
 
@@ -495,4 +458,3 @@ def chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
