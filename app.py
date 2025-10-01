@@ -76,7 +76,7 @@ class User(UserMixin):
     @staticmethod
     def get(user_id):
         # This function is called by load_user to get a user by their ID (_id)
-        if not users_collection:
+        if users_collection is None:
             return None
         try:
             # Find user by their MongoDB ObjectId
@@ -115,7 +115,7 @@ def api_signup():
     if not all([name, email, password]):
         return jsonify({'success': False, 'error': 'Please fill out all fields: Name, Email, and Password.'}), 400
 
-    if not users_collection:
+    if users_collection is None:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
     # Check if user already exists in MongoDB
@@ -148,7 +148,7 @@ def api_login():
     if not all([email, password]):
         return jsonify({'success': False, 'error': 'Please enter both email and password.'}), 400
 
-    if not users_collection:
+    if users_collection is None:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
         
     user_data = users_collection.find_one({"email": email})
@@ -170,7 +170,7 @@ def api_logout():
 @app.route('/api/users/delete', methods=['POST'])
 @login_required
 def api_delete_user():
-    if not users_collection:
+    if users_collection is None:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
     user_id_to_delete = current_user.id # This is now the _id string
@@ -210,7 +210,7 @@ def api_status():
 @app.route('/')
 def home():
     # This route serves the single-page application.
-    return render_template('index.html')
+    return render_template('index12.html')
 
 
 # --- Chat Logic ---
