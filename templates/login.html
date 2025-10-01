@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sofia 2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .auth-main-container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+            position: relative;
+            overflow: hidden;
+            width: 420px;
+            max-width: 100%;
+            min-height: 480px;
+        }
+        .form-container form {
+            background-color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 50px;
+            height: 100%;
+            text-align: center;
+        }
+        .auth-main-container input {
+            background-color: #eee;
+            border: none;
+            padding: 12px 15px;
+            margin: 8px 0;
+            width: 100%;
+            border-radius: 8px;
+        }
+        .auth-main-container button {
+            border-radius: 20px;
+            border: 1px solid #FF4B2B;
+            background-color: #FF4B2B;
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 12px 45px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: transform 80ms ease-in;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-full">
+
+    <div class="auth-main-container">
+        <div class="form-container">
+            <form id="sign-in-form" autocomplete="off">
+                <h1 class="text-3xl font-bold mb-4">Sign In</h1>
+                <span class="text-sm mb-4">to continue to Sofia 2.0</span>
+                <input type="email" id="signin-email" placeholder="Email" required autocomplete="email"/>
+                <input type="password" id="signin-password" placeholder="Password" required autocomplete="current-password"/>
+                <a href="#" class="text-sm my-2 hover:underline">Forgot your password?</a>
+                <button>Sign In</button>
+                <p id="signin-error" class="text-red-500 text-sm mt-2 h-5"></p>
+                 <p class="mt-4 text-sm">
+                    Don't have an account? 
+                    <a href="/signup" class="font-semibold text-blue-600 hover:underline">Sign Up</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const signInForm = document.getElementById('sign-in-form');
+        signInForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value.trim();
+            const password = document.getElementById('signin-password').value;
+            const errorEl = document.getElementById('signin-error');
+            errorEl.textContent = '';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // On successful login, redirect to the main app page
+                    window.location.href = '/';
+                } else {
+                    errorEl.textContent = data.error || 'Invalid email or password.';
+                }
+            } catch(error) {
+                console.error('Login Error:', error);
+                errorEl.textContent = "Could not connect to the server.";
+            }
+        });
+    </script>
+</body>
+</html>
