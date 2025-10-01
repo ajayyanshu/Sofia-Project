@@ -12,6 +12,7 @@ import google.generativeai as genai
 import requests
 from flask import (Flask, jsonify, render_template, request, session, redirect,
                    url_for, flash)
+from flask_cors import CORS # Import CORS
 from PIL import Image
 from pymongo import MongoClient
 from bson.objectid import ObjectId # Import ObjectId
@@ -20,6 +21,7 @@ from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 
 app = Flask(__name__, template_folder='templates')
+CORS(app) # Enable CORS for all routes
 
 # --- Securely Load Configuration from Environment Variables ---
 app.config['SECRET_KEY'] = os.environ.get("FLASK_SECRET_KEY")
