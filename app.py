@@ -17,6 +17,8 @@ from PIL import Image
 from pymongo import MongoClient
 from bson.objectid import ObjectId # Import ObjectId
 from youtube_transcript_api import YouTubeTranscriptApi
+# Hashing functions are no longer needed for plaintext storage
+# from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 
@@ -24,7 +26,12 @@ app = Flask(__name__, template_folder='templates')
 CORS(app) # Enable CORS for all routes
 
 # --- Securely Load Configuration from Environment Variables ---
-app.config['SECRET_KEY'] = os.environ.get("FLASK_SECRET_KEY")
+SECRET_KEY = os.environ.get("FLASK_SECRET_KEY")
+if not SECRET_KEY:
+    print("CRITICAL WARNING: FLASK_SECRET_KEY not set. Using a default, insecure key for development.")
+    SECRET_KEY = "dev-secret-key" # NOTE: This is insecure and for development only.
+app.config['SECRET_KEY'] = SECRET_KEY
+
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
@@ -122,12 +129,11 @@ def api_signup():
     if users_collection.find_one({"email": email}):
         return jsonify({'success': False, 'error': 'An account with this email address already exists.'}), 409
 
-    # IMPORTANT: Storing password in plain text as requested for testing.
-    # In a production environment, you should ALWAYS hash and salt passwords.
+    # Storing the password in plain text as requested.
     new_user = {
         "name": name,
         "email": email,
-        "password": password, 
+        "password": password, # Store the plaintext password
         "timestamp": datetime.utcnow().isoformat()
     }
     
@@ -153,7 +159,7 @@ def api_login():
         
     user_data = users_collection.find_one({"email": email})
 
-    # Check for user and compare plain text password
+    # Check for user and compare the plaintext password
     if user_data and user_data['password'] == password:
         user_obj = User(user_data)
         login_user(user_obj) # This stores user_obj.id (which is the _id) in the session
