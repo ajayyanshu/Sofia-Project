@@ -147,16 +147,19 @@ def save_all_users(users_data):
 
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
+    print("LOG: Received request for /api/signup")
     data = request.get_json()
     name = data.get('name')
     email = data.get('email')
     password = data.get('password') # Plaintext password from frontend
 
     if not all([name, email, password]):
+        print(f"LOG: Signup failed for email '{email}' due to missing fields.")
         return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
 
     all_users = get_all_users()
     if any(user['email'] == email for user in all_users):
+        print(f"LOG: Signup failed. User with email '{email}' already exists.")
         return jsonify({'success': False, 'error': 'User with this email already exists.'}), 409
 
     new_user = {
@@ -167,19 +170,24 @@ def api_signup():
     }
     all_users.append(new_user)
     
+    print(f"LOG: Attempting to save new user: {email}")
     if save_all_users(all_users):
+        print(f"LOG: Successfully created and saved user: {email}")
         return jsonify({'success': True})
     else:
+        print(f"LOG: CRITICAL - Failed to save users file after adding: {email}")
         # This was the source of the error. Now it points to a local save issue.
         return jsonify({'success': False, 'error': 'Could not save new user. Please try again.'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
+    print("LOG: Received request for /api/login")
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
 
     if not all([email, password]):
+        print(f"LOG: Login failed for email '{email}' due to missing fields.")
         return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
 
     all_users = get_all_users()
@@ -188,8 +196,10 @@ def api_login():
     if user_data and user_data['password'] == password:
         user_obj = User(user_data)
         login_user(user_obj) # This creates the server-side session
+        print(f"LOG: User '{email}' successfully logged in.")
         return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
     else:
+        print(f"LOG: Login failed for user '{email}'. Invalid credentials.")
         return jsonify({'success': False, 'error': 'Invalid email or password.'}), 401
 
 @app.route('/api/logout', methods=['POST'])
@@ -458,3 +468,4 @@ def chat():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
