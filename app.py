@@ -106,8 +106,12 @@ PDF_KEYWORDS = {
 @app.route('/')
 @login_required # Protect the main page
 def home():
-    """Renders the main chat application."""
-    return render_template('index.html')
+    """Renders the main chat application, embedding user info."""
+    user_info = {
+        "name": current_user.name,
+        "email": current_user.email
+    }
+    return render_template('index.html', user_info=json.dumps(user_info))
 
 @app.route('/login', methods=['GET'])
 def login_page():
