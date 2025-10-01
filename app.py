@@ -15,7 +15,7 @@ from flask import (Flask, jsonify, render_template, request, session, redirect,
 from PIL import Image
 from pymongo import MongoClient
 from youtube_transcript_api import YouTubeTranscriptApi
-from werkzeug.security import generate_password_hash, check_password_hash
+# werkzeug is no longer needed for hashing as per new requirements
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 
@@ -34,16 +34,14 @@ app = Flask(__name__, template_folder='templates')
 # This is CRITICAL for security. Set this in Render's .env file.
 app.config['SECRET_KEY'] = os.environ.get("FLASK_SECRET_KEY")
 
-if not app.config['SECRET_KEY']:
-    print("CRITICAL ERROR: FLASK_SECRET_KEY environment variable is not set. The application will not function correctly.")
-
+# NOTE: The explicit check and print statement for the secret key has been removed as requested.
+# However, the application will not function correctly without it set in the environment.
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
 OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-# Load Google Drive credentials from an environment variable
 GOOGLE_DRIVE_CREDS_JSON = os.environ.get("GOOGLE_DRIVE_CREDS_JSON")
 
 
@@ -59,52 +57,44 @@ if GOOGLE_DRIVE_CREDS_JSON:
 else:
     print("CRITICAL WARNING: GOOGLE_DRIVE_CREDS_JSON not found. Google Drive features will be disabled.")
 
-# --- MongoDB Configuration ---
+# --- MongoDB Configuration (for chat history only) ---
 chat_history_collection = None
-users_collection = None # Collection for users
 if MONGO_URI:
     try:
         mongo_client = MongoClient(MONGO_URI)
         db = mongo_client.get_database("ai_assistant_db")
         chat_history_collection = db.get_collection("chat_history")
-        users_collection = db.get_collection("users")
-        print("✅ Successfully connected to MongoDB.")
+        # users_collection is no longer used, users are managed in users.json on Drive
+        print("✅ Successfully connected to MongoDB for chat history.")
     except Exception as e:
         print(f"CRITICAL ERROR: Could not connect to MongoDB. Error: {e}")
 else:
-    print("CRITICAL WARNING: MONGO_URI not found. App will not function correctly.")
+    print("CRITICAL WARNING: MONGO_URI not found. Chat history will not be saved.")
 
 # --- Flask-Login Configuration ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # Redirect to /login if user is not authenticated
+# This prevents redirecting for API calls, instead it will return a 401 Unauthorized error
+login_manager.login_view = None 
 
 class User(UserMixin):
+    # User object is now created from data from users.json
     def __init__(self, user_data):
-        self.id = str(user_data["_id"])
-        self.username = user_data["username"]
-        self.password_hash = user_data["password"]
+        self.id = user_data["email"] # Use email as the unique ID
+        self.email = user_data["email"]
+        self.name = user_data["name"]
 
     @staticmethod
     def get(user_id):
-        from bson.objectid import ObjectId
-        if not users_collection: return None
-        user_data = users_collection.find_one({'_id': ObjectId(user_id)})
+        # This function is called by load_user to get a user by their ID (email)
+        all_users = get_all_users_from_drive()
+        user_data = next((user for user in all_users if user['email'] == user_id), None)
         return User(user_data) if user_data else None
 
 @login_manager.user_loader
 def load_user(user_id):
+    # user_id is the email stored in the session
     return User.get(user_id)
-    
-# --- MODIFIED: Proactive check for secret key now renders an HTML page ---
-@app.before_request
-def check_secret_key():
-    # This function runs before every request.
-    # If the secret key is missing, it stops the request and shows a user-friendly error page.
-    if not app.config['SECRET_KEY'] and request.endpoint != 'static':
-        error_message = "CRITICAL SERVER ERROR: The application's FLASK_SECRET_KEY is not configured. Please contact the administrator."
-        return render_template('error.html', error_message=error_message), 500
-
 
 # --- GitHub & Google Drive Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -119,67 +109,158 @@ PDF_KEYWORDS = {
 }
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
-DRIVE_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM' 
+DRIVE_USER_DATA_FILE_ID = '15iPQIg3gSq4N7eyWFto6pCEx8w1YlKCM' 
 DRIVE_CREDENTIALS_LOG_FILENAME = "users.json"
 
 
-# --- Authentication Routes ---
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('home'))
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        if not users_collection:
-            flash('Database not connected. Please contact support.', 'error')
-            return render_template('login.html')
-        user_data = users_collection.find_one({'username': username})
-        if user_data and check_password_hash(user_data['password'], password):
-            user = User(user_data)
-            login_user(user)
-            return redirect(url_for('home'))
+# --- Google Drive Helper Functions for users.json ---
+
+def get_drive_service():
+    """Creates and returns an authenticated Google Drive service object."""
+    creds = get_drive_credentials()
+    if not creds:
+        return None
+    try:
+        return build('drive', 'v3', credentials=creds)
+    except Exception as e:
+        print(f"Error building Drive service: {e}")
+        return None
+
+def get_all_users_from_drive():
+    """Fetches and parses the users.json file from Google Drive."""
+    service = get_drive_service()
+    if not service:
+        print("DRIVE_READ_FAIL: Could not get Drive service.")
+        return []
+
+    try:
+        response = service.files().list(q=f"name='{DRIVE_CREDENTIALS_LOG_FILENAME}' and trashed=false", spaces='drive', fields='files(id)').execute()
+        files = response.get('files', [])
+        
+        if not files:
+            return [] # Return empty list if file doesn't exist
+
+        file_id = files[0].get('id')
+        request_file = service.files().get_media(fileId=file_id)
+        file_content = io.BytesIO()
+        downloader = MediaIoBaseDownload(file_content, request_file)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        
+        file_content.seek(0)
+        return json.load(file_content)
+    except Exception as e:
+        print(f"DRIVE_READ_ERROR: Failed to get or parse users.json: {e}")
+        return []
+
+def save_all_users_to_drive(users_data):
+    """Saves the provided list of users to users.json on Google Drive."""
+    service = get_drive_service()
+    if not service:
+        print("DRIVE_WRITE_FAIL: Could not get Drive service.")
+        return False
+
+    try:
+        response = service.files().list(q=f"name='{DRIVE_CREDENTIALS_LOG_FILENAME}' and trashed=false", spaces='drive', fields='files(id)').execute()
+        files = response.get('files', [])
+        
+        updated_content_bytes = json.dumps(users_data, indent=4).encode('utf-8')
+        media = MediaIoBaseUpload(io.BytesIO(updated_content_bytes), mimetype='application/json', resumable=True)
+
+        if files:
+            file_id = files[0].get('id')
+            service.files().update(fileId=file_id, media_body=media).execute()
         else:
-            flash('Invalid username or password.', 'error')
-    return render_template('login.html')
-
-@app.route('/signup', methods=['GET', 'POST'])
-def signup():
-    if current_user.is_authenticated:
-        return redirect(url_for('home'))
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password') 
-        if not users_collection:
-            flash('Database not connected. Please contact support.', 'error')
-            return render_template('signup.html')
-        if users_collection.find_one({'username': username}):
-            flash('Username already exists.', 'error')
-            return redirect(url_for('signup'))
+            file_metadata = {'name': DRIVE_CREDENTIALS_LOG_FILENAME}
+            service.files().create(body=file_metadata, media_body=media).execute()
         
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha266')
-        users_collection.insert_one({'username': username, 'password': hashed_password})
-        
-        save_credentials_to_drive(username, password)
+        print("DRIVE_WRITE_SUCCESS: Successfully saved users.json.")
+        return True
+    except Exception as e:
+        print(f"DRIVE_WRITE_ERROR: Failed to save users.json: {e}")
+        return False
 
-        flash('Account created successfully! Please log in.', 'success')
-        return redirect(url_for('login'))
-    return render_template('signup.html')
+# --- New API-based Authentication Routes ---
 
-@app.route('/logout')
+@app.route('/api/signup', methods=['POST'])
+def api_signup():
+    data = request.get_json()
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password') # Plaintext password from frontend
+
+    if not all([name, email, password]):
+        return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
+
+    all_users = get_all_users_from_drive()
+    if any(user['email'] == email for user in all_users):
+        return jsonify({'success': False, 'error': 'User with this email already exists.'}), 409
+
+    new_user = {
+        "name": name,
+        "email": email,
+        "password": password, # Storing plaintext as per the frontend logic
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    all_users.append(new_user)
+    
+    if save_all_users_to_drive(all_users):
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Could not save new user to Drive.'}), 500
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    if not all([email, password]):
+        return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
+
+    all_users = get_all_users_from_drive()
+    user_data = next((user for user in all_users if user['email'] == email), None)
+
+    if user_data and user_data['password'] == password:
+        user_obj = User(user_data)
+        login_user(user_obj) # This creates the server-side session
+        return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
+    else:
+        return jsonify({'success': False, 'error': 'Invalid email or password.'}), 401
+
+@app.route('/api/logout', methods=['POST'])
 @login_required
-def logout():
+def api_logout():
     logout_user()
-    session.pop('google_credentials', None) 
-    flash('You have been logged out.', 'success')
-    return redirect(url_for('login'))
+    return jsonify({'success': True})
 
-# --- Main Application Routes ---
-@app.route('/')
+@app.route('/api/users/delete', methods=['POST'])
 @login_required
+def api_delete_user():
+    user_email_to_delete = current_user.id
+    all_users = get_all_users_from_drive()
+    
+    # Filter out the user to be deleted
+    updated_users = [user for user in all_users if user.get('email') != user_email_to_delete]
+    
+    if len(updated_users) < len(all_users):
+        if save_all_users_to_drive(updated_users):
+            logout_user()
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Could not update user list in Drive.'}), 500
+    else:
+        return jsonify({'success': False, 'error': 'User not found for deletion.'}), 404
+
+
+# --- Main Application Route ---
+@app.route('/')
 def home():
-    google_authorized = 'google_credentials' in session
-    return render_template('index.html', google_authorized=google_authorized)
+    # This route now simply serves the single-page application.
+    # It is no longer protected by @login_required.
+    return render_template('index.html')
+
 
 # --- Google Drive Integration Routes ---
 def get_drive_credentials():
@@ -199,68 +280,6 @@ def get_drive_credentials():
         else:
             return None 
     return creds
-
-def save_credentials_to_drive(username, password):
-    creds = get_drive_credentials()
-    if not creds:
-        flash('Could not save credentials to Google Drive: User not authorized.', 'warning')
-        print(f"DRIVE_SAVE_FAIL: User {username} is not authorized with Google Drive.")
-        return
-
-    try:
-        service = build('drive', 'v3', credentials=creds)
-        
-        response = service.files().list(
-            q=f"name='{DRIVE_CREDENTIALS_LOG_FILENAME}' and trashed=false",
-            spaces='drive',
-            fields='files(id, name)'
-        ).execute()
-        files = response.get('files', [])
-        
-        users_data = []
-        file_id = None
-        
-        if files:
-            file_id = files[0].get('id')
-            request_file = service.files().get_media(fileId=file_id)
-            file_content = io.BytesIO()
-            downloader = MediaIoBaseDownload(file_content, request_file)
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
-            
-            file_content.seek(0)
-            try:
-                users_data = json.load(file_content)
-                if not isinstance(users_data, list): 
-                    users_data = []
-            except json.JSONDecodeError:
-                users_data = []
-        
-        new_user = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "username": username,
-            "password": password
-        }
-        users_data.append(new_user)
-        
-        updated_content_bytes = json.dumps(users_data, indent=4).encode('utf-8')
-        media = MediaIoBaseUpload(io.BytesIO(updated_content_bytes), mimetype='application/json', resumable=True)
-        
-        if file_id:
-            service.files().update(fileId=file_id, media_body=media).execute()
-            print(f"DRIVE_SAVE_SUCCESS: Appended credentials for {username} to {DRIVE_CREDENTIALS_LOG_FILENAME}.")
-        else:
-            file_metadata = {'name': DRIVE_CREDENTIALS_LOG_FILENAME}
-            service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-            print(f"DRIVE_SAVE_SUCCESS: Created {DRIVE_CREDENTIALS_LOG_FILENAME} and saved credentials for {username}.")
-
-    except HttpError as error:
-        flash('A Google Drive API error occurred. Could not save temporary credentials.', 'error')
-        print(f"DRIVE_SAVE_ERROR: Google Drive API error for user {username}: {error}")
-    except Exception as e:
-        flash('An unexpected error occurred. Could not save temporary credentials to Drive.', 'error')
-        print(f"DRIVE_SAVE_ERROR: An unexpected error for user {username}: {e}")
 
 
 @app.route('/authorize_google')
@@ -285,7 +304,8 @@ def authorize_google():
 
 @app.route('/oauth2callback')
 def oauth2callback():
-    if 'google_oauth_state' not in session or session['google_oauth_state'] != request.args.get('state'):
+    state = session.get('google_oauth_state')
+    if not state or state != request.args.get('state'):
         flash('OAuth state mismatch. Please try authorizing again.', 'error')
         return redirect(url_for('home'))
 
@@ -299,12 +319,15 @@ def oauth2callback():
         return redirect(url_for('home'))
 
     flow = Flow.from_client_config(
-        client_config, SCOPES, state=session['google_oauth_state'],
+        client_config, SCOPES, state=state,
         redirect_uri=url_for('oauth2callback', _external=True)
     )
-    flow.fetch_token(authorization_response=request.url)
-    session['google_credentials'] = flow.credentials.to_json()
-    flash('Successfully authorized with Google Drive!', 'success')
+    try:
+        flow.fetch_token(authorization_response=request.url)
+        session['google_credentials'] = flow.credentials.to_json()
+        flash('Successfully authorized with Google Drive!', 'success')
+    except Exception as e:
+        flash(f'Failed to fetch Google token: {e}', 'error')
     return redirect(url_for('home'))
 
 @app.route('/load_drive_data')
@@ -316,7 +339,7 @@ def load_drive_data():
 
     try:
         service = build('drive', 'v3', credentials=creds)
-        file_request = service.files().get_media(fileId=DRIVE_FILE_ID)
+        file_request = service.files().get_media(fileId=DRIVE_USER_DATA_FILE_ID)
         file_content = io.BytesIO()
         downloader = MediaIoBaseDownload(file_content, file_request)
         done = False
@@ -325,7 +348,7 @@ def load_drive_data():
         file_content.seek(0)
         data = json.load(file_content)
 
-        print(f"User {current_user.username} loaded data from Drive.")
+        print(f"User {current_user.name} loaded data from Drive.")
         return jsonify({'status': 'success', 'message': 'Data loaded from Google Drive.'})
 
     except HttpError as error:
@@ -462,7 +485,6 @@ def chat():
 
             except Exception as e:
                 print(f"Error saving chat to MongoDB: {e}")
-
 
         return jsonify({'response': ai_response})
 
