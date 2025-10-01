@@ -210,7 +210,7 @@ def api_status():
 @app.route('/')
 def home():
     # This route serves the single-page application.
-    return render_template('index12.html')
+    return render_template('index.html')
 
 
 # --- Chat Logic ---
