@@ -44,6 +44,7 @@ else:
     print("CRITICAL WARNING: YOUTUBE_API_KEY not found. YouTube features will be disabled.")
 
 # --- MongoDB Configuration (for chat history and user management) ---
+mongo_client = None
 chat_history_collection = None
 users_collection = None # Collection for storing user credentials
 if MONGO_URI:
@@ -110,14 +111,14 @@ def api_signup():
     password = data.get('password') # Plaintext password from frontend
 
     if not all([name, email, password]):
-        return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
+        return jsonify({'success': False, 'error': 'Please fill out all fields: Name, Email, and Password.'}), 400
 
     if not users_collection:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
     # Check if user already exists in MongoDB
     if users_collection.find_one({"email": email}):
-        return jsonify({'success': False, 'error': 'User with this email already exists.'}), 409
+        return jsonify({'success': False, 'error': 'An account with this email address already exists.'}), 409
 
     # IMPORTANT: Storing password in plain text as requested for testing.
     # In a production environment, you should ALWAYS hash and salt passwords.
@@ -134,7 +135,7 @@ def api_signup():
         return jsonify({'success': True})
     except Exception as e:
         print(f"MONGO_WRITE_ERROR: Failed to save new user: {e}")
-        return jsonify({'success': False, 'error': 'Could not save new user.'}), 500
+        return jsonify({'success': False, 'error': 'A server error occurred while creating your account. Please try again later.'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
@@ -143,7 +144,7 @@ def api_login():
     password = data.get('password')
 
     if not all([email, password]):
-        return jsonify({'success': False, 'error': 'Missing required fields.'}), 400
+        return jsonify({'success': False, 'error': 'Please enter both email and password.'}), 400
 
     if not users_collection:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
@@ -156,7 +157,7 @@ def api_login():
         login_user(user_obj) # This stores user_obj.id (which is the _id) in the session
         return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
     else:
-        return jsonify({'success': False, 'error': 'Invalid email or password.'}), 401
+        return jsonify({'success': False, 'error': 'The email or password you entered is incorrect.'}), 401
 
 @app.route('/api/logout', methods=['POST'])
 @login_required
@@ -185,11 +186,29 @@ def api_delete_user():
         return jsonify({'success': False, 'error': 'An error occurred while deleting the user.'}), 500
 
 
+# --- Status Route ---
+@app.route('/api/status')
+def api_status():
+    db_connected = False
+    if mongo_client:
+        try:
+            # The ismaster command is cheap and does not require auth.
+            mongo_client.admin.command('ismaster')
+            db_connected = True
+        except Exception as e:
+            print(f"DB connection check failed: {e}")
+            db_connected = False
+    
+    return jsonify({
+        'database_connected': db_connected,
+        'youtube_api_ready': bool(YOUTUBE_API_KEY)
+    })
+
 # --- Main Application Route ---
 @app.route('/')
 def home():
     # This route serves the single-page application.
-    return render_template('index.html')
+    return render_template('index12.html')
 
 
 # --- Chat Logic ---
