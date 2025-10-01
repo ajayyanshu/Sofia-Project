@@ -145,6 +145,19 @@ def save_all_users(users_data):
 
 # --- New API-based Authentication Routes ---
 
+@app.route('/api/session_status')
+def session_status():
+    if current_user.is_authenticated:
+        return jsonify({
+            'authenticated': True,
+            'user': {
+                'name': current_user.name,
+                'email': current_user.email
+            }
+        })
+    else:
+        return jsonify({'authenticated': False})
+
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
     print("LOG: Received request for /api/signup")
