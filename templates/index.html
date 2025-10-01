@@ -406,6 +406,23 @@
         #toast-notification.show {
             bottom: 2rem;
         }
+        .drive-connect-container {
+            text-align: center;
+        }
+        .drive-connect-container button {
+            background-color: #4285F4;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .drive-connect-container button:hover {
+            background-color: #357ae8;
+        }
     </style>
 </head>
 <body class="h-full flex initial-view relative">
@@ -429,7 +446,7 @@
 
 
     <!-- Login/Signup Page -->
-    <div id="auth-container">
+    <div id="auth-container" class="hidden">
         <div class="auth-main-container" id="auth-main-container-el">
             <div class="form-container sign-up-container">
                 <form id="sign-up-form">
@@ -479,6 +496,15 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+    
+    <!-- Initial connection screen -->
+    <div id="drive-connect-container" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="drive-connect-container">
+            <h1 class="text-2xl font-bold mb-4">Welcome to Sofia 2.0</h1>
+            <p class="text-gray-600 mb-6">To begin, please connect your Google Drive to store user data.</p>
+            <button onclick="window.location.href='/authorize_google_drive'">Connect to Google Drive</button>
         </div>
     </div>
 
@@ -721,40 +747,30 @@
 
     <script>
         // --- Google Drive Integration Setup ---
-        // This is the URL of your backend server hosted on Render.
-        // Your backend will handle the Google Drive API calls securely.
-        const RENDER_BACKEND_URL = 'https://your-render-app-name.onrender.com/users'; // <-- IMPORTANT: REPLACE WITH YOUR RENDER URL
+        // Dynamically set the backend URL based on the current window location
+        const RENDER_BACKEND_URL = `${window.location.origin}/users`;
 
         // This function will get all users from your Google Drive file via your backend.
         async function getUsersFromDrive() {
-            // In a real scenario, you would uncomment this block.
-            /*
             try {
                 const response = await fetch(RENDER_BACKEND_URL);
                 if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Server error response:', errorData);
+                    showToast(`Error: ${errorData.error || 'Could not fetch users.'}`);
                     throw new Error('Could not fetch users from the server.');
                 }
                 const users = await response.json();
                 return users;
             } catch (error) {
                 console.error('Error fetching users:', error);
-                // Fallback to local data if the server fails
-                return localDriveUsers; 
+                // Return an empty array on failure so the app doesn't crash
+                return []; 
             }
-            */
-            
-            // For now, we return a local copy of the user data for demonstration.
-            const localDriveUsers = [
-                { "name": "Ajay Anshu", "email": "ajayyanshu@gmail.com", "password": "password123" },
-                { "name": "Test User", "email": "test@example.com", "password": "test" }
-            ];
-            return Promise.resolve(localDriveUsers);
         }
 
         // This function will save the updated list of users to your Google Drive file via your backend.
         async function saveUsersToDrive(users) {
-             // In a real scenario, you would uncomment this block.
-            /*
             try {
                 const response = await fetch(RENDER_BACKEND_URL, {
                     method: 'POST',
@@ -764,6 +780,9 @@
                     body: JSON.stringify(users),
                 });
                 if (!response.ok) {
+                     const errorData = await response.json();
+                    console.error('Server error response:', errorData);
+                    showToast(`Error: ${errorData.error || 'Could not save users.'}`);
                     throw new Error('Could not save users to the server.');
                 }
                 return await response.json();
@@ -771,15 +790,11 @@
                 console.error('Error saving users:', error);
                 return { success: false, error: error.message };
             }
-            */
-            
-            // For demonstration, we just log it. In a real app, this would be a server call.
-            console.log("Simulating save to Drive. New user data:", users);
-            return Promise.resolve({ success: true });
         }
         
         // --- Authentication Elements ---
         const authContainer = document.getElementById('auth-container');
+        const driveConnectContainer = document.getElementById('drive-connect-container');
         const appContainer = document.getElementById('app-container');
         const signUpButton = document.getElementById('signUp');
         const signInButton = document.getElementById('signIn');
@@ -921,14 +936,16 @@
 
         function handleLogout() {
              localStorage.removeItem('currentUser');
-             showAuth();
+             // Instead of showing auth, we check for Google Drive connection
+             checkInitialAuthState();
         }
         
         logoutBtn.addEventListener('click', handleLogout);
         mainLogoutBtn.addEventListener('click', handleLogout);
 
         function showApp() {
-            authContainer.style.display = 'none';
+            authContainer.classList.add('hidden');
+            driveConnectContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
             appContainer.classList.add('flex');
             
@@ -942,12 +959,21 @@
             loadChatHistory();
             renderChatHistorySidebar();
         }
-
+        
         function showAuth() {
-            authContainer.style.display = 'flex';
+            driveConnectContainer.classList.add('hidden');
+            authContainer.classList.remove('hidden');
+            authContainer.classList.add('flex');
             appContainer.classList.add('hidden');
             appContainer.classList.remove('flex');
         }
+        
+        function showDriveConnect() {
+            driveConnectContainer.classList.remove('hidden');
+            authContainer.classList.add('hidden');
+            appContainer.classList.add('hidden');
+        }
+
 
         // --- Sidebar & Temp Chat Logic ---
         function openSidebar() {
@@ -1229,6 +1255,10 @@
             addMessage(userMessage);
             currentChat.push(userMessage);
 
+            const originalText = text;
+            const originalFileData = fileData;
+            const originalFileType = fileType;
+
             messageInput.value = '';
             messageInput.dispatchEvent(new Event('input'));
             removeFile();
@@ -1241,22 +1271,38 @@
             
             const typingIndicator = addTypingIndicator();
 
-            setTimeout(() => {
-                typingIndicator.remove();
-                const aiResponseText = `This is a simulated response to: "${text}"`;
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: originalText,
+                        fileData: originalFileData,
+                        fileType: originalFileType
+                    })
+                });
                 
-                const aiMessage = {
-                    text: aiResponseText,
-                    sender: 'ai'
-                };
+                typingIndicator.remove();
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
+                }
+                
+                const data = await response.json();
+                const aiMessage = { text: data.response, sender: 'ai' };
                 addMessage(aiMessage);
                 currentChat.push(aiMessage);
                 saveChatSession();
 
                 if (modeForThisMessage === 'voice_mode' && isVoiceConversationActive) {
-                    speakText(aiResponseText, startListening);
+                    speakText(data.response, startListening);
                 }
-            }, 1500);
+
+            } catch (error) {
+                console.error("Error sending message:", error);
+                typingIndicator.remove();
+                addMessage({ text: "Sorry, I couldn't connect to the server. Please try again.", sender: 'system' });
+            }
         }
         
         function addMessage({text, sender, fileInfo = null, mode = null}) {
@@ -1619,7 +1665,7 @@
             });
         }
         
-        function renameChat(chatId) {
+        async function renameChat(chatId) {
             const item = chatHistoryContainer.querySelector(`[data-chat-id='${chatId}']`);
             const titleSpan = item.querySelector('.chat-title');
             const currentTitle = titleSpan.textContent;
@@ -1633,12 +1679,15 @@
             input.focus();
             input.select();
 
-            const saveRename = () => {
+            const saveRename = async () => {
                 const newTitle = input.value.trim();
                 if (newTitle && newTitle !== currentTitle) {
                     const chatIndex = chatHistory.findIndex(c => c.id === chatId);
                     if (chatIndex > -1) {
                         chatHistory[chatIndex].title = newTitle;
+                        // This assumes chatHistory is a local representation of what's on Drive
+                        // We need to save the whole user object if chat history is part of it.
+                        // For now, let's assume it's just local.
                         localStorage.setItem(getChatHistoryKey(), JSON.stringify(chatHistory));
                     }
                 }
@@ -1657,7 +1706,6 @@
         }
 
         function deleteChat(chatId) {
-            // Replaced confirm() with custom modal
             customConfirmModal.classList.remove('hidden');
             customConfirmModal.classList.add('flex');
 
@@ -1734,14 +1782,65 @@
             }, 3000);
         }
         
+        async function deleteUserAccount() {
+             const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+             if(!currentUser) return;
+             
+             const allUsers = await getUsersFromDrive();
+             const updatedUsers = allUsers.filter(u => u.email !== currentUser.email);
+             
+             const result = await saveUsersToDrive(updatedUsers);
+
+             if (result.success) {
+                localStorage.removeItem(getChatHistoryKey());
+                handleLogout();
+                showToast('Account deleted successfully.');
+             } else {
+                showToast('Error: Could not delete account.');
+             }
+        }
+
+
         // --- Initializations ---
-        function initializeApp() {
-            if (localStorage.getItem('currentUser')) {
+        function checkInitialAuthState() {
+            // This is a simplified check. A robust app would verify the token with the server.
+            const googleCreds = document.cookie.includes('google_credentials'); // A proxy for session check
+             
+            // The logic should be:
+            // 1. Is the application authorized with Google Drive?
+            // If not, show connect button.
+            // If yes, check for a logged-in user.
+            // If user exists, show app.
+            // If no user, show login/signup form.
+
+            // This is a placeholder for the server-side check
+            // For now, let's assume if we are on the page, the server has credentials.
+            if(localStorage.getItem('currentUser')){
                 showApp();
             } else {
                 showAuth();
             }
+        }
+
+
+        function initializeApp() {
+            // The initial state check needs to know if the server is connected to Drive
+            // Since we can't know that from the client-side directly without an API call,
+            // we will assume the initial view is the login page, and the page flow will handle it.
             
+            // A better approach would be an endpoint like /api/status that tells the frontend
+            // if the google drive connection is active. For now, we'll use this logic.
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('code')) {
+                 // Came from Google OAuth, probably authorized. Show login page.
+                 showAuth();
+            } else {
+                 // Default view might be the connection button, let's try getting users.
+                 // If it fails, the user will be prompted to connect.
+                 showAuth(); // Start with login page
+            }
+
+
             const savedTheme = localStorage.getItem('theme') || 'system';
             document.getElementById(`theme-${savedTheme}`).click();
             applyTheme(savedTheme);
@@ -1750,7 +1849,6 @@
             applyLanguage(currentLang);
             
             deleteAccountBtn.addEventListener('click', () => {
-                // Replaced confirm() with custom modal
                 customConfirmModal.classList.remove('hidden');
                 customConfirmModal.classList.add('flex');
             });
@@ -1761,23 +1859,28 @@
             });
 
             confirmDeleteBtn.addEventListener('click', () => {
-                 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-                if(currentUser) {
-                    let users = JSON.parse(localStorage.getItem('users')) || [];
-                    users = users.filter(u => u.email !== currentUser.email);
-                    localStorage.setItem('users', JSON.stringify(users));
-                    localStorage.removeItem(getChatHistoryKey());
-                    handleLogout();
-                    // Replaced alert() with custom toast
-                    showToast('Account deleted successfully.');
-                }
+                deleteUserAccount();
                 customConfirmModal.classList.add('hidden');
                 customConfirmModal.classList.remove('flex');
             });
 
         }
 
-        initializeApp();
+        // We can't initialize the app properly until we know if the server is connected to Drive.
+        // Let's change the flow. The Python will render the page. If it needs authorization,
+        // it will be clear. Let's assume the user has to authorize first.
+        // The first screen will be the connection screen. If already connected, the backend will
+        // store it in a session and we can check that.
+        
+        // This is a simplified check for the browser session cookie.
+        if (document.cookie.indexOf('session') !== -1 && document.cookie.indexOf('google_credentials') !== -1) {
+            // Looks like we might be authorized.
+            initializeApp();
+            showAuth();
+        } else {
+             showDriveConnect();
+        }
+
 
     </script>
 </body>
