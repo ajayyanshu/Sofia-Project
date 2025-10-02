@@ -35,6 +35,7 @@ YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
 OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email configuration
 
 # --- API Services Configuration ---
 if GOOGLE_API_KEY:
@@ -67,7 +68,6 @@ else:
 # --- Flask-Login Configuration ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-# Redirect users to the 'login_page' view when they need to log in.
 login_manager.login_view = 'login_page'
 
 class User(UserMixin):
@@ -97,7 +97,6 @@ def load_user(user_id):
 @app.before_request
 def before_request_callback():
     if current_user.is_authenticated:
-        # Check if session ID matches the one in DB for session validation
         if session.get('session_id') != current_user.session_id:
             logout_user()
             flash("You have been logged out from another device.", "info")
@@ -119,7 +118,7 @@ PDF_KEYWORDS = {
 # --- Page Rendering Routes ---
 
 @app.route('/')
-@login_required # Protect the main page
+@login_required
 def home():
     """Renders the main chat application."""
     return render_template('index.html') 
@@ -137,6 +136,15 @@ def signup_page():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     return render_template('signup.html')
+
+# Add Redirects for cleaner URLs
+@app.route('/login')
+def login_redirect():
+    return redirect(url_for('login_page'))
+
+@app.route('/signup')
+def signup_redirect():
+    return redirect(url_for('signup_page'))
 
 
 # --- API Authentication Routes ---
@@ -160,10 +168,10 @@ def api_signup():
     new_user = {
         "name": name,
         "email": email,
-        "password": password, # Storing plaintext as requested
-        "isAdmin": email == "ajay@123.com", # Assign admin role if email matches
+        "password": password,
+        "isAdmin": email == ajay@123.com, # Assign admin role if email matches
         "isPremium": False,
-        "session_id": str(uuid.uuid4()), # For 'logout all devices' feature
+        "session_id": str(uuid.uuid4()),
         "usage_counts": {
             "messages": 0,
             "webSearches": 0
@@ -209,7 +217,6 @@ def api_login():
 @login_required
 def get_user_info():
     """Provides user information to the front-end after login."""
-    # This is a simplified version. A robust app would check and reset limits here.
     return jsonify({
         "name": current_user.name,
         "email": current_user.email,
@@ -217,13 +224,13 @@ def get_user_info():
         "isPremium": current_user.isPremium
     })
 
-@app.route('/api/logout', methods=['POST'])
+@app.route('/logout', methods=['POST'])
 @login_required
-def api_logout():
+def logout():
     logout_user()
     return jsonify({'success': True})
 
-@app.route('/api/logout-all-devices', methods=['POST'])
+@app.route('/logout-all', methods=['POST'])
 @login_required
 def logout_all_devices():
     """Invalidates all other sessions for the current user."""
@@ -231,25 +238,22 @@ def logout_all_devices():
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
     try:
-        # By setting a new session ID in the DB, all other open sessions become invalid.
         new_session_id = str(uuid.uuid4())
         users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$set': {'session_id': new_session_id}})
-        # Log out the current session, forcing a new login
         logout_user()
         return jsonify({'success': True, 'message': 'Successfully logged out of all devices.'})
     except Exception as e:
         print(f"LOGOUT_ALL_ERROR: {e}")
         return jsonify({'success': False, 'error': 'Server error during logout.'}), 500
 
-@app.route('/api/2fa/setup', methods=['POST'])
+@app.route('/2fa/setup', methods=['POST'])
 @login_required
 def setup_2fa():
-    # This is a placeholder for a full 2FA implementation.
     return jsonify({'success': False, 'message': '2FA setup is not yet implemented.'}), 501
 
-@app.route('/api/users/delete', methods=['POST'])
+@app.route('/delete-account', methods=['DELETE'])
 @login_required
-def api_delete_user():
+def delete_account():
     if users_collection is None:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
@@ -286,19 +290,14 @@ def api_status():
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
-    # --- Check Usage Limits ---
     if not current_user.isPremium and not current_user.isAdmin:
-        # This is a simplified check. A full implementation would be in get_user_info
-        # to ensure limits are reset daily/monthly.
         user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
         usage = user_data.get('usage_counts', {})
         messages_used = usage.get('messages', 0)
         
-        # Example limit
         if messages_used >= 15:
             return jsonify({'error': 'You have reached your message limit for today.'}), 429
             
-        # Update message count after successful processing
         users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.messages': 1}})
 
     def extract_text_from_pdf(pdf_bytes):
@@ -427,13 +426,11 @@ def chat():
             
             # --- REFACTORED GEMINI CALL ---
             try:
-                # Combine history and the new prompt for a more stable API call
                 full_prompt = gemini_history + [{'role': 'user', 'parts': prompt_parts}]
                 response = model.generate_content(full_prompt)
                 ai_response = response.text
             except Exception as e:
                 print(f"Error calling Gemini API with history: {e}")
-                # Fallback: Try again without history in case of a format error
                 try:
                     print("Retrying Gemini call without history...")
                     response = model.generate_content(prompt_parts)
