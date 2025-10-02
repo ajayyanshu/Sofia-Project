@@ -218,6 +218,9 @@
         .dark #usage-settings-content .border { border-color: #333; }
         .dark #profile-settings-content .text-gray-600 { color: #a0a0a0; }
         .dark #profile-settings-content .text-gray-800 { color: #f0f0f0; }
+        .dark .plan-table .bg-gray-50 { background-color: #1f2739; }
+        .dark .plan-table .border-b { border-color: #2d3748; }
+
     </style>
 </head>
 <body class="h-full flex initial-view relative">
@@ -320,6 +323,13 @@
                             <p id="profile-email" class="text-lg font-semibold text-gray-800">Loading...</p>
                         </div>
                         <div class="flex justify-between items-center border-b border-gray-200 py-4">
+                            <div>
+                                <p class="text-gray-800 font-medium">Two-Factor Authentication</p>
+                                <p class="text-sm text-gray-500">Add an extra layer of security.</p>
+                            </div>
+                            <button id="setup-2fa-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Set up</button>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-gray-200 py-4">
                             <p class="text-gray-800">Log out of all devices</p>
                             <button id="logout-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Log out</button>
                         </div>
@@ -341,24 +351,25 @@
                         </div>
                         
                         <div class="w-full plan-table">
-                             <div class="flex justify-end items-end mb-2">
-                                <div class="w-1/3 text-center font-bold text-lg text-gray-400 dark:text-gray-500"></div>
+                             <div class="flex justify-between items-end mb-2">
+                                <div class="w-1/3 text-left font-bold text-lg text-transparent">Feature</div>
+                                <div class="w-1/3 text-center font-bold text-lg text-transparent">Sofia AI (Free)</div>
                                 <div class="w-1/3 text-center font-bold text-lg text-indigo-600 dark:text-indigo-400">Sofia AI Pro <span class="text-sm font-normal">(₹99/month)</span></div>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg shadow">
                                 <div class="flex items-center p-3 border-b dark:border-gray-700">
                                     <div class="w-1/3 font-semibold text-gray-800 dark:text-gray-200">Daily Text Messages</div>
                                     <div class="w-1/3 text-center text-gray-600 dark:text-gray-300">15 messages</div>
                                     <div class="w-1/3 text-center text-green-500 font-bold">Unlimited</div>
                                 </div>
                                 <div class="flex items-center p-3 border-b dark:border-gray-700">
-                                    <div class="w-1/3 font-semibold text-gray-800 dark:text-gray-200">Voice-to-Voice</div>
+                                    <div class="w-1/3 font-semibold text-gray-800 dark:text-gray-200">Voice-to-Voice Commands</div>
                                     <div class="w-1/3 text-center text-gray-600 dark:text-gray-300">5 per day</div>
                                     <div class="w-1/3 text-center text-green-500 font-bold">Unlimited</div>
                                 </div>
                                  <div class="flex items-center p-3 border-b dark:border-gray-700">
-                                    <div class="w-1/3 font-semibold text-gray-800 dark:text-gray-200">Read Image/PDF</div>
-                                    <div class="w-1/3 text-center text-gray-600 dark:text-gray-300">1 per day</div>
+                                    <div class="w-1/3 font-semibold text-gray-800 dark:text-gray-200">Read Image/PDF/Docs</div>
+                                    <div class="w-1/3 text-center text-gray-600 dark:text-gray-300">1 per month (5 pages)</div>
                                     <div class="w-1/3 text-center text-green-500 font-bold">Unlimited</div>
                                 </div>
                                 <div class="flex items-center p-3 border-b dark:border-gray-700">
@@ -366,10 +377,15 @@
                                     <div class="w-1/3 text-center text-gray-600 dark:text-gray-300">2 minutes / day</div>
                                     <div class="w-1/3 text-center text-green-500 font-bold">Unlimited</div>
                                 </div>
+                                <div class="flex items-center p-3 border-b dark:border-gray-700">
+                                    <div class="w-1/3 font-semibold text-gray-800 dark:text-gray-200">Web Search</div>
+                                    <div class="w-1/3 text-center text-gray-600 dark:text-gray-300">1 per day</div>
+                                    <div class="w-1/3 text-center text-green-500 font-bold">Unlimited*</div>
+                                </div>
                                 <div class="flex items-center p-3">
                                     <div class="w-1/3 font-semibold text-gray-800 dark:text-gray-200">Save & Search History</div>
-                                    <div class="w-1/3 text-center text-green-500">✔ Yes</div>
-                                    <div class="w-1/3 text-center text-green-500">✔ Yes</div>
+                                    <div class="w-1/3 text-center text-green-500">✔ Yes, Forever</div>
+                                    <div class="w-1/3 text-center text-green-500">✔ Yes, Forever</div>
                                 </div>
                             </div>
                         </div>
@@ -626,6 +642,8 @@
         const logoutBtn = document.getElementById('logout-btn');
         const deleteAccountBtn = document.getElementById('delete-account-btn');
         const logoutMenuItem = document.getElementById('logout-menu-item');
+        const setup2faBtn = document.getElementById('setup-2fa-btn');
+
 
         // Library Modal
         const libraryBtn = document.getElementById('library-btn');
@@ -674,8 +692,14 @@
         let stream = null; // To hold the camera stream
         
         // Plan & Usage State
-        let messageCount = 0;
-        const messageLimit = 15;
+        let usageCounts = {
+            messages: 0,
+            webSearches: 0
+        };
+        const usageLimits = {
+            messages: 15,
+            webSearches: 1
+        };
         let isPremium = false;
         let isAdmin = false;
 
@@ -926,8 +950,8 @@
             const text = messageInput.value.trim();
             if (!text && !fileData) return;
             
-            if (!isPremium && !isAdmin && messageCount >= messageLimit) {
-                alert("You've reached your daily free message limit. Please upgrade to continue.");
+            if (!isPremium && !isAdmin && usageCounts.messages >= usageLimits.messages) {
+                alert("You've reached your monthly message limit. Please upgrade to continue.");
                 openSettingsModal();
                 switchSettingsTab('usage');
                 return;
@@ -954,12 +978,18 @@
             if (fileInfoForDisplay) {
                 uploadFileToLibrary(fileInfoForDisplay);
             }
+            
+            const modeForThisMessage = currentMode;
+            
+            if (modeForThisMessage === 'web_search' && !isPremium && !isAdmin) {
+                usageCounts.webSearches++;
+                localStorage.setItem('usageCounts', JSON.stringify(usageCounts));
+            }
 
             const currentFileData = fileData;
             const currentFileType = fileType;
             removeFile();
             
-            const modeForThisMessage = currentMode;
             if (modeForThisMessage !== 'voice_mode') {
                 deactivateWebSearch();
                 currentMode = null;
@@ -986,10 +1016,8 @@
                 }
                 
                 if (!isPremium && !isAdmin) {
-                    messageCount++;
-                    const today = new Date().toISOString().split('T')[0];
-                    localStorage.setItem('messageCount', messageCount);
-                    localStorage.setItem('lastMessageDate', today);
+                    usageCounts.messages++;
+                    localStorage.setItem('usageCounts', JSON.stringify(usageCounts));
                     updateUsageUI();
                 }
 
@@ -1154,6 +1182,12 @@
 
         // --- Feature Toggles ---
         function activateWebSearch() {
+             if (!isPremium && !isAdmin && usageCounts.webSearches >= usageLimits.webSearches) {
+                alert("You've reached your daily web search limit. Please upgrade for unlimited searches.");
+                openSettingsModal();
+                switchSettingsTab('usage');
+                return;
+            }
             currentMode = 'web_search';
             const indicator = document.createElement('div');
             indicator.className = 'mode-indicator ml-2';
@@ -1777,9 +1811,9 @@
                 upgradePlanSidebarBtn.classList.remove('hidden');
                 usageTabBtn.classList.remove('hidden');
                 sidebarUsageDisplay.classList.remove('hidden');
-                const percentage = Math.min((messageCount / messageLimit) * 100, 100);
-                sidebarUsageDisplay.textContent = `${messageCount} / ${messageLimit} Used`;
-                usageCounter.textContent = `${messageCount} / ${messageLimit} messages used today`;
+                const percentage = Math.min((usageCounts.messages / usageLimits.messages) * 100, 100);
+                sidebarUsageDisplay.textContent = `${usageCounts.messages} / ${usageLimits.messages} Used`;
+                usageCounter.textContent = `${usageCounts.messages} / ${usageLimits.messages} messages used this month`;
                 usageProgressBar.style.width = `${percentage}%`;
             }
         }
@@ -1824,44 +1858,43 @@
         async function fetchAndDisplayUserInfo() {
             try {
                 // In a real app, your backend would provide user data including their plan
-                // const response = await fetch('/get_user_info');
-                // const userData = await response.json();
-
-                // --- MOCK USER DATA (Replace with your actual backend call) ---
-                // To test a regular user, use this:
-                const userData = {
-                    name: "Ajay Kumar",
-                    email: "ajay@example.com",
-                    isPremium: false,
-                    isAdmin: false 
-                };
-                
-                // To test an ADMIN user, comment out the one above and uncomment this:
-                /*
-                const userData = {
-                    name: "Admin User",
-                    email: "admin@example.com",
-                    isPremium: false, // Admins get unlimited access regardless of this
-                    isAdmin: true 
-                };
-                */
+                const response = await fetch('/get_user_info');
+                 if (!response.ok) {
+                    // This handles cases where the user is not logged in
+                    // and the backend returns a 401 or similar error.
+                    window.location.href = '/login.html'; // Or your actual login page
+                    return;
+                }
+                const userData = await response.json();
                
-                // --- END MOCK ---
-                
                 isAdmin = userData.isAdmin || false;
                 isPremium = userData.isPremium || false;
 
-                // Daily Limit Logic
+                // Daily & Monthly Limit Logic
                 const today = new Date().toISOString().split('T')[0];
-                const lastDate = localStorage.getItem('lastMessageDate');
+                const currentMonthYear = today.substring(0, 7);
+                const lastResetDate = localStorage.getItem('lastResetDate');
+                const lastResetMonth = localStorage.getItem('lastResetMonth');
 
-                if (lastDate !== today) {
-                    messageCount = 0;
-                    localStorage.setItem('messageCount', 0);
-                    localStorage.setItem('lastMessageDate', today);
-                } else {
-                    messageCount = parseInt(localStorage.getItem('messageCount') || '0');
+                let storedUsage = JSON.parse(localStorage.getItem('usageCounts')) || { messages: 0, webSearches: 0 };
+
+                // Reset daily counts
+                if (lastResetDate !== today) {
+                    storedUsage.messages = 0;
+                    storedUsage.webSearches = 0;
+                    // Add other daily limits here to reset them
+                    localStorage.setItem('lastResetDate', today);
                 }
+
+                // Reset monthly counts
+                if (lastResetMonth !== currentMonthYear) {
+                    // Add monthly limits here to reset them
+                    // e.g., storedUsage.readImagePdf = 0;
+                    localStorage.setItem('lastResetMonth', currentMonthYear);
+                }
+                
+                usageCounts = storedUsage;
+                localStorage.setItem('usageCounts', JSON.stringify(usageCounts));
                 
                 updateUsageUI();
 
@@ -1869,8 +1902,13 @@
                     document.getElementById('profile-name').textContent = userData.name;
                     document.getElementById('sidebar-username').textContent = userData.name;
                     menuUsername.textContent = userData.name;
+                } else if (userData.email) {
+                    const nameFromEmail = userData.email.split('@')[0];
+                    document.getElementById('profile-name').textContent = nameFromEmail;
+                    document.getElementById('sidebar-username').textContent = nameFromEmail;
+                    menuUsername.textContent = nameFromEmail;
                 } else {
-                     document.getElementById('profile-name').textContent = 'N/A';
+                     document.getElementById('profile-name').textContent = 'User';
                      document.getElementById('sidebar-username').textContent = 'User';
                      menuUsername.textContent = 'User';
                 }
@@ -1921,6 +1959,10 @@
             logoutMenuItem.addEventListener('click', (e) => {
                 e.preventDefault();
                 handleLogout();
+            });
+            
+            setup2faBtn.addEventListener('click', () => {
+                alert('Two-Factor Authentication setup is coming soon! This feature requires backend integration.');
             });
 
             deleteAccountBtn.addEventListener('click', async () => {
