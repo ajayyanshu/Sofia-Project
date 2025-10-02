@@ -111,7 +111,7 @@ def home():
         "name": current_user.name,
         "email": current_user.email
     }
-    return render_template('index.html', user_info=json.dumps(user_info))
+    return render_template('index.html', user_info=user_info)
 
 @app.route('/login', methods=['GET'])
 def login_page():
