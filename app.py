@@ -72,8 +72,11 @@ login_manager.login_view = 'login_page'
 class User(UserMixin):
     def __init__(self, user_data):
         self.id = str(user_data["_id"])
-        self.email = user_data["email"]
-        self.name = user_data["name"]
+        self.email = user_data.get("email")
+        self.name = user_data.get("name")
+        self.isAdmin = user_data.get("isAdmin", False)
+        self.isPremium = user_data.get("isPremium", False)
+
 
     @staticmethod
     def get(user_id):
@@ -106,21 +109,18 @@ PDF_KEYWORDS = {
 @app.route('/')
 @login_required # Protect the main page
 def home():
-    """Renders the main chat application, embedding user info."""
-    user_info = {
-        "name": current_user.name,
-        "email": current_user.email
-    }
-    return render_template('index.html', user_info=user_info)
+    """Renders the main chat application."""
+    # FIX: Changed 'index12.html' to 'index.html' to match your GitHub file
+    return render_template('index.html') 
 
-@app.route('/login', methods=['GET'])
+@app.route('/login.html', methods=['GET'])
 def login_page():
     """Renders the login page."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     return render_template('login.html')
 
-@app.route('/signup', methods=['GET'])
+@app.route('/signup.html', methods=['GET'])
 def signup_page():
     """Renders the signup page."""
     if current_user.is_authenticated:
@@ -150,6 +150,8 @@ def api_signup():
         "name": name,
         "email": email,
         "password": password, # Storing plaintext as requested
+        "isAdmin": False,    # Default role for new users
+        "isPremium": False,  # Default plan for new users
         "timestamp": datetime.utcnow().isoformat()
     }
     
@@ -180,6 +182,17 @@ def api_login():
         return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
     else:
         return jsonify({'success': False, 'error': 'Incorrect email or password.'}), 401
+        
+@app.route('/get_user_info')
+@login_required
+def get_user_info():
+    """Provides user information to the front-end after login."""
+    return jsonify({
+        "name": current_user.name,
+        "email": current_user.email,
+        "isAdmin": current_user.isAdmin,
+        "isPremium": current_user.isPremium
+    })
 
 @app.route('/api/logout', methods=['POST'])
 @login_required
