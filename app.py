@@ -5,6 +5,7 @@ import re
 import sys
 import json
 from datetime import datetime
+import uuid
 
 import docx
 import fitz  # PyMuPDF
@@ -76,6 +77,7 @@ class User(UserMixin):
         self.name = user_data.get("name")
         self.isAdmin = user_data.get("isAdmin", False)
         self.isPremium = user_data.get("isPremium", False)
+        self.session_id = user_data.get("session_id")
 
 
     @staticmethod
@@ -91,6 +93,16 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     return User.get(user_id)
+
+@app.before_request
+def before_request_callback():
+    if current_user.is_authenticated:
+        # Check if session ID matches the one in DB for session validation
+        if session.get('session_id') != current_user.session_id:
+            logout_user()
+            flash("You have been logged out from another device.", "info")
+            return redirect(url_for('login_page'))
+
 
 # --- GitHub Configuration ---
 GITHUB_USER = "ajayyanshu"
@@ -110,7 +122,6 @@ PDF_KEYWORDS = {
 @login_required # Protect the main page
 def home():
     """Renders the main chat application."""
-    # FIX: Changed 'index12.html' to 'index.html' to match your GitHub file
     return render_template('index.html') 
 
 @app.route('/login.html', methods=['GET'])
@@ -150,8 +161,14 @@ def api_signup():
         "name": name,
         "email": email,
         "password": password, # Storing plaintext as requested
-        "isAdmin": False,    # Default role for new users
-        "isPremium": False,  # Default plan for new users
+        "isAdmin": email == "ajay@123.com", # Assign admin role if email matches
+        "isPremium": False,
+        "session_id": str(uuid.uuid4()), # For 'logout all devices' feature
+        "usage_counts": {
+            "messages": 0,
+            "webSearches": 0
+        },
+        "last_usage_reset": datetime.utcnow().strftime('%Y-%m-%d'),
         "timestamp": datetime.utcnow().isoformat()
     }
     
@@ -177,8 +194,13 @@ def api_login():
     user_data = users_collection.find_one({"email": email})
 
     if user_data and user_data['password'] == password:
+        new_session_id = str(uuid.uuid4())
+        users_collection.update_one({'_id': user_data['_id']}, {'$set': {'session_id': new_session_id}})
+        user_data['session_id'] = new_session_id
+
         user_obj = User(user_data)
         login_user(user_obj)
+        session['session_id'] = new_session_id
         return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
     else:
         return jsonify({'success': False, 'error': 'Incorrect email or password.'}), 401
@@ -187,6 +209,7 @@ def api_login():
 @login_required
 def get_user_info():
     """Provides user information to the front-end after login."""
+    # This is a simplified version. A robust app would check and reset limits here.
     return jsonify({
         "name": current_user.name,
         "email": current_user.email,
@@ -199,6 +222,30 @@ def get_user_info():
 def api_logout():
     logout_user()
     return jsonify({'success': True})
+
+@app.route('/api/logout-all-devices', methods=['POST'])
+@login_required
+def logout_all_devices():
+    """Invalidates all other sessions for the current user."""
+    if users_collection is None:
+        return jsonify({'success': False, 'error': 'Database not configured.'}), 500
+
+    try:
+        # By setting a new session ID in the DB, all other open sessions become invalid.
+        new_session_id = str(uuid.uuid4())
+        users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$set': {'session_id': new_session_id}})
+        # Log out the current session, forcing a new login
+        logout_user()
+        return jsonify({'success': True, 'message': 'Successfully logged out of all devices.'})
+    except Exception as e:
+        print(f"LOGOUT_ALL_ERROR: {e}")
+        return jsonify({'success': False, 'error': 'Server error during logout.'}), 500
+
+@app.route('/api/2fa/setup', methods=['POST'])
+@login_required
+def setup_2fa():
+    # This is a placeholder for a full 2FA implementation.
+    return jsonify({'success': False, 'message': '2FA setup is not yet implemented.'}), 501
 
 @app.route('/api/users/delete', methods=['POST'])
 @login_required
@@ -239,6 +286,21 @@ def api_status():
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
+    # --- Check Usage Limits ---
+    if not current_user.isPremium and not current_user.isAdmin:
+        # This is a simplified check. A full implementation would be in get_user_info
+        # to ensure limits are reset daily/monthly.
+        user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
+        usage = user_data.get('usage_counts', {})
+        messages_used = usage.get('messages', 0)
+        
+        # Example limit
+        if messages_used >= 15:
+            return jsonify({'error': 'You have reached your message limit for today.'}), 429
+            
+        # Update message count after successful processing
+        users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.messages': 1}})
+
     def extract_text_from_pdf(pdf_bytes):
         try:
             pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
