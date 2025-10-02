@@ -349,13 +349,24 @@ def chat():
             if not prompt_parts: return jsonify({'response': "Please ask a question or upload a file."})
             if isinstance(prompt_parts[-1], Image.Image) and not any(isinstance(p, str) and p.strip() for p in prompt_parts):
                 prompt_parts.insert(0, "Describe this image.")
+            
+            # --- REFACTORED GEMINI CALL ---
             try:
-                chat_session = model.start_chat(history=gemini_history)
-                response = chat_session.send_message(prompt_parts)
+                # Combine history and the new prompt for a more stable API call
+                full_prompt = gemini_history + [{'role': 'user', 'parts': prompt_parts}]
+                response = model.generate_content(full_prompt)
                 ai_response = response.text
             except Exception as e:
-                print(f"Error calling Gemini API: {e}")
-                ai_response = "Sorry, I encountered an error trying to respond."
+                print(f"Error calling Gemini API with history: {e}")
+                # Fallback: Try again without history in case of a format error
+                try:
+                    print("Retrying Gemini call without history...")
+                    response = model.generate_content(prompt_parts)
+                    ai_response = response.text
+                except Exception as e2:
+                    print(f"Error calling Gemini API on retry: {e2}")
+                    ai_response = "Sorry, I encountered an error trying to respond."
+
 
         if chat_history_collection is not None and ai_response:
             try:
