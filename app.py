@@ -182,37 +182,53 @@ def api_signup():
 
     existing_user = users_collection.find_one({"email": email})
     if existing_user:
-        return jsonify({'success': False, 'error': 'An account with this email already exists.'}), 409
+        if not existing_user.get('is_verified'):
+            # Allow resending OTP if user exists but is not verified
+            pass
+        else:
+            return jsonify({'success': False, 'error': 'An account with this email already exists.'}), 409
 
     otp = str(random.randint(100000, 999999))
     otp_expiry = datetime.utcnow() + timedelta(minutes=10)
 
-    new_user = {
-        "name": name,
-        "email": email,
-        "password": password, # In a real app, hash this password!
-        "isAdmin": email == ADMIN_EMAIL,
-        "isPremium": False,
-        "is_verified": False,
-        "verification_otp": otp,
-        "otp_expires_at": otp_expiry,
-        "session_id": str(uuid.uuid4()),
-        "usage_counts": { "messages": 0, "webSearches": 0 },
-        "last_usage_reset": datetime.utcnow().strftime('%Y-%m-%d'),
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
+    # Send OTP email first, before database operations
     try:
-        # Send OTP email
         msg = Message("Your Verification Code", recipients=[email])
         msg.body = f"Your OTP for Sofia AI is: {otp}\nThis code will expire in 10 minutes."
         mail.send(msg)
-        
-        users_collection.insert_one(new_user)
-        return jsonify({'success': True, 'message': 'Account created. Please check your email for a verification OTP.'})
     except Exception as e:
-        print(f"SIGNUP_ERROR: {e}")
-        return jsonify({'success': False, 'error': 'Server error creating account.'}), 500
+        print(f"SIGNUP_EMAIL_ERROR: {e}")
+        return jsonify({'success': False, 'error': 'Could not send verification email. Please check your email address and try again.'}), 500
+
+    if existing_user:
+         # Update OTP for existing, unverified user
+        users_collection.update_one(
+            {'_id': existing_user['_id']},
+            {'$set': {
+                "verification_otp": otp,
+                "otp_expires_at": otp_expiry,
+            }}
+        )
+    else:
+        # Create new user
+        new_user = {
+            "name": name,
+            "email": email,
+            "password": password, # In a real app, hash this password!
+            "isAdmin": email == ADMIN_EMAIL,
+            "isPremium": False,
+            "is_verified": False,
+            "verification_otp": otp,
+            "otp_expires_at": otp_expiry,
+            "session_id": str(uuid.uuid4()),
+            "usage_counts": { "messages": 0, "webSearches": 0 },
+            "last_usage_reset": datetime.utcnow().strftime('%Y-%m-%d'),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        users_collection.insert_one(new_user)
+
+    return jsonify({'success': True, 'message': 'An OTP has been sent to your email.'})
+
 
 @app.route('/api/verify_otp', methods=['POST'])
 def verify_otp():
@@ -228,7 +244,7 @@ def verify_otp():
         return jsonify({'success': False, 'error': 'User not found.'}), 404
 
     if user.get('is_verified'):
-        return jsonify({'success': False, 'error': 'Account already verified.'}), 400
+        return jsonify({'success': True, 'message': 'Account already verified.'}), 200
 
     if user.get('otp_expires_at') < datetime.utcnow():
         return jsonify({'success': False, 'error': 'OTP has expired.'}), 400
@@ -240,7 +256,7 @@ def verify_otp():
         {'_id': user['_id']},
         {'$set': {'is_verified': True}, '$unset': {'verification_otp': "", 'otp_expires_at': ""}}
     )
-    return jsonify({'success': True, 'message': 'Email verified successfully.'})
+    return jsonify({'success': True, 'message': 'Email verified successfully! You can now log in.'})
 
 
 @app.route('/api/login', methods=['POST'])
@@ -259,7 +275,7 @@ def api_login():
 
     if user_data and user_data['password'] == password:
         if not user_data.get('is_verified'):
-            return jsonify({'success': False, 'error': 'Please verify your email before logging in.'}), 403
+            return jsonify({'success': False, 'error': 'Please verify your email before logging in.', 'not_verified': True}), 403
 
         new_session_id = str(uuid.uuid4())
         users_collection.update_one({'_id': user_data['_id']}, {'$set': {'session_id': new_session_id}})
@@ -472,7 +488,7 @@ def chat():
             return None
 
     def get_video_id(video_url):
-        match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
+        match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0--9_-]{11})", video_url)
         return match.group(1) if match else None
 
     def get_youtube_transcript(video_id):
