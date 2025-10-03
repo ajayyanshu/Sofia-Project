@@ -104,7 +104,20 @@ def before_request_callback():
 
 
 # --- GitHub Configuration ---
-# ... (This section remains unchanged)
+# NOTE: You need to configure these environment variables if you want to use the PDF keyword feature
+GITHUB_USER = os.environ.get("GITHUB_USER")
+GITHUB_REPO = os.environ.get("GITHUB_REPO")
+GITHUB_FOLDER_PATH = os.environ.get("GITHUB_FOLDER_PATH", "") # Default to root if not set
+
+# This dictionary maps keywords to specific PDF filenames in your GitHub repo.
+# When a user's message contains a keyword, the corresponding file will be fetched.
+PDF_KEYWORDS = {
+    # "keyword": "filename.pdf"
+    # Example:
+    # "privacy policy": "Privacy Policy.pdf",
+    # "terms of service": "Terms of Service.pdf"
+}
+
 
 # --- Page Rendering Routes ---
 
@@ -258,7 +271,10 @@ def delete_account():
 
 
 # --- Status Route ---
-# ... (This section remains unchanged)
+@app.route('/status', methods=['GET'])
+def status():
+    """Provides a simple status check for the server."""
+    return jsonify({'status': 'ok'}), 200
 
 # --- Chat Logic ---
 @app.route('/chat', methods=['POST'])
@@ -291,6 +307,9 @@ def chat():
             return ""
 
     def get_file_from_github(filename):
+        if not all([GITHUB_USER, GITHUB_REPO]):
+            print("CRITICAL WARNING: GITHUB_USER or GITHUB_REPO is not configured.")
+            return None
         url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO.replace(' ', '%20')}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
         try:
             response = requests.get(url)
@@ -313,9 +332,11 @@ def chat():
 
     def call_api(url, headers, json_payload, api_name):
         try:
+            print(f"Attempting to call {api_name} API at {url}...")
             response = requests.post(url, headers=headers, json=json_payload)
             response.raise_for_status()
             result = response.json()
+            print(f"Successfully received response from {api_name}.")
             return result['choices'][0]['message']['content']
         except Exception as e:
             print(f"Error calling {api_name} API: {e}")
@@ -354,15 +375,16 @@ def chat():
         is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
 
         if not is_multimodal and user_message.strip():
-            print("Routing to OpenRouter...")
-            ai_response = call_api("https://openrouter.ai/api/v1/chat/completions",
-                                   {"Authorization": f"Bearer {OPENROUTER_API_KEY_V3}"},
-                                   {"model": "deepseek/deepseek-chat", "messages": openai_history},
-                                   "OpenRouter")
-            if ai_response:
-                api_used, model_logged = "OpenRouter", "deepseek/deepseek-chat"
+            if OPENROUTER_API_KEY_V3:
+                print("Routing to OpenRouter...")
+                ai_response = call_api("https://openrouter.ai/api/v1/chat/completions",
+                                       {"Authorization": f"Bearer {OPENROUTER_API_KEY_V3}"},
+                                       {"model": "deepseek/deepseek-chat", "messages": openai_history},
+                                       "OpenRouter")
+                if ai_response:
+                    api_used, model_logged = "OpenRouter", "deepseek/deepseek-chat"
 
-            if not ai_response:
+            if not ai_response and GROQ_API_KEY:
                 print("Routing to Groq...")
                 ai_response = call_api("https://api.groq.com/openai/v1/chat/completions",
                                        {"Authorization": f"Bearer {GROQ_API_KEY}"},
@@ -439,9 +461,10 @@ def chat():
 
     except Exception as e:
         print(f"A critical error occurred in /chat: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'response': "Sorry, an internal error occurred."})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
