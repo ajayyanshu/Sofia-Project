@@ -40,14 +40,39 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email configuration
 
 # --- Email Configuration ---
-# NOTE: You must set these environment variables for email features to work.
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+# =====================================================================================
+# IMPORTANT: Platform-Specific Email Configuration (e.g., for Render, Heroku, etc.)
+#
+# Direct SMTP connections (especially to services like Proton Mail) often fail on cloud
+# platforms because they have special requirements (like the Proton Mail Bridge) that
+# CANNOT be run on a serverless platform like Render.
+#
+# --- SOLUTION FOR COLLEGE PROJECTS (Free, No Credit Card) ---
+# Use a standard Gmail account with an "App Password". This is the recommended approach.
+#   1. Enable 2-Factor Authentication (2FA) on your Google Account.
+#   2. Go to "App Passwords" in your Google Account security settings.
+#   3. Generate a new password for "Mail" on "Other" device.
+#   4. Use the 16-character generated App Password as your MAIL_PASSWORD.
+#
+# Example Environment Variables for Gmail + App Password:
+#   MAIL_SERVER=smtp.gmail.com
+#   MAIL_PORT=587
+#   MAIL_USE_TLS=True
+#   MAIL_USE_SSL=False
+#   MAIL_USERNAME=your.email@gmail.com
+#   MAIL_PASSWORD=<Your 16-character App Password from Google>
+#   MAIL_DEFAULT_SENDER=your.email@gmail.com
+#
+# --- RECOMMENDED PRODUCTION SOLUTION (May require a credit card) ---
+# Use a Transactional Email Service Provider like SendGrid, Brevo, or Mailgun.
+# =====================================================================================
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', '1', 't']
 app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', '1', 't']
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 
 mail = Mail(app)
 
@@ -169,6 +194,11 @@ def signup_redirect():
 
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
+    # Check if mail is configured before proceeding
+    if not app.config.get('MAIL_SERVER') or not app.config.get('MAIL_USERNAME'):
+        print("CRITICAL_ERROR: Mail server is not configured. Cannot send signup email.")
+        return jsonify({'success': False, 'error': 'The mail service is not configured on the server.'}), 503
+
     data = request.get_json()
     name = data.get('name')
     email = data.get('email')
@@ -198,7 +228,8 @@ def api_signup():
         mail.send(msg)
     except Exception as e:
         print(f"SIGNUP_EMAIL_ERROR: {e}")
-        return jsonify({'success': False, 'error': 'Could not send verification email. Please check your email address and try again.'}), 500
+        # Provide a more generic error to the user for security.
+        return jsonify({'success': False, 'error': 'Could not send verification email. Please check the email address and server configuration.'}), 500
 
     if existing_user:
          # Update OTP for existing, unverified user
@@ -665,5 +696,5 @@ def live_object_detection():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.w 0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)
 
