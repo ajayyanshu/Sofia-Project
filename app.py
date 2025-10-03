@@ -83,6 +83,10 @@ if MONGO_URI:
     try:
         mongo_client = MongoClient(MONGO_URI)
         db = mongo_client.get_database("ai_assistant_db")
+        # --- Add a connection test (ping) ---
+        db.command('ping')
+        print("✅ Successfully pinged MongoDB.")
+        # --- End of added code ---
         chat_history_collection = db.get_collection("chat_history")
         users_collection = db.get_collection("users")
         print("✅ Successfully connected to MongoDB.")
@@ -345,15 +349,18 @@ def delete_account():
     try:
         user_id = ObjectId(current_user.id)
         
+        # Anonymize user details by replacing personal info and removing session/name
         update_result = users_collection.update_one(
             {'_id': user_id},
             {
                 '$set': {
                     'email': f'deleted_{user_id}@anonymous.com',
-                    'password': 'deleted',
-                    'name': 'Anonymous User'
+                    'password': 'deleted_password_placeholder' 
                 },
-                '$unset': { 'session_id': "" }
+                '$unset': {
+                    'name': "",
+                    'session_id': ""
+                }
             }
         )
 
@@ -597,3 +604,4 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
