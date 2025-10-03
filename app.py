@@ -4,8 +4,9 @@ import os
 import re
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import uuid
+import random
 
 import docx
 import fitz  # PyMuPDF
@@ -20,6 +21,7 @@ from bson.objectid import ObjectId
 from youtube_transcript_api import YouTubeTranscriptApi
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
+from flask_mail import Mail, Message
 
 app = Flask(__name__, template_folder='templates')
 CORS(app)
@@ -36,6 +38,18 @@ MONGO_URI = os.environ.get("MONGO_URI")
 OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email configuration
+
+# --- Email Configuration ---
+# NOTE: You must set these environment variables for email features to work.
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', '1', 't']
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', '1', 't']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
+
+mail = Mail(app)
 
 # --- API Services Configuration ---
 if GOOGLE_API_KEY:
@@ -166,15 +180,22 @@ def api_signup():
     if users_collection is None:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
-    if users_collection.find_one({"email": email}):
+    existing_user = users_collection.find_one({"email": email})
+    if existing_user:
         return jsonify({'success': False, 'error': 'An account with this email already exists.'}), 409
+
+    otp = str(random.randint(100000, 999999))
+    otp_expiry = datetime.utcnow() + timedelta(minutes=10)
 
     new_user = {
         "name": name,
         "email": email,
-        "password": password,
+        "password": password, # In a real app, hash this password!
         "isAdmin": email == ADMIN_EMAIL,
         "isPremium": False,
+        "is_verified": False,
+        "verification_otp": otp,
+        "otp_expires_at": otp_expiry,
         "session_id": str(uuid.uuid4()),
         "usage_counts": { "messages": 0, "webSearches": 0 },
         "last_usage_reset": datetime.utcnow().strftime('%Y-%m-%d'),
@@ -182,11 +203,45 @@ def api_signup():
     }
     
     try:
+        # Send OTP email
+        msg = Message("Your Verification Code", recipients=[email])
+        msg.body = f"Your OTP for Sofia AI is: {otp}\nThis code will expire in 10 minutes."
+        mail.send(msg)
+        
         users_collection.insert_one(new_user)
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Account created. Please check your email for a verification OTP.'})
     except Exception as e:
-        print(f"MONGO_WRITE_ERROR: {e}")
+        print(f"SIGNUP_ERROR: {e}")
         return jsonify({'success': False, 'error': 'Server error creating account.'}), 500
+
+@app.route('/api/verify_otp', methods=['POST'])
+def verify_otp():
+    data = request.get_json()
+    email = data.get('email')
+    otp = data.get('otp')
+
+    if not all([email, otp]):
+        return jsonify({'success': False, 'error': 'Email and OTP are required.'}), 400
+
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found.'}), 404
+
+    if user.get('is_verified'):
+        return jsonify({'success': False, 'error': 'Account already verified.'}), 400
+
+    if user.get('otp_expires_at') < datetime.utcnow():
+        return jsonify({'success': False, 'error': 'OTP has expired.'}), 400
+
+    if user.get('verification_otp') != otp:
+        return jsonify({'success': False, 'error': 'Invalid OTP.'}), 400
+
+    users_collection.update_one(
+        {'_id': user['_id']},
+        {'$set': {'is_verified': True}, '$unset': {'verification_otp': "", 'otp_expires_at': ""}}
+    )
+    return jsonify({'success': True, 'message': 'Email verified successfully.'})
+
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
@@ -203,6 +258,9 @@ def api_login():
     user_data = users_collection.find_one({"email": email})
 
     if user_data and user_data['password'] == password:
+        if not user_data.get('is_verified'):
+            return jsonify({'success': False, 'error': 'Please verify your email before logging in.'}), 403
+
         new_session_id = str(uuid.uuid4())
         users_collection.update_one({'_id': user_data['_id']}, {'$set': {'session_id': new_session_id}})
         user_data['session_id'] = new_session_id
@@ -213,7 +271,67 @@ def api_login():
         return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
     else:
         return jsonify({'success': False, 'error': 'Incorrect email or password.'}), 401
+
+@app.route('/api/request_password_reset', methods=['POST'])
+def request_password_reset():
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required.'}), 400
+
+    user = users_collection.find_one({"email": email})
+    if not user:
+        # Still return success to prevent email enumeration attacks
+        return jsonify({'success': True, 'message': 'If an account with that email exists, a password reset link has been sent.'})
+
+    reset_token = uuid.uuid4().hex
+    token_expiry = datetime.utcnow() + timedelta(hours=1)
+    
+    users_collection.update_one(
+        {'_id': user['_id']},
+        {'$set': {'password_reset_token': reset_token, 'reset_token_expires_at': token_expiry}}
+    )
+    
+    reset_url = url_for('home', _external=True) + f'reset-password?token={reset_token}'
+    
+    try:
+        msg = Message("Password Reset Request", recipients=[email])
+        msg.body = f"Click the following link to reset your password: {reset_url}\nThis link will expire in 1 hour."
+        mail.send(msg)
+    except Exception as e:
+        print(f"PASSWORD_RESET_EMAIL_ERROR: {e}")
+        return jsonify({'success': False, 'error': 'Failed to send reset email.'}), 500
         
+    return jsonify({'success': True, 'message': 'If an account with that email exists, a password reset link has been sent.'})
+
+@app.route('/api/reset_password', methods=['POST'])
+def reset_password():
+    data = request.get_json()
+    token = data.get('token')
+    new_password = data.get('new_password')
+
+    if not all([token, new_password]):
+        return jsonify({'success': False, 'error': 'Token and new password are required.'}), 400
+
+    user = users_collection.find_one({
+        "password_reset_token": token,
+        "reset_token_expires_at": {"$gt": datetime.utcnow()}
+    })
+
+    if not user:
+        return jsonify({'success': False, 'error': 'Invalid or expired token.'}), 400
+        
+    # In a real app, hash this password!
+    users_collection.update_one(
+        {'_id': user['_id']},
+        {
+            '$set': {'password': new_password},
+            '$unset': {'password_reset_token': "", 'reset_token_expires_at': ""}
+        }
+    )
+    
+    return jsonify({'success': True, 'message': 'Password has been reset successfully.'})
+
 @app.route('/get_user_info')
 @login_required
 def get_user_info():
@@ -259,15 +377,32 @@ def delete_account():
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
     try:
-        result = users_collection.delete_one({'_id': ObjectId(current_user.id)})
-        if result.deleted_count > 0:
+        user_id = ObjectId(current_user.id)
+        
+        # Anonymize the user by removing personal details, but keeping the document and chat history.
+        # This preserves chat history while removing personally identifiable information.
+        update_result = users_collection.update_one(
+            {'_id': user_id},
+            {
+                '$set': {
+                    'email': f'deleted_{user_id}@anonymous.com',
+                    'password': 'deleted',
+                    'name': 'Anonymous User'
+                },
+                '$unset': {
+                    'session_id': "" # Remove session_id to invalidate sessions
+                }
+            }
+        )
+
+        if update_result.matched_count > 0:
             logout_user()
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'error': 'User not found.'}), 404
     except Exception as e:
         print(f"MONGO_DELETE_ERROR: {e}")
-        return jsonify({'success': False, 'error': 'Error deleting user.'}), 500
+        return jsonify({'success': False, 'error': 'Error deleting user details.'}), 500
 
 
 # --- Status Route ---
@@ -280,13 +415,30 @@ def status():
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
+    # --- Daily Usage Limit Check and Reset ---
     if not current_user.isPremium and not current_user.isAdmin:
         user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
+        
+        last_reset_str = user_data.get('last_usage_reset', '1970-01-01')
+        last_reset_date = datetime.strptime(last_reset_str, '%Y-%m-%d').date()
+        today = datetime.utcnow().date()
+
+        if last_reset_date < today:
+            # Reset the count for the new day
+            users_collection.update_one(
+                {'_id': ObjectId(current_user.id)},
+                {'$set': {'usage_counts.messages': 0, 'last_usage_reset': today.strftime('%Y-%m-%d')}}
+            )
+            user_data = users_collection.find_one({'_id': ObjectId(current_user.id)}) # Re-fetch user data
+        
         usage = user_data.get('usage_counts', {})
         messages_used = usage.get('messages', 0)
         
         if messages_used >= 15:
-            return jsonify({'error': 'You have reached your message limit for today.'}), 429
+            return jsonify({
+                'error': 'You have reached your daily message limit. Please upgrade for unlimited access.',
+                'upgrade_required': True
+            }), 429
             
         users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.messages': 1}})
 
@@ -465,6 +617,37 @@ def chat():
         traceback.print_exc()
         return jsonify({'response': "Sorry, an internal error occurred."})
 
+# --- Live AI Camera Feature (Backend) ---
+@app.route('/live_object_detection', methods=['POST'])
+@login_required
+def live_object_detection():
+    """
+    This endpoint receives a frame from a live camera feed, sends it to the AI,
+    and returns a description of the objects in the frame.
+    NOTE: The frontend needs to be built to capture frames from the user's camera
+    and send them to this endpoint as a base64 encoded string.
+    """
+    data = request.get_json()
+    if not data or 'image_data' not in data:
+        return jsonify({'error': 'No image data provided.'}), 400
+
+    image_data = data['image_data']
+    try:
+        # Decode the base64 string
+        image_bytes = base64.b64decode(image_data.split(',')[1])
+        img = Image.open(io.BytesIO(image_bytes))
+
+        # Call Gemini AI
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        response = model.generate_content(["Describe the objects you see in this image.", img])
+        
+        return jsonify({'description': response.text})
+
+    except Exception as e:
+        print(f"Error in live object detection: {e}")
+        return jsonify({'error': 'Failed to process image.'}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.w 0.0.0', port=port)
+
