@@ -84,32 +84,7 @@
          .social-container a:hover {
             background-color: #f6f5f7;
         }
-        /* Loading Overlay Styles */
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-        .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #FF4B2B;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
+     
         /* Mobile Responsive Styles */
         @media (max-width: 480px) {
             .form-container form {
@@ -122,11 +97,6 @@
 <body class="flex items-center justify-center h-full p-4">
 
     <div class="auth-main-container">
-        <!-- Loading Overlay -->
-        <div id="loading-overlay" class="loading-overlay" style="display: none;">
-            <div class="loader"></div>
-        </div>
-
         <div class="form-container">
             <!-- Sign Up Form -->
             <form id="sign-up-form" autocomplete="off" novalidate>
@@ -152,7 +122,6 @@
     <script>
         const signUpForm = document.getElementById('sign-up-form');
         const signupEmailInput = document.getElementById('signup-email');
-        const loadingOverlay = document.getElementById('loading-overlay');
         const messageEl = document.getElementById('signup-message');
         const passwordInput = document.getElementById('signup-password');
         const passwordToggleIcon = document.getElementById('password-toggle-icon');
@@ -181,8 +150,6 @@
                 messageEl.classList.add('text-red-500');
                 return; // Stop the submission
             }
-
-            loadingOverlay.style.display = 'flex'; // Show loading overlay
             
             try {
                 // NOTE: This assumes your /api/signup endpoint creates the user directly
@@ -209,11 +176,6 @@
                 console.error('Signup Error:', error);
                 messageEl.textContent = "Could not connect to the server.";
                  messageEl.classList.add('text-red-500');
-            } finally {
-                // Don't hide the overlay immediately on success to show the message
-                if (!messageEl.classList.contains('text-green-500')) {
-                    loadingOverlay.style.display = 'none'; // Hide loading overlay on error
-                }
             }
         });
     </script>
