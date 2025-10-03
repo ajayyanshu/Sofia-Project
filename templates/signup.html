@@ -109,9 +109,17 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 480px) {
+            .form-container form {
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+        }
     </style>
 </head>
-<body class="flex items-center justify-center h-full">
+<body class="flex items-center justify-center h-full p-4">
 
     <div class="auth-main-container">
         <!-- Loading Overlay -->
