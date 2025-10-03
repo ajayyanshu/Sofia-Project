@@ -26,29 +26,24 @@
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            padding: 3rem 50px;
+            padding: 2rem 50px;
             text-align: center;
         }
-        .input-container {
-            position: relative;
-            width: 100%;
-        }
-        .auth-main-container input {
+         .auth-main-container input {
             background-color: #f6f5f7;
-            border: none;
+            border: 1px solid transparent; /* Added for smooth transition */
             padding: 12px 15px;
-            margin: 8px 0;
+            margin-top: 0.5rem;
             width: 100%;
             border-radius: 8px;
             font-size: 14px;
+            transition: all 0.2s ease-in-out; /* Smooth transition */
         }
-        #password-toggle-icon {
-            position: absolute;
-            top: 50%;
-            right: 15px;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #888;
+        .auth-main-container input:focus {
+            outline: none;
+            border-color: #3B82F6;
+            background-color: #fff;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
         .auth-main-container button {
             border-radius: 20px;
@@ -62,67 +57,63 @@
             text-transform: uppercase;
             transition: transform 80ms ease-in;
             cursor: pointer;
-            margin-top: 1rem;
+            margin-top: 1.5rem;
         }
         .auth-main-container button:active {
             transform: scale(0.95);
         }
-        .social-container {
-            margin: 20px 0;
-        }
-        .social-container a {
-            border: 1px solid #DDDDDD;
-            border-radius: 50%;
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 5px;
-            height: 40px;
-            width: 40px;
-            transition: background-color 0.3s;
-        }
-         .social-container a:hover {
-            background-color: #f6f5f7;
-        }
-     
+        
         /* Mobile Responsive Styles */
         @media (max-width: 480px) {
             .form-container form {
                 padding-left: 2rem;
                 padding-right: 2rem;
             }
+             body {
+                padding: 1rem;
+            }
         }
     </style>
 </head>
-<body class="flex items-center justify-center h-full p-4">
+<body class="flex items-center justify-center h-full">
 
     <div class="auth-main-container">
         <div class="form-container">
             <!-- Sign Up Form -->
-            <form id="sign-up-form" autocomplete="off" novalidate>
+            <form id="sign-up-form" autocomplete="off">
                 <h1 class="text-3xl font-bold mb-2">Create Account</h1>
                 <span class="text-sm text-gray-500 mb-4">or use your email for registration</span>
-                <input type="text" id="signup-name" placeholder="Name" required autocomplete="name" />
-                <input type="email" id="signup-email" placeholder="Email" required autocomplete="email" />
-                <div class="input-container">
-                    <input type="password" id="signup-password" placeholder="Password" required autocomplete="new-password" minlength="8" />
-                    <i class="fas fa-eye" id="password-toggle-icon"></i>
+                
+                <div class="w-full text-left">
+                    <label for="signup-name" class="text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" id="signup-name" placeholder="Your Name" required autocomplete="name" />
                 </div>
-                <button>Sign Up</button>
-                <p id="signup-message" class="text-sm mt-2 h-5"></p>
+                
+                <div class="w-full text-left mt-2">
+                    <label for="signup-email" class="text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="signup-email" placeholder="your@email.com" required autocomplete="email" />
+                </div>
+
+                <div class="w-full text-left mt-2">
+                    <label for="signup-password" class="text-sm font-medium text-gray-700">Password</label>
+                    <div class="relative">
+                        <input type="password" id="signup-password" placeholder="Password (8+ characters)" required autocomplete="new-password" minlength="8" />
+                        <i class="fas fa-eye absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-gray-500" id="password-toggle-icon" style="top: calc(50% + 4px);"></i>
+                    </div>
+                </div>
+
+                <button class="w-full">Sign Up</button>
+                <p id="signup-error" class="text-red-500 text-sm mt-2 h-5"></p>
                 <p class="mt-4 text-sm">
                     Already have an account? 
                     <a href="/login" class="font-semibold text-blue-600 hover:underline">Sign In</a>
                 </p>
             </form>
-
         </div>
     </div>
 
     <script>
         const signUpForm = document.getElementById('sign-up-form');
-        const signupEmailInput = document.getElementById('signup-email');
-        const messageEl = document.getElementById('signup-message');
         const passwordInput = document.getElementById('signup-password');
         const passwordToggleIcon = document.getElementById('password-toggle-icon');
 
@@ -130,7 +121,6 @@
         passwordToggleIcon.addEventListener('click', () => {
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
             passwordInput.setAttribute('type', type);
-            // Change the eye icon
             passwordToggleIcon.classList.toggle('fa-eye');
             passwordToggleIcon.classList.toggle('fa-eye-slash');
         });
@@ -139,21 +129,18 @@
         signUpForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('signup-name').value.trim();
-            const email = signupEmailInput.value.trim();
+            const email = document.getElementById('signup-email').value.trim();
             const password = passwordInput.value;
-            messageEl.textContent = '';
-            messageEl.classList.remove('text-red-500', 'text-green-500');
+            const errorEl = document.getElementById('signup-error');
+            errorEl.textContent = '';
 
-            // Password validation
+            // Password length validation
             if (password.length < 8) {
-                messageEl.textContent = 'Password must be at least 8 characters.';
-                messageEl.classList.add('text-red-500');
-                return; // Stop the submission
+                errorEl.textContent = 'Password must be at least 8 characters.';
+                return;
             }
             
             try {
-                // NOTE: This assumes your /api/signup endpoint creates the user directly
-                // without sending an OTP. You may need to adjust your backend logic.
                 const response = await fetch('/api/signup', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -163,19 +150,14 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    messageEl.textContent = "Success! Redirecting to login...";
-                    messageEl.classList.add('text-green-500');
-                    setTimeout(() => {
-                        window.location.href = '/login'; // Redirect to login page
-                    }, 2000);
+                    // On successful signup, redirect to the login page
+                    window.location.href = '/login';
                 } else {
-                    messageEl.textContent = data.error || "An unknown error occurred.";
-                    messageEl.classList.add('text-red-500');
+                    errorEl.textContent = data.error || "An unknown error occurred.";
                 }
             } catch (error) {
                 console.error('Signup Error:', error);
-                messageEl.textContent = "Could not connect to the server.";
-                 messageEl.classList.add('text-red-500');
+                errorEl.textContent = "Could not connect to the server.";
             }
         });
     </script>
