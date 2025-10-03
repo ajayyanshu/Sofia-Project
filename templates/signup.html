@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - Sofia 2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f6f5f7;
         }
         .auth-main-container {
             background-color: #fff;
@@ -17,7 +19,7 @@
             overflow: hidden;
             width: 420px;
             max-width: 100%;
-            min-height: 520px;
+            min-height: 550px;
         }
         .form-container form {
             background-color: #FFFFFF;
@@ -30,12 +32,13 @@
             text-align: center;
         }
         .auth-main-container input {
-            background-color: #eee;
+            background-color: #f6f5f7;
             border: none;
             padding: 12px 15px;
             margin: 8px 0;
             width: 100%;
             border-radius: 8px;
+            font-size: 14px;
         }
         .auth-main-container button {
             border-radius: 20px;
@@ -49,24 +52,97 @@
             text-transform: uppercase;
             transition: transform 80ms ease-in;
             cursor: pointer;
+            margin-top: 1rem;
+        }
+        .auth-main-container button:active {
+            transform: scale(0.95);
+        }
+        .social-container {
+            margin: 20px 0;
+        }
+        .social-container a {
+            border: 1px solid #DDDDDD;
+            border-radius: 50%;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 5px;
+            height: 40px;
+            width: 40px;
+            transition: background-color 0.3s;
+        }
+         .social-container a:hover {
+            background-color: #f6f5f7;
+        }
+        #otp-form {
+            display: none;
+        }
+        /* Loading Overlay Styles */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #FF4B2B;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-full">
+<body class="flex items-center justify-center h-full">
 
     <div class="auth-main-container">
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="loader"></div>
+        </div>
+
         <div class="form-container">
+            <!-- Sign Up Form -->
             <form id="sign-up-form" autocomplete="off">
-                <h1 class="text-3xl font-bold mb-4">Create Account</h1>
-                <span class="text-sm mb-4">Enter your details to register</span>
+                <h1 class="text-3xl font-bold mb-2">Create Account</h1>
+                <div class="social-container">
+                    <a href="#" class="social"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="social"><i class="fab fa-google"></i></a>
+                    <a href="#" class="social"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+                <span class="text-sm text-gray-500 mb-4">or use your email for registration</span>
                 <input type="text" id="signup-name" placeholder="Name" required autocomplete="name" />
                 <input type="email" id="signup-email" placeholder="Email" required autocomplete="email" />
                 <input type="password" id="signup-password" placeholder="Password" required autocomplete="new-password" />
-                <button class="mt-2">Sign Up</button>
+                <button>Sign Up</button>
                 <p id="signup-error" class="text-red-500 text-sm mt-2 h-5"></p>
                 <p class="mt-4 text-sm">
                     Already have an account? 
                     <a href="/login" class="font-semibold text-blue-600 hover:underline">Sign In</a>
+                </p>
+            </form>
+
+            <!-- OTP Verification Form -->
+            <form id="otp-form" autocomplete="off">
+                <h1 class="text-3xl font-bold mb-4">Verify Your Email</h1>
+                <span class="text-sm mb-4 text-gray-500">Enter the OTP sent to your email address.</span>
+                <input type="text" id="otp-code" placeholder="6-Digit OTP" required autocomplete="one-time-code" maxlength="6" />
+                <button>Verify</button>
+                <p id="otp-message" class="text-sm mt-2 h-5"></p>
+                 <p class="mt-4 text-sm">
+                    Didn't receive the code? 
+                    <button type="button" id="resend-otp" class="font-semibold text-blue-600 hover:underline p-0 bg-transparent border-none uppercase text-xs tracking-wider">Resend</button>
                 </p>
             </form>
         </div>
@@ -74,13 +150,19 @@
 
     <script>
         const signUpForm = document.getElementById('sign-up-form');
+        const otpForm = document.getElementById('otp-form');
+        const signupEmailInput = document.getElementById('signup-email');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // --- Handle Sign Up Form Submission ---
         signUpForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('signup-name').value.trim();
-            const email = document.getElementById('signup-email').value.trim();
+            const email = signupEmailInput.value.trim();
             const password = document.getElementById('signup-password').value;
             const errorEl = document.getElementById('signup-error');
             errorEl.textContent = '';
+            loadingOverlay.style.display = 'flex'; // Show loading overlay
             
             try {
                 const response = await fetch('/api/signup', {
@@ -92,16 +174,102 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // Redirect to login page on successful signup
-                    window.location.href = '/login';
+                    signUpForm.style.display = 'none';
+                    otpForm.style.display = 'flex';
+                    document.getElementById('otp-message').textContent = data.message;
+                    document.getElementById('otp-message').classList.remove('text-red-500');
+                    document.getElementById('otp-message').classList.add('text-green-500');
                 } else {
                     errorEl.textContent = data.error || "An unknown error occurred.";
                 }
             } catch (error) {
                 console.error('Signup Error:', error);
                 errorEl.textContent = "Could not connect to the server.";
+            } finally {
+                loadingOverlay.style.display = 'none'; // Hide loading overlay
             }
+        });
+
+        // --- Handle OTP Form Submission ---
+        otpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = signupEmailInput.value.trim(); // Get email from the first form
+            const otp = document.getElementById('otp-code').value.trim();
+            const messageEl = document.getElementById('otp-message');
+            messageEl.textContent = '';
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                const response = await fetch('/api/verify_otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    messageEl.textContent = data.message;
+                    messageEl.classList.remove('text-red-500');
+                    messageEl.classList.add('text-green-500');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    messageEl.textContent = data.error || "An unknown error occurred.";
+                    messageEl.classList.remove('text-green-500');
+                    messageEl.classList.add('text-red-500');
+                }
+            } catch (error) {
+                console.error('OTP Error:', error);
+                messageEl.textContent = "Could not connect to the server.";
+                messageEl.classList.add('text-red-500');
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        });
+
+        // --- Handle Resend OTP ---
+        document.getElementById('resend-otp').addEventListener('click', async (e) => {
+             const email = signupEmailInput.value.trim();
+             const messageEl = document.getElementById('otp-message');
+             const button = e.target;
+             messageEl.textContent = 'Sending...';
+             button.disabled = true;
+             loadingOverlay.style.display = 'flex';
+             
+             try {
+                // We use the signup endpoint again for resending, as it handles OTP logic
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name: "Resend", email, password: "resend_otp_request" }) // password is a placeholder
+                });
+
+                const data = await response.json();
+                 if (response.ok && data.success) {
+                    messageEl.textContent = "A new OTP has been sent.";
+                    messageEl.classList.remove('text-red-500');
+                    messageEl.classList.add('text-green-500');
+                 } else {
+                     messageEl.textContent = data.error || "Failed to resend OTP.";
+                     messageEl.classList.add('text-red-500');
+                 }
+             } catch (error) {
+                 console.error('Resend OTP Error:', error);
+                 messageEl.textContent = "Could not connect to the server.";
+                 messageEl.classList.add('text-red-500');
+             } finally {
+                loadingOverlay.style.display = 'none';
+                setTimeout(() => { // Add a cooldown to prevent spamming
+                    button.disabled = false;
+                    if(messageEl.textContent === "A new OTP has been sent.") {
+                       messageEl.textContent = ''; // Clear the success message after a bit
+                    }
+                }, 5000);
+             }
         });
     </script>
 </body>
 </html>
+
