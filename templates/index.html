@@ -13,6 +13,11 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
+        ::selection {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+
         html {
             overscroll-behavior: none;
         }
@@ -219,6 +224,7 @@
         .dark #profile-settings-content .text-gray-800 { color: #f0f0f0; }
         .dark .plan-table .bg-gray-50 { background-color: #1f2739; }
         .dark .plan-table .border-b { border-color: #2d3748; }
+        .dark .plan-table .text-gray-600 { color: #d1d5db; }
 
     </style>
 </head>
@@ -1384,28 +1390,34 @@
 
 
         // --- Chat History Functions ---
-        function saveChatSession() {
+        async function saveChatSession() {
             if (isTemporaryChatActive || currentChat.length === 0) {
                 return;
             }
 
-            let chatTitle = currentChat.find(m => m.sender === 'user')?.text.substring(0, 40) || 'Untitled Chat';
-
-            if (currentChatId) {
-                const chatIndex = chatHistory.findIndex(chat => chat.id === currentChatId);
-                if (chatIndex > -1) {
-                    chatHistory[chatIndex].messages = [...currentChat];
-                    if (chatHistory[chatIndex].title === 'Untitled Chat') {
-                        chatHistory[chatIndex].title = chatTitle;
+            try {
+                const response = await fetch('/api/chats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: currentChatId,
+                        title: currentChat.find(m => m.sender === 'user')?.text.substring(0, 40) || 'Untitled Chat',
+                        messages: currentChat
+                    })
+                });
+                if (response.ok) {
+                    const savedChat = await response.json();
+                    if (!currentChatId) {
+                        currentChatId = savedChat.id;
                     }
+                    // Refresh history from DB to ensure consistency
+                    loadChatsFromDB();
+                } else {
+                    console.error('Failed to save chat session to DB');
                 }
-            } else {
-                currentChatId = Date.now();
-                chatHistory.unshift({ id: currentChatId, title: chatTitle, messages: [...currentChat] });
+            } catch (error) {
+                console.error('Error saving chat session:', error);
             }
-
-            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-            renderChatHistorySidebar();
         }
 
         async function saveTemporaryChatToDB() {
@@ -1418,7 +1430,7 @@
             saveToDbBtn.disabled = true;
 
             try {
-                const response = await fetch('/save-chat', {
+                const response = await fetch('/api/chats', { // Changed endpoint
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ messages: currentChat })
@@ -1432,9 +1444,8 @@
 
                 isTemporaryChatActive = false;
                 
-                currentChatId = savedChat.id;
+                currentChatId = savedChat.id; // The server should return the new ID
                 chatHistory.unshift({ id: savedChat.id, title: savedChat.title, messages: [...currentChat] });
-                localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
                 renderChatHistorySidebar();
 
                 saveToDbBtn.textContent = 'Saved!';
@@ -1450,13 +1461,22 @@
             }
         }
 
-
-        function loadChatHistory() {
-            const savedHistory = localStorage.getItem('chatHistory');
-            if (savedHistory) {
-                chatHistory = JSON.parse(savedHistory);
+        async function loadChatsFromDB() {
+            try {
+                const response = await fetch('/api/chats');
+                if (response.ok) {
+                    chatHistory = await response.json();
+                    renderChatHistorySidebar();
+                } else {
+                    console.error('Failed to load chats from DB');
+                    chatHistoryContainer.innerHTML = `<div class="p-2 text-sm text-red-500">Could not load history.</div>`;
+                }
+            } catch (error) {
+                console.error('Error loading chats:', error);
+                chatHistoryContainer.innerHTML = `<div class="p-2 text-sm text-red-500">Error loading history.</div>`;
             }
         }
+
 
         function renderChatHistorySidebar() {
             chatHistoryContainer.innerHTML = '';
@@ -1466,7 +1486,10 @@
                  return;
             }
 
-            chatHistory.forEach(chat => {
+            // Sort history by the most recent (assuming IDs are timestamp-based or server sends them sorted)
+            const sortedHistory = chatHistory.sort((a, b) => b.id - a.id);
+
+            sortedHistory.forEach(chat => {
                 const item = document.createElement('div');
                 item.className = 'chat-history-item group';
                 if (chat.id === currentChatId) {
@@ -1506,52 +1529,42 @@
             });
         }
         
-        function renameChat(chatId) {
-            const item = chatHistoryContainer.querySelector(`[data-chat-id='${chatId}']`);
-            const titleSpan = item.querySelector('.chat-title');
-            const currentTitle = titleSpan.textContent;
-
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = currentTitle;
-            input.className = 'w-full bg-transparent border-b border-gray-400 focus:outline-none focus:border-blue-500 text-sm';
-            
-            titleSpan.replaceWith(input);
-            input.focus();
-            input.select();
-
-            const saveRename = () => {
-                const newTitle = input.value.trim();
-                if (newTitle && newTitle !== currentTitle) {
-                    const chatIndex = chatHistory.findIndex(c => c.id === chatId);
-                    if (chatIndex > -1) {
-                        chatHistory[chatIndex].title = newTitle;
-                        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        async function renameChat(chatId) {
+            const newTitle = prompt("Enter new chat title:");
+            if (newTitle && newTitle.trim() !== '') {
+                try {
+                    const response = await fetch(`/api/chats/${chatId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: newTitle.trim() })
+                    });
+                    if(response.ok) {
+                        loadChatsFromDB(); // Refresh from DB
+                    } else {
+                        alert('Failed to rename chat.');
                     }
+                } catch(error) {
+                    console.error('Error renaming chat:', error);
+                    alert('An error occurred while renaming.');
                 }
-                 renderChatHistorySidebar();
-            };
-            
-            input.addEventListener('blur', saveRename);
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    input.blur();
-                } else if (e.key === 'Escape') {
-                    input.value = currentTitle;
-                    input.blur();
-                }
-            });
+            }
         }
 
-        function deleteChat(chatId) {
-            if (confirm('Are you sure you want to delete this chat?')) {
-                chatHistory = chatHistory.filter(c => c.id !== chatId);
-                localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-
-                if (currentChatId === chatId) {
-                    startNewChat();
-                } else {
-                    renderChatHistorySidebar();
+        async function deleteChat(chatId) {
+            if (confirm('Are you sure you want to delete this chat? This will be permanent.')) {
+                 try {
+                    const response = await fetch(`/api/chats/${chatId}`, { method: 'DELETE' });
+                    if(response.ok) {
+                        if (currentChatId === chatId) {
+                            startNewChat();
+                        }
+                        loadChatsFromDB(); // Refresh from DB
+                    } else {
+                        alert('Failed to delete chat.');
+                    }
+                } catch(error) {
+                     console.error('Error deleting chat:', error);
+                     alert('An error occurred while deleting.');
                 }
             }
         }
@@ -2060,8 +2073,7 @@
 
             populateLanguages();
             applyLanguage(currentLang);
-            loadChatHistory();
-            renderChatHistorySidebar();
+            loadChatsFromDB(); // <-- Changed from loadChatHistory()
             
             fetchAndDisplayUserInfo();
             
