@@ -17,3 +17,4 @@ pymongo
 google_auth_oauthlib
 flask_login
 flask_mail
+gemini-2.5-flash
