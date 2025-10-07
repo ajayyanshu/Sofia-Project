@@ -515,7 +515,7 @@ def chat():
 
         if not ai_response:
             print("Routing to Gemini (Sofia AI)...")
-            api_used, model_logged = "Gemini", "gemini-1.5-flash-latest"
+            api_used, model_logged = "Gemini", "gemini-2.5-pro"
             model = genai.GenerativeModel(model_logged)
 
             prompt_parts = [user_message] if user_message else []
