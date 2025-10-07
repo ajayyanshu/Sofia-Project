@@ -508,10 +508,10 @@ def chat():
                 print("Routing to Groq...")
                 ai_response = call_api("https://api.groq.com/openai/v1/chat/completions",
                                        {"Authorization": f"Bearer {GROQ_API_KEY}"},
-                                       {"model": "gemma-7b-it", "messages": openai_history},
+                                       {"model": "llama-3.1-8b-instant", "messages": openai_history},
                                        "Groq")
                 if ai_response:
-                    api_used, model_logged = "Groq", "gemma-7b-it"
+                    api_used, model_logged = "Groq", "llama-3.1-8b-instant"
 
         if not ai_response:
             print("Routing to Gemini (Sofia AI)...")
