@@ -17,4 +17,3 @@ pymongo
 google_auth_oauthlib
 flask_login
 flask_mail
-langchain-qroq
