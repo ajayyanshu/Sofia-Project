@@ -37,7 +37,7 @@ if SECRET_KEY == "dev-secret-key":
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
-OPENROUTER_API_KEY_V3 = os.environ.get("OPENROUTER_API_KEY_V3")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY_V3")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email configuration
 
@@ -495,9 +495,9 @@ def chat():
         is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
 
         if not is_multimodal and user_message.strip():
-            if OPENROUTER_API_KEY_V3:
+            if OPENROUTER_API_KEY:
                 print("Routing to OpenRouter...")
-                ai_response = call_api("https://openrouter.ai/api/v1/chat/completions",
+                ai_response = call_api("https://api.deepseek.com/chat/completions",  # Official DeepSeek URL",
                                        {"Authorization": f"Bearer {OPENROUTER_API_KEY_V3}"},
                                        {"model": "deepseek/deepseek-chat", "messages": openai_history},
                                        "OpenRouter")
