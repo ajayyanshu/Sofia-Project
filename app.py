@@ -498,11 +498,11 @@ def chat():
             if OPENROUTER_API_KEY:
                 print("Routing to OpenRouter...")
                 ai_response = call_api("https://api.deepseek.com/chat/completions",  # Official DeepSeek URL",
-                                       {"Authorization": f"Bearer {OPENROUTER_API_KEY_V3}"},
+                                       {"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
                                        {"model": "deepseek/deepseek-chat", "messages": openai_history},
-                                       "OpenRouter")
+                                       "DeepSeek")
                 if ai_response:
-                    api_used, model_logged = "OpenRouter", "deepseek/deepseek-chat"
+                    api_used, model_logged = "DeepSeek" , "deepseek-chat"
 
             if not ai_response and GROQ_API_KEY:
                 print("Routing to Groq...")
