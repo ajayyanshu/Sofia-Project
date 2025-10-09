@@ -481,7 +481,7 @@
 
         <div class="p-4 border-t border-gray-200 relative">
              <button id="user-menu-btn" class="sidebar-item w-full text-left">
-                <img src="https://placehold.co/32x32/E2E8F0/4A5568?text=A" alt="User Avatar" class="h-8 w-8 rounded-full">
+                <img id="sidebar-user-avatar" src="https://placehold.co/32x32/E2E8F0/4A5568?text=S" alt="User Avatar" class="h-8 w-8 rounded-full">
                 <div>
                     <span id="sidebar-username">Loading...</span>
                     <div class="text-xs text-gray-500 dark:text-gray-400" id="sidebar-user-plan">Free</div>
@@ -1986,20 +1986,26 @@
                 
                 updateUsageUI();
 
+                let userInitial = 'U';
+                let displayName = 'User';
+
                 if(userData.name) {
-                    document.getElementById('profile-name').textContent = userData.name;
-                    document.getElementById('sidebar-username').textContent = userData.name;
-                    menuUsername.textContent = userData.name;
+                    displayName = userData.name;
+                    userInitial = userData.name.charAt(0).toUpperCase();
                 } else if (userData.email) {
-                    const nameFromEmail = userData.email.split('@')[0];
-                    document.getElementById('profile-name').textContent = nameFromEmail;
-                    document.getElementById('sidebar-username').textContent = nameFromEmail;
-                    menuUsername.textContent = nameFromEmail;
-                } else {
-                     document.getElementById('profile-name').textContent = 'User';
-                     document.getElementById('sidebar-username').textContent = 'User';
-                     menuUsername.textContent = 'User';
+                    displayName = userData.email.split('@')[0];
+                    userInitial = userData.email.charAt(0).toUpperCase();
                 }
+                
+                document.getElementById('profile-name').textContent = displayName;
+                document.getElementById('sidebar-username').textContent = displayName;
+                menuUsername.textContent = displayName;
+                
+                const avatarImg = document.getElementById('sidebar-user-avatar');
+                if (avatarImg) {
+                    avatarImg.src = `https://placehold.co/32x32/E2E8F0/4A5568?text=${userInitial}`;
+                }
+
 
                 if(userData.email) {
                      document.getElementById('profile-email').textContent = userData.email;
@@ -2035,6 +2041,10 @@
                 document.getElementById('profile-name').textContent = 'Error loading user';
                 document.getElementById('profile-email').textContent = 'Please refresh';
                 document.getElementById('sidebar-username').textContent = 'Error';
+                const avatarImg = document.getElementById('sidebar-user-avatar');
+                if (avatarImg) {
+                    avatarImg.src = `https://placehold.co/32x32/E2E8F0/4A5568?text=!`;
+                }
             }
         }
 
