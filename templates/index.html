@@ -699,6 +699,108 @@
         let isAiLiveEngineLoading = false;
         let isAiLiveEngineReady = false;
         let predictionInterval = null;
+        const sofiaAvatarBase64 = "data:image/png;base64,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";
+
+
+        // --- Element Selectors ---
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const temporaryChatBtn = document.getElementById('temporary-chat-btn');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const sidebar = document.getElementById('sidebar');
+        const menuBtn = document.getElementById('menu-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const welcomeMessageContainer = document.getElementById('welcome-message-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const addBtn = document.getElementById('add-btn');
+        const addMenu = document.getElementById('add-menu');
+        const uploadFileBtn = document.getElementById('upload-file-btn');
+        const fileInput = document.getElementById('file-input');
+        const filePreviewContainer = document.getElementById('file-preview-container');
+        const webSearchToggleBtn = document.getElementById('web-search-toggle-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const voiceModeBtn = document.getElementById('voice-mode-btn');
+        const modeIndicatorContainer = document.getElementById('mode-indicator-container');
+        const voiceOverlay = document.getElementById('voice-overlay');
+        const voiceStatusText = document.getElementById('voice-status-text');
+        const voiceInterimTranscript = document.getElementById('voice-interim-transcript');
+        const voiceVisualizer = document.getElementById('voice-visualizer');
+        const endVoiceBtn = document.getElementById('end-voice-btn');
+        const userMenuBtn = document.getElementById('user-menu-btn');
+        const userMenu = document.getElementById('user-menu');
+        const settingsMenuItem = document.getElementById('settings-menu-item');
+        const chatHistoryContainer = document.getElementById('chat-history-container');
+        const searchHistoryInput = document.getElementById('search-history-input');
+        const tempChatBanner = document.getElementById('temp-chat-banner');
+        const saveToDbBtn = document.getElementById('save-to-db-btn');
+
+        // Settings Modal
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const closeSettingsBtnDesktop = document.getElementById('close-settings-btn-desktop');
+        const generalTabBtn = document.getElementById('general-tab-btn');
+        const profileTabBtn = document.getElementById('profile-tab-btn');
+        const usageTabBtn = document.getElementById('usage-tab-btn');
+        const generalSettingsContent = document.getElementById('general-settings-content');
+        const profileSettingsContent = document.getElementById('profile-settings-content');
+        const usageSettingsContent = document.getElementById('usage-settings-content');
+        const settingsContentTitle = document.getElementById('settings-content-title');
+        const languageSelect = document.getElementById('language-select');
+        const themeBtns = document.querySelectorAll('.theme-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const deleteAccountBtn = document.getElementById('delete-account-btn');
+        const logoutMenuItem = document.getElementById('logout-menu-item');
+        const emailVerificationStatusText = document.getElementById('email-verification-status-text');
+        const verifyEmailBtn = document.getElementById('verify-email-btn');
+
+
+        // Library Modal
+        const libraryBtn = document.getElementById('library-btn');
+        const libraryModal = document.getElementById('library-modal');
+        const closeLibraryBtn = document.getElementById('close-library-btn');
+        const libraryGrid = document.getElementById('library-grid');
+        const libraryEmptyMsg = document.getElementById('library-empty-msg');
+        
+        // AI Live Modal
+        const aiLiveBtn = document.getElementById('ai-live-btn');
+        const aiLiveModal = document.getElementById('ai-live-modal');
+        const closeAILiveBtn = document.getElementById('close-ai-live-btn');
+        const aiLiveStatus = document.getElementById('ai-live-status');
+        const aiLiveVideo = document.getElementById('ai-live-video');
+        const aiLiveCanvas = document.getElementById('ai-live-canvas');
+        
+        // Plan & Usage Elements
+        const upgradePlanSidebarBtn = document.getElementById('upgrade-plan-sidebar-btn');
+        const menuUsername = document.getElementById('menu-username');
+        const sidebarUserPlan = document.getElementById('sidebar-user-plan');
+        const sidebarUsageDisplay = document.getElementById('sidebar-usage-display');
+        const planTitle = document.getElementById('plan-title');
+        const usageCounter = document.getElementById('usage-counter');
+        const usageProgressBar = document.getElementById('usage-progress-bar');
+        const upgradeSection = document.getElementById('upgrade-section');
+        const premiumSection = document.getElementById('premium-section');
+        const razorpayBtn = document.getElementById('razorpay-btn');
+        const usagePlanSection = document.getElementById('usage-plan-section');
+
+
+        // --- Global State ---
+        const markdownConverter = new showdown.Converter();
+        let fileData = null;
+        let fileType = null;
+        let fileInfoForDisplay = null;
+        let currentMode = null; 
+        let recognition;
+        let isVoiceConversationActive = false;
+        let isTemporaryChatActive = false;
+        let chatHistory = [];
+        let currentChat = [];
+        let currentChatId = null;
+        let aiLiveModel = null;
+        let lastAnnouncedObj = '';
+        let stream = null; // To hold the camera stream
+        let isAiLiveEngineLoading = false;
+        let isAiLiveEngineReady = false;
+        let predictionInterval = null;
         
         // Plan & Usage State
         let usageCounts = {
@@ -1095,7 +1197,7 @@
             } else if (sender === 'ai') {
                 const aiMessageContainer = document.createElement('div');
                 aiMessageContainer.className = 'ai-message-container';
-                const avatar = `<div class="ai-avatar"><img src="image_cff523.png" alt="Sofia AI Avatar" class="w-full h-full"></div>`;
+                const avatar = `<div class="ai-avatar"><img src="${sofiaAvatarBase64}" alt="Sofia AI Avatar" class="w-full h-full"></div>`;
                 const messageBubble = document.createElement('div');
                 messageBubble.className = 'message-bubble ai-message';
                 
@@ -1186,7 +1288,7 @@
             const animatedAvatarHTML = `
                 <div class="ai-avatar-animated">
                     <div class="orbiting-circle"></div>
-                     <img src="image_cff523.png" alt="Sofia AI Avatar" class="w-8 h-8 rounded-full">
+                     <img src="${sofiaAvatarBase64}" alt="Sofia AI Avatar" class="w-8 h-8 rounded-full">
                 </div>
                 <span class="text-gray-600 font-medium ml-2">Just a sec...</span>
             `;
