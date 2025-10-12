@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sofia 2.0 - AI Chatbot</title>
+    <title>Sofia AI - AI Assistance </title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Showdown library to render Markdown -->
@@ -273,7 +273,7 @@
                 </div>
                 <nav class="flex sm:flex-col sm:space-y-2 mt-4 sm:mt-0">
                     <a href="#" id="general-tab-btn" class="settings-tab-btn flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-3 p-2 rounded-lg bg-gray-100 text-gray-800 font-semibold active">
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.485.4.665 1.066.26 1.431l-1.296 2.247a1.125 1.125 0 01-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 01-.26-1.431l1.296-2.247a1.125 1.125 0 011.37-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.485.4.665 1.066.26 1.431l-1.296 2.247a1.125 1.125 0 01-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 01-.26-1.431l1.296-2.247a1.125 1.125 0 011.37-.49l1.217.456c.355.133.75.072 1.076.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         <span>General</span>
                     </a>
                     <a href="#" id="profile-tab-btn" class="settings-tab-btn flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-3 p-2 rounded-lg text-gray-600 hover:bg-gray-100">
@@ -437,13 +437,13 @@
     <div id="ai-live-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full h-full sm:h-[90vh] sm:max-w-6xl flex flex-col relative">
              <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-xl font-bold">AI Live View</h2>
-                <button id="close-ai-live-btn" class="text-gray-400 hover:text-gray-600">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">AI Live View</h2>
+                <button id="close-ai-live-btn" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-white">
                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
             <div class="flex-1 p-0 sm:p-4 text-center flex flex-col">
-                <p id="ai-live-status" class="mb-4 px-4 sm:px-0">Initializing AI model and camera...</p>
+                <p id="ai-live-status" class="mb-4 px-4 sm:px-0 text-gray-600 dark:text-gray-300">Initializing AI model and camera...</p>
                 <div class="relative w-full flex-1 bg-gray-900 sm:rounded-lg overflow-hidden">
                     <video id="ai-live-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
                     <canvas id="ai-live-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
@@ -501,7 +501,7 @@
                 <div class="border-t my-2 border-gray-200 dark:border-gray-700"></div>
                 <a href="#" id="settings-menu-item" class="menu-item w-full text-left">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-gray-500">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.485.4.665 1.066.26 1.431l-1.296 2.247a1.125 1.125 0 01-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 01-.26-1.431l1.296-2.247a1.125 1.125 0 011.37-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.485.4.665 1.066.26 1.431l-1.296 2.247a1.125 1.125 0 01-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 01-1.37-.49l-1.296-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 01-.26-1.431l1.296-2.247a1.125 1.125 0 011.37-.49l1.217.456c.355.133.75.072 1.076.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28z" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <span class="text-sm font-medium text-gray-700" data-lang="settings">Settings</span>
@@ -529,7 +529,7 @@
                 <button id="menu-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Menu">
                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
-                <span class="font-bold text-xl text-indigo-600" data-lang="sofiaTitle">Sofia 2.0</span>
+                <span class="font-bold text-xl text-indigo-600" data-lang="sofiaTitle">Sofia AI</span>
             </div>
             <button id="temporary-chat-btn" class="p-2 text-gray-500 hover:text-gray-700 transition-colors" title="Start a temporary chat">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -833,8 +833,8 @@
         // --- Language and Theme Logic ---
         let currentLang = 'en';
         const translations = {
-            'en': { settings: 'Settings', general: 'General', profile: 'Profile', theme: 'Theme', light: 'Light', dark: 'Dark', system: 'System', language: 'Language', profileImage: 'Profile Image', upload: 'Upload', username: 'Username', newChat: 'New chat', library: 'Library', chatHistory: 'Chat History', chatHistoryEmpty: 'Your chat history will appear here.', help: 'Help', logOut: 'Log out', welcome: 'What can I help with?', addFiles: 'Add photos & file', askAnything: 'Ask anything', search: 'Search', sofiaTitle: 'Sofia 2.0' },
-            'es': { settings: 'Ajustes', general: 'General', profile: 'Perfil', theme: 'Tema', light: 'Claro', dark: 'Oscuro', system: 'Sistema', language: 'Idioma', profileImage: 'Imagen de perfil', upload: 'Subir', username: 'Nombre de usuario', newChat: 'Nuevo chat', library: 'Biblioteca', chatHistory: 'Historial de chat', chatHistoryEmpty: 'Tu historial de chat aparecerá aquí.', help: 'Ayuda', logOut: 'Cerrar sesión', welcome: '¿En qué puedo ayudarte?', addFiles: 'Añadir fotos y archivos', askAnything: 'Pregunta cualquier cosa', search: 'Buscar', sofiaTitle: 'Sofia 2.0' },
+            'en': { settings: 'Settings', general: 'General', profile: 'Profile', theme: 'Theme', light: 'Light', dark: 'Dark', system: 'System', language: 'Language', profileImage: 'Profile Image', upload: 'Upload', username: 'Username', newChat: 'New chat', library: 'Library', chatHistory: 'Chat History', chatHistoryEmpty: 'Your chat history will appear here.', help: 'Help', logOut: 'Log out', welcome: 'What can I help with?', addFiles: 'Add photos & file', askAnything: 'Ask anything', search: 'Search', sofiaTitle: 'Sofia AI' },
+            'es': { settings: 'Ajustes', general: 'General', profile: 'Perfil', theme: 'Tema', light: 'Claro', dark: 'Oscuro', system: 'Sistema', language: 'Idioma', profileImage: 'Imagen de perfil', upload: 'Subir', username: 'Nombre de usuario', newChat: 'Nuevo chat', library: 'Biblioteca', chatHistory: 'Historial de chat', chatHistoryEmpty: 'Tu historial de chat aparecerá aquí.', help: 'Ayuda', logOut: 'Cerrar sesión', welcome: '¿En qué puedo ayudarte?', addFiles: 'Añadir fotos y archivos', askAnything: 'Pregunta cualquier cosa', search: 'Buscar', sofiaTitle: 'Sofia AI' },
         };
 
         const languages = { "en": "English", "es": "Spanish" };
@@ -1152,7 +1152,7 @@
                     const originalContent = button.innerHTML;
                     if (navigator.share) {
                         try {
-                            await navigator.share({ title: 'Sofia 2.0 AI Chat', text: text });
+                            await navigator.share({ title: 'Sofia AI Chat', text: text });
                         } catch (error) {
                             console.error('Error sharing:', error);
                             navigator.clipboard.writeText(text);
@@ -1934,7 +1934,7 @@
                 "key": "rzp_test_YourKeyHere", // IMPORTANT: Replace with your Razorpay Test Key ID
                 "amount": "9900", // Amount in the smallest currency unit (99 * 100 = 9900 paise)
                 "currency": "INR",
-                "name": "Sofia 2.0 AI",
+                "name": "Sofia AI",
                 "description": "Premium Plan - Monthly",
                 "image": "https://placehold.co/100x100/3b82f6/FFFFFF?text=S",
                 // "order_id": "order_xyz", // IMPORTANT: This should be generated from your backend for security
