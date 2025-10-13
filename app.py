@@ -23,7 +23,8 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 from flask_mail import Mail, Message
-from werkzeug.security import generate_password_hash, check_password_hash
+# werkzeug.security is no longer needed for hashing
+# from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, template_folder='templates')
 CORS(app)
@@ -37,7 +38,6 @@ if SECRET_KEY == "dev-secret-key":
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY_V3")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email configuration
 
@@ -78,6 +78,7 @@ else:
 # --- MongoDB Configuration ---
 mongo_client = None
 chat_history_collection = None
+temporary_chat_collection = None
 users_collection = None
 if MONGO_URI:
     try:
@@ -88,6 +89,7 @@ if MONGO_URI:
         print("✅ Successfully pinged MongoDB.")
         # --- End of added code ---
         chat_history_collection = db.get_collection("chat_history")
+        temporary_chat_collection = db.get_collection("temporary_chats")
         users_collection = db.get_collection("users")
         print("✅ Successfully connected to MongoDB.")
     except Exception as e:
@@ -199,10 +201,11 @@ def api_signup():
     if users_collection.find_one({"email": email}):
         return jsonify({'success': False, 'error': 'An account with this email already exists.'}), 409
 
-    hashed_password = generate_password_hash(password)
+    # Storing the password in plain text. This is NOT recommended.
+    # hashed_password = generate_password_hash(password)
 
     new_user = {
-        "name": name, "email": email, "password": hashed_password,
+        "name": name, "email": email, "password": password,
         "isAdmin": email == ADMIN_EMAIL, "isPremium": False, "is_verified": True, # User is verified by default now
         "session_id": str(uuid.uuid4()),
         "usage_counts": { "messages": 0, "webSearches": 0 },
@@ -228,7 +231,8 @@ def api_login():
         
     user_data = users_collection.find_one({"email": email})
 
-    if user_data and check_password_hash(user_data.get('password'), password):
+    # Plain text password comparison.
+    if user_data and user_data.get('password') == password:
         # Removed the 'is_verified' check
         new_session_id = str(uuid.uuid4())
         users_collection.update_one({'_id': user_data['_id']}, {'$set': {'session_id': new_session_id}})
@@ -291,11 +295,12 @@ def reset_password():
     if not user:
         return jsonify({'success': False, 'error': 'Invalid or expired token.'}), 400
         
-    hashed_password = generate_password_hash(new_password)
+    # Storing the new password in plain text.
+    # hashed_password = generate_password_hash(new_password)
     users_collection.update_one(
         {'_id': user['_id']},
         {
-            '$set': {'password': hashed_password},
+            '$set': {'password': new_password},
             '$unset': {'password_reset_token': "", 'reset_token_expires_at': ""}
         }
     )
@@ -495,15 +500,7 @@ def chat():
         is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
 
         if not is_multimodal and user_message.strip():
-            if OPENROUTER_API_KEY:
-                print("Routing to OpenRouter...")
-                ai_response = call_api("https://api.deepseek.com/chat/completions",  # Official DeepSeek URL",
-                                       {"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
-                                       {"model": "deepseek/deepseek-chat", "messages": openai_history},
-                                       "DeepSeek")
-                if ai_response:
-                    api_used, model_logged = "DeepSeek" , "deepseek-chat"
-
+            ai_response = None
             if not ai_response and GROQ_API_KEY:
                 print("Routing to Groq...")
                 ai_response = call_api("https://api.groq.com/openai/v1/chat/completions",
@@ -554,19 +551,34 @@ def chat():
                     print(f"Error calling Gemini API on retry: {e2}")
                     ai_response = "Sorry, I encountered an error trying to respond."
 
-        if chat_history_collection is not None and ai_response:
+        if ai_response:
             try:
-                chat_document = {
-                    "user_id": ObjectId(current_user.id), "user_message": user_message, 
-                    "ai_response": ai_response, "api_used": api_used, "model_used": model_logged,
-                    "has_file": bool(file_data), "file_type": file_type if file_data else None,
-                    "timestamp": datetime.utcnow()
-                }
-                
-                if file_data:
-                    chat_document['file_data'] = file_data
-
-                chat_history_collection.insert_one(chat_document)
+                # If there's a file, save the full chat record to the main history
+                if file_data and chat_history_collection is not None:
+                    chat_document = {
+                        "user_id": ObjectId(current_user.id),
+                        "user_message": user_message,
+                        "ai_response": ai_response,
+                        "api_used": api_used,
+                        "model_used": model_logged,
+                        "has_file": True,
+                        "file_type": file_type,
+                        "file_data": file_data,  # Save the file data
+                        "timestamp": datetime.utcnow()
+                    }
+                    chat_history_collection.insert_one(chat_document)
+                # If it's a text-only chat, save to the temporary collection
+                elif not file_data and temporary_chat_collection is not None:
+                    # This action saves the temporary chat to the database
+                    temp_chat_document = {
+                        "user_id": ObjectId(current_user.id),
+                        "user_message": user_message,
+                        "ai_response": ai_response,
+                        "api_used": api_used,
+                        "model_used": model_logged,
+                        "timestamp": datetime.utcnow()
+                    }
+                    temporary_chat_collection.insert_one(temp_chat_document)
 
             except Exception as e:
                 print(f"Error saving chat to MongoDB: {e}")
