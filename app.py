@@ -472,12 +472,14 @@ def chat():
         user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
+        is_temporary = data.get('isTemporary', False)
         ai_response, api_used, model_logged = None, "", ""
 
         gemini_history = []
         openai_history = []
-        if chat_history_collection is not None:
+        if chat_history_collection is not None and not is_temporary:
             try:
+                # Fetch history only for normal chats
                 recent_chats = chat_history_collection.find(
                     {"user_id": ObjectId(current_user.id)}
                 ).sort("timestamp", -1).limit(10)
@@ -553,23 +555,8 @@ def chat():
 
         if ai_response:
             try:
-                # If there's a file, save the full chat record to the main history
-                if file_data and chat_history_collection is not None:
-                    chat_document = {
-                        "user_id": ObjectId(current_user.id),
-                        "user_message": user_message,
-                        "ai_response": ai_response,
-                        "api_used": api_used,
-                        "model_used": model_logged,
-                        "has_file": True,
-                        "file_type": file_type,
-                        "file_data": file_data,  # Save the file data
-                        "timestamp": datetime.utcnow()
-                    }
-                    chat_history_collection.insert_one(chat_document)
-                # If it's a text-only chat, save to the temporary collection
-                elif not file_data and temporary_chat_collection is not None:
-                    # This action saves the temporary chat to the database
+                # If it's a temporary chat, save to the temporary collection
+                if is_temporary and temporary_chat_collection is not None:
                     temp_chat_document = {
                         "user_id": ObjectId(current_user.id),
                         "user_message": user_message,
@@ -579,6 +566,21 @@ def chat():
                         "timestamp": datetime.utcnow()
                     }
                     temporary_chat_collection.insert_one(temp_chat_document)
+                # Otherwise (it's a normal chat), save to the main history collection
+                elif not is_temporary and chat_history_collection is not None:
+                    chat_document = {
+                        "user_id": ObjectId(current_user.id),
+                        "user_message": user_message,
+                        "ai_response": ai_response,
+                        "api_used": api_used,
+                        "model_used": model_logged,
+                        "has_file": bool(file_data),
+                        "file_type": file_type if file_data else None,
+                        "timestamp": datetime.utcnow()
+                    }
+                    if file_data:
+                        chat_document['file_data'] = file_data
+                    chat_history_collection.insert_one(chat_document)
 
             except Exception as e:
                 print(f"Error saving chat to MongoDB: {e}")
