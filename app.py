@@ -313,11 +313,15 @@ def reset_password():
 @login_required
 def get_user_info():
     """Provides user information to the front-end after login."""
+    user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
+    usage_counts = user_data.get('usage_counts', {"messages": 0, "webSearches": 0})
+    
     return jsonify({
         "name": current_user.name,
         "email": current_user.email,
         "isAdmin": current_user.isAdmin,
-        "isPremium": current_user.isPremium
+        "isPremium": current_user.isPremium,
+        "usageCounts": usage_counts
     })
 
 @app.route('/logout', methods=['POST'])
@@ -527,6 +531,7 @@ def chat():
                 'upgrade_required': True
             }), 429
             
+        # Increment the message count only for non-premium, non-admin users
         users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.messages': 1}})
 
     def extract_text_from_pdf(pdf_bytes):
