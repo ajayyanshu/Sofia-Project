@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sofia AI - AI Assistance </title>
+    <title>Sofia AI - AI Assistance</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Showdown library to render Markdown -->
@@ -442,9 +442,12 @@
                     <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <div class="flex-1 p-0 sm:p-4 text-center flex flex-col">
-                <p id="ai-live-status" class="mb-4 px-4 sm:px-0 text-gray-600 dark:text-gray-300">Initializing AI model and camera...</p>
-                <div class="relative w-full flex-1 bg-gray-900 sm:rounded-lg overflow-hidden">
+            <div class="flex-1 p-0 sm:p-4 flex flex-col items-center justify-center">
+                <div id="ai-live-status-container" class="flex flex-col items-center justify-center text-center p-4">
+                     <div id="ai-live-spinner" class="hidden w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                     <p id="ai-live-status" class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-200">Initializing AI model and camera...</p>
+                </div>
+                <div id="ai-live-video-container" class="relative w-full flex-1 bg-gray-900 sm:rounded-lg overflow-hidden hidden">
                     <video id="ai-live-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
                     <canvas id="ai-live-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
                 </div>
@@ -505,6 +508,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <span class="text-sm font-medium text-gray-700" data-lang="settings">Settings</span>
+                </a>
+                 <a href="#" id="download-history-menu-item" class="menu-item w-full text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-gray-500">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    <span class="text-sm font-medium text-gray-700">Download History</span>
                 </a>
                 <a href="#" class="menu-item w-full text-left">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-gray-500">
@@ -626,6 +635,7 @@
         const userMenuBtn = document.getElementById('user-menu-btn');
         const userMenu = document.getElementById('user-menu');
         const settingsMenuItem = document.getElementById('settings-menu-item');
+        const downloadHistoryMenuItem = document.getElementById('download-history-menu-item');
         const chatHistoryContainer = document.getElementById('chat-history-container');
         const searchHistoryInput = document.getElementById('search-history-input');
         const tempChatBanner = document.getElementById('temp-chat-banner');
@@ -665,6 +675,9 @@
         const aiLiveStatus = document.getElementById('ai-live-status');
         const aiLiveVideo = document.getElementById('ai-live-video');
         const aiLiveCanvas = document.getElementById('ai-live-canvas');
+        const aiLiveStatusContainer = document.getElementById('ai-live-status-container');
+        const aiLiveVideoContainer = document.getElementById('ai-live-video-container');
+        const aiLiveSpinner = document.getElementById('ai-live-spinner');
         
         // Plan & Usage Elements
         const upgradePlanSidebarBtn = document.getElementById('upgrade-plan-sidebar-btn');
@@ -787,6 +800,38 @@
         });
 
         saveToDbBtn.addEventListener('click', saveTemporaryChatToDB);
+        
+        downloadHistoryMenuItem.addEventListener('click', async (e) => {
+            e.preventDefault();
+            userMenu.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/save_chat_history', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(()=>({}));
+                    throw new Error(errorData.error || 'Failed to download history');
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'chat_history.html';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Could not download chat history. ' + error.message);
+            }
+        });
+
 
         // --- Settings Modal Logic ---
         function openSettingsModal() { settingsModal.classList.remove('hidden'); settingsModal.classList.add('flex'); }
@@ -1015,7 +1060,8 @@
                     body: JSON.stringify({
                         text: text,
                         fileData: currentFileData, 
-                        fileType: currentFileType
+                        fileType: currentFileType,
+                        isTemporary: isTemporaryChatActive
                     })
                 });
                 
@@ -1152,7 +1198,7 @@
                     const originalContent = button.innerHTML;
                     if (navigator.share) {
                         try {
-                            await navigator.share({ title: 'Sofia AI Chat', text: text });
+                            await navigator.share({ title: 'Sofia AI Assistance', text: text });
                         } catch (error) {
                             console.error('Error sharing:', error);
                             navigator.clipboard.writeText(text);
@@ -1766,6 +1812,11 @@
             addMenu.classList.add('hidden');
             aiLiveModal.classList.remove('hidden');
             aiLiveModal.classList.add('flex');
+
+            // Reset UI
+            aiLiveStatusContainer.classList.remove('hidden');
+            aiLiveVideoContainer.classList.add('hidden');
+            aiLiveSpinner.classList.remove('hidden');
             
             if (isAiLiveEngineReady) {
                 await startAILiveCamera();
@@ -1792,6 +1843,7 @@
             } catch (error) {
                 console.error("Failed to load AI Live scripts:", error);
                 aiLiveStatus.textContent = 'Failed to load AI engine. Please check your connection and try again.';
+                aiLiveSpinner.classList.add('hidden'); // Hide spinner on error
             } finally {
                 isAiLiveEngineLoading = false;
             }
@@ -1799,6 +1851,7 @@
 
         async function startAILiveCamera() {
              aiLiveStatus.textContent = 'Requesting camera access...';
+             aiLiveSpinner.classList.remove('hidden');
              try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: 'environment' }
@@ -1806,15 +1859,18 @@
                 aiLiveVideo.srcObject = stream;
                 aiLiveVideo.onloadeddata = () => {
                     if(aiLiveModel) {
-                       aiLiveStatus.textContent = 'AI is live. Point your camera at objects.';
+                       aiLiveStatusContainer.classList.add('hidden');
+                       aiLiveVideoContainer.classList.remove('hidden');
                        startPredictionLoop();
                     } else {
                        aiLiveStatus.textContent = 'Waiting for AI model...';
+                       aiLiveSpinner.classList.remove('hidden');
                     }
                 };
             } catch (err) {
                 console.error("getUserMedia error:", err);
                 aiLiveStatus.textContent = 'Camera access denied. Please allow camera access in your browser settings.';
+                aiLiveSpinner.classList.add('hidden');
             }
         }
         
@@ -1831,11 +1887,18 @@
             aiLiveModal.classList.remove('flex');
             const context = aiLiveCanvas.getContext('2d');
             context.clearRect(0, 0, aiLiveCanvas.width, aiLiveCanvas.height);
+            
+            // Reset UI for next time
+            aiLiveStatusContainer.classList.remove('hidden');
+            aiLiveVideoContainer.classList.add('hidden');
+            aiLiveSpinner.classList.add('hidden');
+            aiLiveStatus.textContent = 'Initializing AI model and camera...';
         }
         
         async function initializeAILiveModel() {
             if (!aiLiveModel) {
                 aiLiveStatus.textContent = 'Loading lightweight AI model...';
+                aiLiveSpinner.classList.remove('hidden');
                 aiLiveModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
             }
         }
@@ -2128,4 +2191,3 @@
     </script>
 </body>
 </html>
-
