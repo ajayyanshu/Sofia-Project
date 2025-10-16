@@ -79,6 +79,7 @@ else:
 mongo_client = None
 chat_history_collection = None
 temporary_chat_collection = None
+conversations_collection = None
 users_collection = None
 if MONGO_URI:
     try:
@@ -90,6 +91,7 @@ if MONGO_URI:
         # --- End of added code ---
         chat_history_collection = db.get_collection("chat_history")
         temporary_chat_collection = db.get_collection("temporary_chats")
+        conversations_collection = db.get_collection("conversations")
         users_collection = db.get_collection("users")
         print("✅ Successfully connected to MongoDB.")
     except Exception as e:
@@ -385,6 +387,118 @@ def status():
     """Provides a simple status check for the server."""
     return jsonify({'status': 'ok'}), 200
 
+# --- Chat History CRUD API ---
+
+@app.route('/api/chats', methods=['GET'])
+@login_required
+def get_chats():
+    if conversations_collection is None:
+        return jsonify([])
+    try:
+        user_id = ObjectId(current_user.id)
+        # Sort by timestamp descending to get most recent chats first
+        chats_cursor = conversations_collection.find({"user_id": user_id}).sort("timestamp", -1)
+        chats_list = []
+        for chat in chats_cursor:
+            chats_list.append({
+                "id": str(chat["_id"]),
+                "title": chat.get("title", "Untitled Chat"),
+                "messages": chat.get("messages", [])
+            })
+        return jsonify(chats_list)
+    except Exception as e:
+        print(f"Error fetching chats: {e}")
+        return jsonify({"error": "Could not fetch chat history"}), 500
+
+@app.route('/api/chats', methods=['POST'])
+@login_required
+def save_chat():
+    if conversations_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    
+    data = request.get_json()
+    chat_id = data.get('id')
+    messages = data.get('messages', [])
+    title = data.get('title')
+
+    if not messages:
+        return jsonify({"status": "empty chat, not saved"})
+
+    if not title:
+        first_user_message = next((msg.get('text') for msg in messages if msg.get('sender') == 'user'), "Untitled Chat")
+        title = first_user_message[:40] if first_user_message else "Untitled Chat"
+
+    user_id = ObjectId(current_user.id)
+    
+    try:
+        if chat_id:
+            # Update existing chat
+            conversations_collection.update_one(
+                {"_id": ObjectId(chat_id), "user_id": user_id},
+                {
+                    "$set": {
+                        "messages": messages,
+                        "title": title,
+                        "timestamp": datetime.utcnow()
+                    }
+                }
+            )
+            return jsonify({"id": chat_id})
+        else:
+            # Create new chat
+            chat_document = {
+                "user_id": user_id,
+                "title": title,
+                "messages": messages,
+                "timestamp": datetime.utcnow()
+            }
+            result = conversations_collection.insert_one(chat_document)
+            new_id = str(result.inserted_id)
+            return jsonify({"id": new_id, "title": title})
+    except Exception as e:
+        print(f"Error saving chat: {e}")
+        return jsonify({"error": "Could not save chat"}), 500
+
+@app.route('/api/chats/<chat_id>', methods=['PUT'])
+@login_required
+def rename_chat(chat_id):
+    if conversations_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    
+    data = request.get_json()
+    new_title = data.get('title')
+    if not new_title:
+        return jsonify({"error": "New title not provided"}), 400
+
+    try:
+        result = conversations_collection.update_one(
+            {"_id": ObjectId(chat_id), "user_id": ObjectId(current_user.id)},
+            {"$set": {"title": new_title}}
+        )
+        if result.matched_count == 0:
+            return jsonify({"error": "Chat not found or permission denied"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error renaming chat: {e}")
+        return jsonify({"error": "Could not rename chat"}), 500
+
+@app.route('/api/chats/<chat_id>', methods=['DELETE'])
+@login_required
+def delete_chat_by_id(chat_id):
+    if conversations_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    
+    try:
+        result = conversations_collection.delete_one(
+            {"_id": ObjectId(chat_id), "user_id": ObjectId(current_user.id)}
+        )
+        if result.deleted_count == 0:
+            return jsonify({"error": "Chat not found or permission denied"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error deleting chat: {e}")
+        return jsonify({"error": "Could not delete chat"}), 500
+
 # --- Chat Logic ---
 @app.route('/chat', methods=['POST'])
 @login_required
@@ -554,36 +668,10 @@ def chat():
                     ai_response = "Sorry, I encountered an error trying to respond."
 
         if ai_response:
-            try:
-                # If it's a temporary chat, save to the temporary collection
-                if is_temporary and temporary_chat_collection is not None:
-                    temp_chat_document = {
-                        "user_id": ObjectId(current_user.id),
-                        "user_message": user_message,
-                        "ai_response": ai_response,
-                        "api_used": api_used,
-                        "model_used": model_logged,
-                        "timestamp": datetime.utcnow()
-                    }
-                    temporary_chat_collection.insert_one(temp_chat_document)
-                # Otherwise (it's a normal chat), save to the main history collection
-                elif not is_temporary and chat_history_collection is not None:
-                    chat_document = {
-                        "user_id": ObjectId(current_user.id),
-                        "user_message": user_message,
-                        "ai_response": ai_response,
-                        "api_used": api_used,
-                        "model_used": model_logged,
-                        "has_file": bool(file_data),
-                        "file_type": file_type if file_data else None,
-                        "timestamp": datetime.utcnow()
-                    }
-                    if file_data:
-                        chat_document['file_data'] = file_data
-                    chat_history_collection.insert_one(chat_document)
-
-            except Exception as e:
-                print(f"Error saving chat to MongoDB: {e}")
+            # NOTE: Chat saving is now handled by the frontend via the POST /api/chats endpoint.
+            # The logic to save individual messages here is disabled to prevent data duplication
+            # and conflicts with the new conversation-based storage model.
+            pass
 
         return jsonify({'response': ai_response})
 
@@ -597,14 +685,14 @@ def chat():
 @app.route('/save_chat_history', methods=['POST'])
 @login_required
 def save_chat_history():
-    """Fetches user's chat history and returns it as an HTML file."""
-    if chat_history_collection is None:
+    """Fetches all of user's chat conversations and returns them as an HTML file."""
+    if conversations_collection is None:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
 
     try:
         user_id = ObjectId(current_user.id)
         user_name = current_user.name
-        history_cursor = chat_history_collection.find({"user_id": user_id}).sort("timestamp", 1)
+        history_cursor = conversations_collection.find({"user_id": user_id}).sort("timestamp", 1)
 
         # Start building the HTML content
         html_content = f"""
@@ -636,6 +724,12 @@ def save_chat_history():
             border-bottom: 2px solid #ccc;
             padding-bottom: 10px;
         }}
+        h3 {{
+            background-color: #e4e6eb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 30px;
+        }}
         .message-container {{
             margin-bottom: 20px;
         }}
@@ -648,6 +742,7 @@ def save_chat_history():
         .user-message-container {{
             display: flex;
             justify-content: flex-end;
+            margin-top: 10px;
         }}
         .user-message .message {{
             background-color: #0084ff;
@@ -657,19 +752,13 @@ def save_chat_history():
         .ai-message-container {{
             display: flex;
             justify-content: flex-start;
+            margin-top: 10px;
         }}
         .ai-message .message {{
             background-color: #e4e6eb;
             color: #050505;
             border-bottom-left-radius: 4px;
         }}
-        .timestamp {{
-            font-size: 0.75rem;
-            color: #65676b;
-            margin: 5px 0;
-        }}
-        .user-message .timestamp {{ text-align: right; }}
-        .ai-message .timestamp {{ text-align: left; }}
         .label {{
             font-weight: bold;
             font-size: 0.8rem;
@@ -686,28 +775,32 @@ def save_chat_history():
         <h2>User: {user_name}</h2>
 """
 
-        # Loop through chat history and append to HTML
-        for chat in history_cursor:
-            user_msg = chat.get('user_message', '').replace('<', '&lt;').replace('>', '&gt;')
-            ai_msg = chat.get('ai_response', '').replace('<', '&lt;').replace('>', '&gt;')
-            timestamp = chat.get('timestamp').strftime("%Y-%m-%d %H:%M:%S UTC")
+        # Loop through each conversation
+        for conversation in history_cursor:
+            conv_title = conversation.get('title', 'Untitled Chat').replace('<', '&lt;').replace('>', '&gt;')
+            html_content += f"<h3>Conversation: {conv_title}</h3>"
 
-            html_content += f"""
+            # Loop through messages in the conversation
+            for message in conversation.get('messages', []):
+                sender = message.get('sender')
+                text = message.get('text', '').replace('<', '&lt;').replace('>', '&gt;')
+
+                if sender == 'user':
+                    html_content += f"""
         <div class="message-container user-message-container">
             <div class="user-message">
                 <div class="label">You</div>
-                <div class="message">{user_msg}</div>
-                <div class="timestamp">{timestamp}</div>
+                <div class="message">{text}</div>
             </div>
-        </div>
+        </div>"""
+                elif sender == 'ai':
+                    html_content += f"""
         <div class="message-container ai-message-container">
             <div class="ai-message">
                 <div class="label">Sofia AI</div>
-                <div class="message">{ai_msg}</div>
-                <div class="timestamp">{timestamp}</div>
+                <div class="message">{text}</div>
             </div>
-        </div>
-"""
+        </div>"""
 
         # Close HTML tags
         html_content += """
@@ -751,3 +844,4 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
