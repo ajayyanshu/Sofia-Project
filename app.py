@@ -14,7 +14,7 @@ import fitz  # PyMuPDF
 import google.generativeai as genai
 import requests
 from flask import (Flask, jsonify, render_template, request, session, redirect,
-                   url_for, flash)
+                   url_for, flash, make_response)
 from flask_cors import CORS
 from PIL import Image
 from pymongo import MongoClient
@@ -593,6 +593,139 @@ def chat():
         traceback.print_exc()
         return jsonify({'response': "Sorry, an internal error occurred."})
 
+# --- Save Chat History Route ---
+@app.route('/save_chat_history', methods=['POST'])
+@login_required
+def save_chat_history():
+    """Fetches user's chat history and returns it as an HTML file."""
+    if chat_history_collection is None:
+        return jsonify({'success': False, 'error': 'Database not configured.'}), 500
+
+    try:
+        user_id = ObjectId(current_user.id)
+        user_name = current_user.name
+        history_cursor = chat_history_collection.find({"user_id": user_id}).sort("timestamp", 1)
+
+        # Start building the HTML content
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat History for {user_name}</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }}
+        h1 {{
+            text-align: center;
+            color: #333;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 10px;
+        }}
+        .message-container {{
+            margin-bottom: 20px;
+        }}
+        .message {{
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 75%;
+            word-wrap: break-word;
+        }}
+        .user-message-container {{
+            display: flex;
+            justify-content: flex-end;
+        }}
+        .user-message .message {{
+            background-color: #0084ff;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }}
+        .ai-message-container {{
+            display: flex;
+            justify-content: flex-start;
+        }}
+        .ai-message .message {{
+            background-color: #e4e6eb;
+            color: #050505;
+            border-bottom-left-radius: 4px;
+        }}
+        .timestamp {{
+            font-size: 0.75rem;
+            color: #65676b;
+            margin: 5px 0;
+        }}
+        .user-message .timestamp {{ text-align: right; }}
+        .ai-message .timestamp {{ text-align: left; }}
+        .label {{
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: #65676b;
+            margin-bottom: 4px;
+        }}
+        .user-message .label {{ text-align: right; margin-right: 5px;}}
+        .ai-message .label {{ text-align: left; margin-left: 5px;}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chat History</h1>
+        <h2>User: {user_name}</h2>
+"""
+
+        # Loop through chat history and append to HTML
+        for chat in history_cursor:
+            user_msg = chat.get('user_message', '').replace('<', '&lt;').replace('>', '&gt;')
+            ai_msg = chat.get('ai_response', '').replace('<', '&lt;').replace('>', '&gt;')
+            timestamp = chat.get('timestamp').strftime("%Y-%m-%d %H:%M:%S UTC")
+
+            html_content += f"""
+        <div class="message-container user-message-container">
+            <div class="user-message">
+                <div class="label">You</div>
+                <div class="message">{user_msg}</div>
+                <div class="timestamp">{timestamp}</div>
+            </div>
+        </div>
+        <div class="message-container ai-message-container">
+            <div class="ai-message">
+                <div class="label">Sofia AI</div>
+                <div class="message">{ai_msg}</div>
+                <div class="timestamp">{timestamp}</div>
+            </div>
+        </div>
+"""
+
+        # Close HTML tags
+        html_content += """
+    </div>
+</body>
+</html>
+"""
+
+        # Create response and set headers for download
+        response = make_response(html_content)
+        response.headers["Content-Disposition"] = "attachment; filename=chat_history.html"
+        response.headers["Content-Type"] = "text/html"
+        return response
+
+    except Exception as e:
+        print(f"Error generating chat history HTML: {e}")
+        return jsonify({'success': False, 'error': 'Failed to generate chat history.'}), 500
+
 # --- Live AI Camera Feature (Backend) ---
 @app.route('/live_object_detection', methods=['POST'])
 @login_required
@@ -618,4 +751,3 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
