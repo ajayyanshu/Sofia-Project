@@ -518,7 +518,10 @@ def chat():
         if last_reset_date < today:
             users_collection.update_one(
                 {'_id': ObjectId(current_user.id)},
-                {'$set': {'usage_counts.messages': 0, 'last_usage_reset': today.strftime('%Y-%m-%d')}}
+                {'$set': {
+                    'usage_counts': {'messages': 0, 'webSearches': 0},
+                    'last_usage_reset': today.strftime('%Y-%m-%d')
+                }}
             )
             user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
         
@@ -849,4 +852,5 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
 
