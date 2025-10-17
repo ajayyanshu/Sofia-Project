@@ -81,6 +81,8 @@ chat_history_collection = None
 temporary_chat_collection = None
 conversations_collection = None
 users_collection = None
+library_collection = None # New collection for library items
+
 if MONGO_URI:
     try:
         mongo_client = MongoClient(MONGO_URI)
@@ -93,6 +95,7 @@ if MONGO_URI:
         temporary_chat_collection = db.get_collection("temporary_chats")
         conversations_collection = db.get_collection("conversations")
         users_collection = db.get_collection("users")
+        library_collection = db.get_collection("library_items") # Initialize the new collection
         print("✅ Successfully connected to MongoDB.")
     except Exception as e:
         print(f"CRITICAL ERROR: Could not connect to MongoDB. Error: {e}")
@@ -503,6 +506,133 @@ def delete_chat_by_id(chat_id):
         print(f"Error deleting chat: {e}")
         return jsonify({"error": "Could not delete chat"}), 500
 
+# --- Library CRUD API ---
+@app.route('/api/library', methods=['POST'])
+@login_required
+def upload_library_item():
+    if library_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in the request'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    filename = file.filename
+    file_content = file.read()
+    file_type = file.mimetype
+    file_size = len(file_content)
+
+    # Convert file content to base64 for storage in MongoDB
+    encoded_file_content = base64.b64encode(file_content).decode('utf-8')
+
+    # Basic content extraction for display/search
+    extracted_text = ""
+    if 'image' in file_type:
+        try:
+            img = Image.open(io.BytesIO(file_content))
+            # Optional: Use AI to describe image, or just store a placeholder
+            extracted_text = "Image file."
+            # For actual content, you'd integrate a vision model here.
+        except Exception as e:
+            print(f"Error processing image: {e}")
+    elif 'pdf' in file_type:
+        extracted_text = extract_text_from_pdf(file_content)
+    elif 'word' in file_type or file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        extracted_text = extract_text_from_docx(file_content)
+    elif 'text' in file_type:
+        extracted_text = file_content.decode('utf-8')
+    
+    library_item = {
+        "user_id": ObjectId(current_user.id),
+        "filename": filename,
+        "file_type": file_type,
+        "file_size": file_size,
+        "file_data": encoded_file_content, # Storing actual file data (base64)
+        "extracted_text": extracted_text[:1000], # Store first 1000 chars of extracted text
+        "timestamp": datetime.utcnow()
+    }
+
+    try:
+        result = library_collection.insert_one(library_item)
+        return jsonify({
+            "success": True, 
+            "id": str(result.inserted_id), 
+            "filename": filename,
+            "file_type": file_type,
+            "timestamp": library_item["timestamp"].isoformat()
+        })
+    except Exception as e:
+        print(f"Error uploading library item: {e}")
+        return jsonify({"error": "Could not save file to library"}), 500
+
+@app.route('/api/library', methods=['GET'])
+@login_required
+def get_library_items():
+    if library_collection is None:
+        return jsonify([])
+    try:
+        user_id = ObjectId(current_user.id)
+        items_cursor = library_collection.find({"user_id": user_id}).sort("timestamp", -1)
+        items_list = []
+        for item in items_cursor:
+            # Do not send full file_data in the list view for performance
+            items_list.append({
+                "id": str(item["_id"]),
+                "filename": item["filename"],
+                "file_type": item["file_type"],
+                "file_size": item["file_size"],
+                "timestamp": item["timestamp"].isoformat(),
+                "thumbnail_data": None # Placeholder for future thumbnail generation
+            })
+        return jsonify(items_list)
+    except Exception as e:
+        print(f"Error fetching library items: {e}")
+        return jsonify({"error": "Could not fetch library items"}), 500
+
+@app.route('/api/library/<item_id>', methods=['GET'])
+@login_required
+def get_library_item(item_id):
+    if library_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    try:
+        user_id = ObjectId(current_user.id)
+        item = library_collection.find_one({"_id": ObjectId(item_id), "user_id": user_id})
+        if not item:
+            return jsonify({"error": "Item not found or permission denied"}), 404
+        
+        # Return full item data, including base64 encoded file
+        return jsonify({
+            "id": str(item["_id"]),
+            "filename": item["filename"],
+            "file_type": item["file_type"],
+            "file_size": item["file_size"],
+            "file_data": item["file_data"], # Base64 encoded content
+            "extracted_text": item["extracted_text"],
+            "timestamp": item["timestamp"].isoformat()
+        })
+    except Exception as e:
+        print(f"Error fetching library item: {e}")
+        return jsonify({"error": "Could not fetch library item"}), 500
+
+@app.route('/api/library/<item_id>', methods=['DELETE'])
+@login_required
+def delete_library_item(item_id):
+    if library_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    try:
+        result = library_collection.delete_one(
+            {"_id": ObjectId(item_id), "user_id": ObjectId(current_user.id)}
+        )
+        if result.deleted_count == 0:
+            return jsonify({"error": "Item not found or permission denied"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error deleting library item: {e}")
+        return jsonify({"error": "Could not delete library item"}), 500
+
 # --- Chat Logic ---
 @app.route('/chat', methods=['POST'])
 @login_required
@@ -852,5 +982,4 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
 
