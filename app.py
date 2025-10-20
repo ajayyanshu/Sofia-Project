@@ -506,6 +506,80 @@ def delete_chat_by_id(chat_id):
         print(f"Error deleting chat: {e}")
         return jsonify({"error": "Could not delete chat"}), 500
 
+# --- Temporary Chat API ---
+@app.route('/api/temp_chats', methods=['POST'])
+@login_required
+def save_or_update_temp_chat():
+    if temporary_chat_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+    data = request.get_json()
+    temp_chat_id = data.get('id')
+    messages = data.get('messages', [])
+    if not temp_chat_id:
+        return jsonify({"error": "Temporary chat ID is required"}), 400
+
+    user_id = ObjectId(current_user.id)
+    try:
+        temporary_chat_collection.update_one(
+            {"_id": temp_chat_id, "user_id": user_id},
+            {"$set": {
+                "messages": messages,
+                "timestamp": datetime.utcnow()
+            }},
+            upsert=True
+        )
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error saving temporary chat: {e}")
+        return jsonify({"error": "Could not save temporary chat"}), 500
+
+@app.route('/api/temp_chats/save', methods=['POST'])
+@login_required
+def promote_temp_chat():
+    if temporary_chat_collection is None or conversations_collection is None:
+        return jsonify({"error": "Database not configured"}), 500
+
+    data = request.get_json()
+    temp_chat_id = data.get('id')
+    if not temp_chat_id:
+        return jsonify({"error": "Temporary chat ID is required"}), 400
+
+    user_id = ObjectId(current_user.id)
+    temp_chat = temporary_chat_collection.find_one({"_id": temp_chat_id, "user_id": user_id})
+
+    if not temp_chat:
+        return jsonify({"error": "Temporary chat not found or permission denied"}), 404
+
+    messages = temp_chat.get('messages', [])
+    if not messages:
+        return jsonify({"error": "Cannot save an empty chat"}), 400
+
+    # Generate title from the first user message
+    first_user_message = next((msg.get('text') for msg in messages if msg.get('sender') == 'user'), "Untitled Chat")
+    title = first_user_message[:40] if first_user_message else "Untitled Chat"
+
+    try:
+        # Create a new document in the permanent conversations collection
+        new_chat_doc = {
+            "user_id": user_id,
+            "title": title,
+            "messages": messages,
+            "timestamp": datetime.utcnow()
+        }
+        result = conversations_collection.insert_one(new_chat_doc)
+        
+        # Delete the chat from the temporary collection
+        temporary_chat_collection.delete_one({"_id": temp_chat_id, "user_id": user_id})
+
+        return jsonify({
+            "id": str(result.inserted_id),
+            "title": title
+        })
+    except Exception as e:
+        print(f"Error promoting temporary chat: {e}")
+        return jsonify({"error": "Could not save chat permanently"}), 500
+
+
 # --- Library CRUD API ---
 @app.route('/api/library', methods=['POST'])
 @login_required
@@ -982,4 +1056,3 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
