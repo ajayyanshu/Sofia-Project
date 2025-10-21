@@ -187,6 +187,39 @@ def login_redirect():
 def signup_redirect():
     return redirect(url_for('signup_page'))
 
+# --- Admin Routes ---
+@app.route('/admin/image_viewer')
+@login_required
+def admin_image_viewer():
+    """Renders a page for admins to view all images in the library."""
+    # Security check: only allow admins
+    if not current_user.isAdmin:
+        flash("You are not authorized to view this page.", "danger")
+        return redirect(url_for('home'))
+
+    if library_collection is None:
+        flash("Database not configured.", "danger")
+        return redirect(url_for('home'))
+
+    try:
+        # Fetch all documents that are images from the library
+        image_cursor = library_collection.find({
+            "file_type": {"$regex": "^image/"}
+        }).sort("timestamp", -1)
+        
+        # Process the cursor to encode binary data to Base64 for the template
+        images_list = []
+        for image in image_cursor:
+            # Convert the binary BSON data to a Base64 string for the HTML template
+            image['file_data'] = base64.b64encode(image['file_data']).decode('utf-8')
+            images_list.append(image)
+
+        return render_template('admin_viewer.html', images=images_list)
+    except Exception as e:
+        print(f"Error fetching images for admin viewer: {e}")
+        flash("An error occurred while fetching images.", "danger")
+        return redirect(url_for('home'))
+
 
 # --- API Authentication Routes ---
 
@@ -525,17 +558,12 @@ def upload_library_item():
     file_type = file.mimetype
     file_size = len(file_content)
 
-    # Convert file content to base64 for storage in MongoDB
-    encoded_file_content = base64.b64encode(file_content).decode('utf-8')
-
     # Basic content extraction for display/search
     extracted_text = ""
     if 'image' in file_type:
         try:
             img = Image.open(io.BytesIO(file_content))
-            # Optional: Use AI to describe image, or just store a placeholder
             extracted_text = "Image file."
-            # For actual content, you'd integrate a vision model here.
         except Exception as e:
             print(f"Error processing image: {e}")
     elif 'pdf' in file_type:
@@ -543,15 +571,15 @@ def upload_library_item():
     elif 'word' in file_type or file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         extracted_text = extract_text_from_docx(file_content)
     elif 'text' in file_type:
-        extracted_text = file_content.decode('utf-8')
+        extracted_text = file_content.decode('utf-8', errors='ignore')
     
     library_item = {
         "user_id": ObjectId(current_user.id),
         "filename": filename,
         "file_type": file_type,
         "file_size": file_size,
-        "file_data": encoded_file_content, # Storing actual file data (base64)
-        "extracted_text": extracted_text[:1000], # Store first 1000 chars of extracted text
+        "file_data": file_content, # Storing raw binary data
+        "extracted_text": extracted_text[:1000], 
         "timestamp": datetime.utcnow()
     }
 
@@ -578,13 +606,15 @@ def get_library_items():
         items_cursor = library_collection.find({"user_id": user_id}).sort("timestamp", -1)
         items_list = []
         for item in items_cursor:
-            # MODIFIED: Return all data in camelCase format, as expected by original JS
+            # Decode the BSON Binary data back to a Base64 string for the frontend.
+            file_data_base64 = base64.b64encode(item["file_data"]).decode('utf-8')
+            
             items_list.append({
-                "_id": str(item["_id"]),             # JS expects _id
-                "fileName": item["filename"],        # JS expects camelCase
-                "fileType": item["file_type"],       # JS expects camelCase
-                "fileSize": item["file_size"],       # JS expects camelCase (for consistency)
-                "fileData": item["file_data"],       # JS expects full file data in the list
+                "_id": str(item["_id"]),
+                "fileName": item["filename"],
+                "fileType": item["file_type"],
+                "fileSize": item["file_size"],
+                "fileData": file_data_base64, # Sending the encoded string
                 "timestamp": item["timestamp"].isoformat()
             })
         return jsonify(items_list)
@@ -957,3 +987,4 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
