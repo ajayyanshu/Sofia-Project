@@ -187,69 +187,6 @@ def login_redirect():
 def signup_redirect():
     return redirect(url_for('signup_page'))
 
-# --- Admin Routes ---
-@app.route('/admin/file_viewer')
-@login_required
-def admin_file_viewer():
-    """Renders a page for admins to view all files in the library."""
-    if not current_user.isAdmin:
-        flash("You are not authorized to view this page.", "danger")
-        return redirect(url_for('home'))
-
-    if library_collection is None:
-        flash("Database not configured.", "danger")
-        return redirect(url_for('home'))
-
-    try:
-        files_cursor = library_collection.find({}).sort("timestamp", -1)
-        
-        files_list = []
-        for file_doc in files_cursor:
-            # For images, encode data for inline display in the template
-            if file_doc['file_type'].startswith('image/'):
-                file_doc['file_data'] = base64.b64encode(file_doc['file_data']).decode('utf-8')
-            else:
-                # For other file types, we don't need the data in the main view
-                file_doc['file_data'] = None
-            files_list.append(file_doc)
-
-        return render_template('admin_viewer.html', files=files_list)
-    except Exception as e:
-        print(f"Error fetching files for admin viewer: {e}")
-        flash("An error occurred while fetching files.", "danger")
-        return redirect(url_for('home'))
-
-@app.route('/admin/download/<file_id>')
-@login_required
-def admin_download_file(file_id):
-    """Provides a download link for a specific file for admins."""
-    if not current_user.isAdmin:
-        flash("Unauthorized access.", "danger")
-        return redirect(url_for('home'))
-
-    if library_collection is None:
-        flash("Database not configured.", "danger")
-        return redirect(url_for('home'))
-
-    try:
-        item = library_collection.find_one({"_id": ObjectId(file_id)})
-        if not item:
-            flash("File not found.", "danger")
-            return redirect(url_for('admin_file_viewer'))
-
-        file_data = item['file_data']
-        file_name = item['filename']
-        mime_type = item['file_type']
-
-        response = make_response(file_data)
-        response.headers['Content-Type'] = mime_type
-        response.headers['Content-Disposition'] = f'attachment; filename="{file_name}"'
-        return response
-    except Exception as e:
-        print(f"Error downloading file: {e}")
-        flash("An error occurred while downloading the file.", "danger")
-        return redirect(url_for('admin_file_viewer'))
-
 
 # --- API Authentication Routes ---
 
@@ -588,12 +525,17 @@ def upload_library_item():
     file_type = file.mimetype
     file_size = len(file_content)
 
+    # Convert file content to base64 for storage in MongoDB
+    encoded_file_content = base64.b64encode(file_content).decode('utf-8')
+
     # Basic content extraction for display/search
     extracted_text = ""
     if 'image' in file_type:
         try:
             img = Image.open(io.BytesIO(file_content))
+            # Optional: Use AI to describe image, or just store a placeholder
             extracted_text = "Image file."
+            # For actual content, you'd integrate a vision model here.
         except Exception as e:
             print(f"Error processing image: {e}")
     elif 'pdf' in file_type:
@@ -601,15 +543,15 @@ def upload_library_item():
     elif 'word' in file_type or file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         extracted_text = extract_text_from_docx(file_content)
     elif 'text' in file_type:
-        extracted_text = file_content.decode('utf-8', errors='ignore')
+        extracted_text = file_content.decode('utf-8')
     
     library_item = {
         "user_id": ObjectId(current_user.id),
         "filename": filename,
         "file_type": file_type,
         "file_size": file_size,
-        "file_data": file_content, # Storing raw binary data
-        "extracted_text": extracted_text[:1000], 
+        "file_data": encoded_file_content, # Storing actual file data (base64)
+        "extracted_text": extracted_text[:1000], # Store first 1000 chars of extracted text
         "timestamp": datetime.utcnow()
     }
 
@@ -636,15 +578,13 @@ def get_library_items():
         items_cursor = library_collection.find({"user_id": user_id}).sort("timestamp", -1)
         items_list = []
         for item in items_cursor:
-            # Decode the BSON Binary data back to a Base64 string for the frontend.
-            file_data_base64 = base64.b64encode(item["file_data"]).decode('utf-8')
-            
+            # MODIFIED: Return all data in camelCase format, as expected by original JS
             items_list.append({
-                "_id": str(item["_id"]),
-                "fileName": item["filename"],
-                "fileType": item["file_type"],
-                "fileSize": item["file_size"],
-                "fileData": file_data_base64, # Sending the encoded string
+                "_id": str(item["_id"]),             # JS expects _id
+                "fileName": item["filename"],        # JS expects camelCase
+                "fileType": item["file_type"],       # JS expects camelCase
+                "fileSize": item["file_size"],       # JS expects camelCase (for consistency)
+                "fileData": item["file_data"],       # JS expects full file data in the list
                 "timestamp": item["timestamp"].isoformat()
             })
         return jsonify(items_list)
@@ -1017,4 +957,3 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
