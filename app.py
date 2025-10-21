@@ -506,82 +506,8 @@ def delete_chat_by_id(chat_id):
         print(f"Error deleting chat: {e}")
         return jsonify({"error": "Could not delete chat"}), 500
 
-# --- Temporary Chat API ---
-@app.route('/api/temp_chats', methods=['POST'])
-@login_required
-def save_or_update_temp_chat():
-    if temporary_chat_collection is None:
-        return jsonify({"error": "Database not configured"}), 500
-    data = request.get_json()
-    temp_chat_id = data.get('id')
-    messages = data.get('messages', [])
-    if not temp_chat_id:
-        return jsonify({"error": "Temporary chat ID is required"}), 400
-
-    user_id = ObjectId(current_user.id)
-    try:
-        temporary_chat_collection.update_one(
-            {"_id": temp_chat_id, "user_id": user_id},
-            {"$set": {
-                "messages": messages,
-                "timestamp": datetime.utcnow()
-            }},
-            upsert=True
-        )
-        return jsonify({"success": True})
-    except Exception as e:
-        print(f"Error saving temporary chat: {e}")
-        return jsonify({"error": "Could not save temporary chat"}), 500
-
-@app.route('/api/temp_chats/save', methods=['POST'])
-@login_required
-def promote_temp_chat():
-    if temporary_chat_collection is None or conversations_collection is None:
-        return jsonify({"error": "Database not configured"}), 500
-
-    data = request.get_json()
-    temp_chat_id = data.get('id')
-    if not temp_chat_id:
-        return jsonify({"error": "Temporary chat ID is required"}), 400
-
-    user_id = ObjectId(current_user.id)
-    temp_chat = temporary_chat_collection.find_one({"_id": temp_chat_id, "user_id": user_id})
-
-    if not temp_chat:
-        return jsonify({"error": "Temporary chat not found or permission denied"}), 404
-
-    messages = temp_chat.get('messages', [])
-    if not messages:
-        return jsonify({"error": "Cannot save an empty chat"}), 400
-
-    # Generate title from the first user message
-    first_user_message = next((msg.get('text') for msg in messages if msg.get('sender') == 'user'), "Untitled Chat")
-    title = first_user_message[:40] if first_user_message else "Untitled Chat"
-
-    try:
-        # Create a new document in the permanent conversations collection
-        new_chat_doc = {
-            "user_id": user_id,
-            "title": title,
-            "messages": messages,
-            "timestamp": datetime.utcnow()
-        }
-        result = conversations_collection.insert_one(new_chat_doc)
-        
-        # Delete the chat from the temporary collection
-        temporary_chat_collection.delete_one({"_id": temp_chat_id, "user_id": user_id})
-
-        return jsonify({
-            "id": str(result.inserted_id),
-            "title": title
-        })
-    except Exception as e:
-        print(f"Error promoting temporary chat: {e}")
-        return jsonify({"error": "Could not save chat permanently"}), 500
-
-
 # --- Library CRUD API ---
-@app.route('/api/library', methods=['POST'])
+@app.route('/library/upload', methods=['POST'])
 @login_required
 def upload_library_item():
     if library_collection is None:
@@ -642,7 +568,7 @@ def upload_library_item():
         print(f"Error uploading library item: {e}")
         return jsonify({"error": "Could not save file to library"}), 500
 
-@app.route('/api/library', methods=['GET'])
+@app.route('/library/files', methods=['GET'])
 @login_required
 def get_library_items():
     if library_collection is None:
@@ -652,46 +578,21 @@ def get_library_items():
         items_cursor = library_collection.find({"user_id": user_id}).sort("timestamp", -1)
         items_list = []
         for item in items_cursor:
-            # Do not send full file_data in the list view for performance
+            # MODIFIED: Return all data in camelCase format, as expected by original JS
             items_list.append({
-                "id": str(item["_id"]),
-                "filename": item["filename"],
-                "file_type": item["file_type"],
-                "file_size": item["file_size"],
-                "timestamp": item["timestamp"].isoformat(),
-                "thumbnail_data": None # Placeholder for future thumbnail generation
+                "_id": str(item["_id"]),             # JS expects _id
+                "fileName": item["filename"],        # JS expects camelCase
+                "fileType": item["file_type"],       # JS expects camelCase
+                "fileSize": item["file_size"],       # JS expects camelCase (for consistency)
+                "fileData": item["file_data"],       # JS expects full file data in the list
+                "timestamp": item["timestamp"].isoformat()
             })
         return jsonify(items_list)
     except Exception as e:
         print(f"Error fetching library items: {e}")
         return jsonify({"error": "Could not fetch library items"}), 500
 
-@app.route('/api/library/<item_id>', methods=['GET'])
-@login_required
-def get_library_item(item_id):
-    if library_collection is None:
-        return jsonify({"error": "Database not configured"}), 500
-    try:
-        user_id = ObjectId(current_user.id)
-        item = library_collection.find_one({"_id": ObjectId(item_id), "user_id": user_id})
-        if not item:
-            return jsonify({"error": "Item not found or permission denied"}), 404
-        
-        # Return full item data, including base64 encoded file
-        return jsonify({
-            "id": str(item["_id"]),
-            "filename": item["filename"],
-            "file_type": item["file_type"],
-            "file_size": item["file_size"],
-            "file_data": item["file_data"], # Base64 encoded content
-            "extracted_text": item["extracted_text"],
-            "timestamp": item["timestamp"].isoformat()
-        })
-    except Exception as e:
-        print(f"Error fetching library item: {e}")
-        return jsonify({"error": "Could not fetch library item"}), 500
-
-@app.route('/api/library/<item_id>', methods=['DELETE'])
+@app.route('/library/files/<item_id>', methods=['DELETE'])
 @login_required
 def delete_library_item(item_id):
     if library_collection is None:
