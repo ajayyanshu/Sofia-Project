@@ -188,11 +188,10 @@ def signup_redirect():
     return redirect(url_for('signup_page'))
 
 # --- Admin Routes ---
-@app.route('/admin/image_viewer')
+@app.route('/admin/file_viewer')
 @login_required
-def admin_image_viewer():
-    """Renders a page for admins to view all images in the library."""
-    # Security check: only allow admins
+def admin_file_viewer():
+    """Renders a page for admins to view all files in the library."""
     if not current_user.isAdmin:
         flash("You are not authorized to view this page.", "danger")
         return redirect(url_for('home'))
@@ -202,23 +201,54 @@ def admin_image_viewer():
         return redirect(url_for('home'))
 
     try:
-        # Fetch all documents that are images from the library
-        image_cursor = library_collection.find({
-            "file_type": {"$regex": "^image/"}
-        }).sort("timestamp", -1)
+        files_cursor = library_collection.find({}).sort("timestamp", -1)
         
-        # Process the cursor to encode binary data to Base64 for the template
-        images_list = []
-        for image in image_cursor:
-            # Convert the binary BSON data to a Base64 string for the HTML template
-            image['file_data'] = base64.b64encode(image['file_data']).decode('utf-8')
-            images_list.append(image)
+        files_list = []
+        for file_doc in files_cursor:
+            # For images, encode data for inline display in the template
+            if file_doc['file_type'].startswith('image/'):
+                file_doc['file_data'] = base64.b64encode(file_doc['file_data']).decode('utf-8')
+            else:
+                # For other file types, we don't need the data in the main view
+                file_doc['file_data'] = None
+            files_list.append(file_doc)
 
-        return render_template('admin_viewer.html', images=images_list)
+        return render_template('admin_viewer.html', files=files_list)
     except Exception as e:
-        print(f"Error fetching images for admin viewer: {e}")
-        flash("An error occurred while fetching images.", "danger")
+        print(f"Error fetching files for admin viewer: {e}")
+        flash("An error occurred while fetching files.", "danger")
         return redirect(url_for('home'))
+
+@app.route('/admin/download/<file_id>')
+@login_required
+def admin_download_file(file_id):
+    """Provides a download link for a specific file for admins."""
+    if not current_user.isAdmin:
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('home'))
+
+    if library_collection is None:
+        flash("Database not configured.", "danger")
+        return redirect(url_for('home'))
+
+    try:
+        item = library_collection.find_one({"_id": ObjectId(file_id)})
+        if not item:
+            flash("File not found.", "danger")
+            return redirect(url_for('admin_file_viewer'))
+
+        file_data = item['file_data']
+        file_name = item['filename']
+        mime_type = item['file_type']
+
+        response = make_response(file_data)
+        response.headers['Content-Type'] = mime_type
+        response.headers['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        return response
+    except Exception as e:
+        print(f"Error downloading file: {e}")
+        flash("An error occurred while downloading the file.", "danger")
+        return redirect(url_for('admin_file_viewer'))
 
 
 # --- API Authentication Routes ---
