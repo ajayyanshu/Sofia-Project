@@ -355,7 +355,7 @@ def logout_all_devices():
 def setup_2fa():
     return jsonify({'success': False, 'message': '2FA setup is not yet implemented.'}), 501
 
-@app.route('/delete-account', methods=['DELETE'])
+@app.route('/delete_account', methods=['DELETE'])
 @login_required
 def delete_account():
     if users_collection is None:
@@ -965,3 +965,4 @@ def live_object_detection():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
