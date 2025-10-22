@@ -124,7 +124,8 @@ class User(UserMixin):
         try:
             user_data = users_collection.find_one({"_id": ObjectId(user_id)})
             return User(user_data) if user_data else None
-        except:
+        except Exception as e: # *** MODIFICATION 1: Catch specific exception ***
+            print(f"USER_GET_ERROR: Failed to get user {user_id}. Error: {e}")
             return None
 
 @login_manager.user_loader
@@ -379,7 +380,14 @@ def delete_account():
         )
 
         if update_result.matched_count > 0:
-            logout_user()
+            # *** MODIFICATION 2: Added try/except around logout_user ***
+            # This prevents a server crash if logout fails for any reason
+            try:
+                logout_user()
+            except Exception as e:
+                print(f"LOGOUT_ERROR_ON_DELETE: {e}")
+                # This is not a critical error, the account is deleted.
+                # We can proceed with the success response.
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'error': 'User not found.'}), 404
