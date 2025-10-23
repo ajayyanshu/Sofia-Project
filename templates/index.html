@@ -2121,6 +2121,9 @@
             
             fetchAndDisplayUserInfo();
             
+            // --- START: MODIFIED LOGOUT BLOCK ---
+
+            // This function handles the REGULAR logout (from the sidebar menu)
             const handleLogout = async () => {
                 console.log('Logout initiated');
                 try {
@@ -2136,12 +2139,37 @@
                     alert('An error occurred during logout.');
                 }
             };
+
+            // This new function handles LOGOUT FROM ALL DEVICES (from the Settings modal)
+            const handleLogoutAll = async () => {
+                if (!confirm('This will log you out from all other devices and this one. Are you sure?')) {
+                    return;
+                }
+                console.log('Logout all devices initiated');
+                try {
+                    // Call the correct endpoint
+                    const response = await fetch('/logout-all', { method: 'POST' });
+                    if(response.ok) {
+                        alert('Successfully logged out of all devices.');
+                        window.location.href = '/login.html';
+                    } else {
+                        alert('Failed to log out of all devices. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Logout all error:', error);
+                    alert('An error occurred while logging out of all devices.');
+                }
+            };
             
-            logoutBtn.addEventListener('click', handleLogout);
+            // Attach the correct functions to the correct buttons
+            logoutBtn.addEventListener('click', handleLogoutAll); // <-- FIX: Calls handleLogoutAll
             logoutMenuItem.addEventListener('click', (e) => {
                 e.preventDefault();
-                handleLogout();
+                handleLogout(); // <-- This one correctly calls handleLogout
             });
+            
+            // --- END: MODIFIED LOGOUT BLOCK ---
+
             
             verifyEmailBtn.addEventListener('click', async () => {
                 verifyEmailBtn.disabled = true;
