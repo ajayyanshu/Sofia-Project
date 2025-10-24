@@ -39,6 +39,7 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 MONGO_URI = os.environ.get("MONGO_URI")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+SERPER_API_KEY = os.environ.get("SERPER_API_KEY") # <-- ADDED FOR WEB SEARCH
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email configuration
 
 # --- Email Configuration ---
@@ -74,6 +75,11 @@ if YOUTUBE_API_KEY:
     print("✅ YouTube API Key loaded.")
 else:
     print("CRITICAL WARNING: YOUTUBE_API_KEY not found. YouTube features will be disabled.")
+
+if SERPER_API_KEY: # <-- ADDED FOR WEB SEARCH
+    print("✅ Serper API Key (for web search) loaded.")
+else:
+    print("CRITICAL WARNING: SERPER_API_KEY not found. AI web search will be disabled.")
 
 # --- MongoDB Configuration ---
 mongo_client = None
@@ -641,7 +647,7 @@ def chat():
         usage = user_data.get('usage_counts', {})
         messages_used = usage.get('messages', 0)
         
-        if messages_used >= 15:
+        if messages_used >= 15: # Daily message limit from HTML
             return jsonify({
                 'error': 'You have reached your daily message limit. Please upgrade for unlimited access.',
                 'upgrade_required': True
@@ -697,18 +703,70 @@ def chat():
             response.raise_for_status()
             result = response.json()
             print(f"Successfully received response from {api_name}.")
-            return result['choices'][0]['message']['content']
+            # Check for valid response structure
+            if 'choices' in result and len(result['choices']) > 0 and 'message' in result['choices'][0] and 'content' in result['choices'][0]['message']:
+                 return result['choices'][0]['message']['content']
+            else:
+                print(f"Unexpected response structure from {api_name}: {result}")
+                return None
         except Exception as e:
             print(f"Error calling {api_name} API: {e}")
             return None
 
+    def search_web(query):
+        """Calls Serper.dev API to get web search results."""
+        if not SERPER_API_KEY:
+            print("Web search skipped: SERPER_API_KEY not set.")
+            return "Web search is disabled because the API key is not configured."
+
+        url = "https://google.serper.dev/search"
+        payload = json.dumps({"q": query})
+        headers = {
+            'X-API-KEY': SERPER_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        try:
+            print(f"Attempting web search for: {query}")
+            response = requests.post(url, headers=headers, data=payload)
+            response.raise_for_status()
+            results = response.json()
+            print("Web search successful.")
+            
+            snippets = []
+            if "organic" in results:
+                for item in results.get("organic", [])[:5]: # Get top 5 results
+                    title = item.get("title", "No Title")
+                    snippet = item.get("snippet", "No Snippet")
+                    link = item.get("link", "No Link")
+                    snippets.append(f"Title: {title}\nSnippet: {snippet}\nSource: {link}")
+            
+            if snippets:
+                return "\n\n---\n\n".join(snippets)
+            elif "answerBox" in results:
+                # Handle answer boxes (e.g., "What is the weather?")
+                answer = results["answerBox"].get("snippet") or results["answerBox"].get("answer")
+                if answer:
+                    return f"Direct Answer: {answer}"
+            
+            return "No relevant web results found."
+            
+        except Exception as e:
+            print(f"Error calling Serper API: {e}")
+            return f"An error occurred during the web search: {e}"
+
+    # --- START OF MODIFIED /CHAT LOGIC ---
     try:
         data = request.json
         user_message = data.get('text', '')
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
         is_temporary = data.get('isTemporary', False)
+        
+        # <-- NEW: Get mode from request -->
+        request_mode = data.get('mode') 
+        
         ai_response, api_used, model_logged = None, "", ""
+        web_search_context = None 
 
         gemini_history = []
         openai_history = []
@@ -736,10 +794,63 @@ def chat():
 
         is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
 
+        # --- NEW: Web Search Logic based on request_mode ---
+        if request_mode == 'web_search' and not is_multimodal and user_message.strip():
+            if not SERPER_API_KEY:
+                print("Web search requested but SERPER_API_KEY not set.")
+                web_search_context = "Web search is disabled by the server administrator."
+            elif not current_user.isPremium and not current_user.isAdmin:
+                # Check web search usage limit
+                user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
+                searches_used = user_data.get('usage_counts', {}).get('webSearches', 0)
+                
+                # HTML file checks for 1 search, so we'll match that limit (>= 1)
+                if searches_used >= 1: # Daily limit from HTML
+                    print(f"User {current_user.id} exceeded web search limit.")
+                    web_search_context = "You have already used your daily web search. Please upgrade for unlimited searches."
+                else:
+                    print(f"Performing web search for: {user_message}")
+                    web_search_context = search_web(user_message)
+                    # Increment web search count
+                    users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.webSearches': 1}})
+            else:
+                # Premium or Admin user
+                print(f"Performing web search for: {user_message}")
+                web_search_context = search_web(user_message)
+        # --- End of NEW Web Search Logic ---
+
         if not is_multimodal and user_message.strip():
             ai_response = None
-            if not ai_response and GROQ_API_KEY:
-                print("Routing to Groq...")
+            
+            # --- MODIFIED: Check if we have search context ---
+            if web_search_context:
+                print("Using Groq (with search context)...")
+                # Prepare a new history for Groq with the search context
+                search_augmented_history = [
+                    {"role": "system", "content": (
+                        "You are a helpful assistant. You MUST answer the user's question "
+                        "based *only* on the provided web search results. "
+                        "Cite your sources using the [Source: link] format if possible. "
+                        "If the results are not sufficient, say so."
+                    )},
+                    {"role": "user", "content": (
+                        f"--- WEB SEARCH RESULTS ---\n{web_search_context}\n\n"
+                        f"--- USER QUESTION ---\n{user_message}"
+                    )}
+                ]
+                
+                ai_response = call_api(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    {"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    {"model": "llama-3.1-8b-instant", "messages": search_augmented_history},
+                    "Groq (Web Search)"
+                )
+                if ai_response:
+                    api_used, model_logged = "Groq (Web Search)", "llama-3.1-8b-instant"
+                    
+            elif not ai_response and GROQ_API_KEY:
+                # Original logic: No search context, just a normal text chat
+                print("Routing to Groq (no search)...")
                 ai_response = call_api("https://api.groq.com/openai/v1/chat/completions",
                                        {"Authorization": f"Bearer {GROQ_API_KEY}"},
                                        {"model": "llama-3.1-8b-instant", "messages": openai_history},
@@ -749,12 +860,27 @@ def chat():
 
         if not ai_response:
             print("Routing to Gemini (Sofia AI)...")
-            api_used, model_logged = "Gemini", "gemini-2.5-pro"
-            model = genai.GenerativeModel(model_logged)
+            # --- MODIFICATION: Using a current, valid model name from your list ---
+            model_name = "gemini-2.5-pro" 
+            api_used, model_logged = "Gemini", model_name
+            model = genai.GenerativeModel(model_name)
 
             prompt_parts = [user_message] if user_message else []
 
-            if "youtube.com" in user_message or "youtu.be" in user_message:
+            # --- MODIFIED: Handle web search context for Gemini ---
+            if web_search_context:
+                # This will be the only prompt part. We ignore history to focus on the search task.
+                prompt_parts = [
+                    "You are a helpful assistant. You MUST answer the user's question "
+                    "based *only* on the provided web search results. "
+                    "Cite your sources using the [Source: link] format if possible. "
+                    "If the results are not sufficient, say so.\n\n"
+                    f"--- WEB SEARCH RESULTS ---\n{web_search_context}\n\n"
+                    f"--- USER QUESTION ---\n{user_message}"
+                ]
+                api_used = "Gemini (Web Search)"
+                
+            elif "youtube.com" in user_message or "youtu.be" in user_message:
                 video_id = get_video_id(user_message)
                 transcript = get_youtube_transcript(video_id) if video_id else None
                 if transcript: prompt_parts = [f"Summarize this YouTube video transcript:\n\n{transcript}"]
@@ -775,14 +901,19 @@ def chat():
                 prompt_parts.insert(0, "Describe this image.")
             
             try:
-                full_prompt = gemini_history + [{'role': 'user', 'parts': prompt_parts}]
+                # --- MODIFIED: Don't use history if we have search context ---
+                if web_search_context:
+                    full_prompt = prompt_parts
+                else:
+                    full_prompt = gemini_history + [{'role': 'user', 'parts': prompt_parts}]
+                
                 response = model.generate_content(full_prompt)
                 ai_response = response.text
             except Exception as e:
-                print(f"Error calling Gemini API with history: {e}")
+                print(f"Error calling Gemini API: {e}")
                 try:
                     print("Retrying Gemini call without history...")
-                    response = model.generate_content(prompt_parts)
+                    response = model.generate_content(prompt_parts) # This is the fallback
                     ai_response = response.text
                 except Exception as e2:
                     print(f"Error calling Gemini API on retry: {e2}")
@@ -801,6 +932,7 @@ def chat():
         import traceback
         traceback.print_exc()
         return jsonify({'response': "Sorry, an internal error occurred."})
+    # --- END OF MODIFIED /CHAT LOGIC ---
 
 # --- Save Chat History Route ---
 @app.route('/save_chat_history', methods=['POST'])
@@ -889,8 +1021,7 @@ def save_chat_history():
         .user-message .label {{ text-align: right; margin-right: 5px;}}
         .ai-message .label {{ text-align: left; margin-left: 5px;}}
     </style>
-</head>
-<body>
+</head><body>
     <div class="container">
         <h1>Chat History</h1>
         <h2>User: {user_name}</h2>
@@ -941,26 +1072,7 @@ def save_chat_history():
         return jsonify({'success': False, 'error': 'Failed to generate chat history.'}), 500
 
 # --- Live AI Camera Feature (Backend) ---
-@app.route('/live_object_detection', methods=['POST'])
-@login_required
-def live_object_detection():
-    data = request.get_json()
-    if not data or 'image_data' not in data:
-        return jsonify({'error': 'No image data provided.'}), 400
-
-    image_data = data['image_data']
-    try:
-        image_bytes = base64.b64decode(image_data.split(',')[1])
-        img = Image.open(io.BytesIO(image_bytes))
-
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
-        response = model.generate_content(["Describe the objects you see in this image.", img])
-        
-        return jsonify({'description': response.text})
-
-    except Exception as e:
-        print(f"Error in live object detection: {e}")
-        return jsonify({'error': 'Failed to process image.'}), 500
+# [Code for this feature has been removed as requested]
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
