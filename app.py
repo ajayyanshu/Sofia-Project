@@ -521,6 +521,58 @@ def delete_chat_by_id(chat_id):
         return jsonify({"error": "Could not delete chat"}), 500
 
 # --- Library CRUD API ---
+
+# <-- ADDED: Helper functions for AI summarization -->
+def get_ai_summary(text_content):
+    """Calls Gemini API to get a summary of the provided text."""
+    if not GOOGLE_API_KEY:
+        print("AI_SUMMARY_SKIP: GOOGLE_API_KEY not set.")
+        return "Summary generation skipped: AI not configured."
+    
+    if not text_content or text_content.isspace():
+        return "No text content to summarize."
+
+    try:
+        # Using the same model from /chat for consistency
+        model = genai.GenerativeModel("gemini-2.5-pro") 
+        
+        # Truncate text to avoid overly long prompts (e.g., ~15k words)
+        max_length = 80000 
+        if len(text_content) > max_length:
+            text_content = text_content[:max_length]
+
+        prompt = (
+            "You are an expert summarizer. Please provide a concise, one-paragraph summary "
+            "of the following document. Focus on the main ideas and key takeaways.\n\n"
+            f"--- DOCUMENT START ---\n{text_content}\n--- DOCUMENT END ---"
+        )
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        print(f"AI_SUMMARY_ERROR: {e}")
+        return f"Could not generate summary. Error: {e}"
+
+def run_ai_summary_in_background(app, item_id, text_content):
+    """Runs AI summarization in a background thread and updates MongoDB."""
+    with app.app_context():
+        print(f"Starting background summary for item: {item_id}")
+        summary = get_ai_summary(text_content)
+        
+        if library_collection:
+            try:
+                library_collection.update_one(
+                    {"_id": ObjectId(item_id)},
+                    {"$set": {"ai_summary": summary, "ai_summary_status": "completed"}}
+                )
+                print(f"Successfully saved summary for item: {item_id}")
+            except Exception as e:
+                print(f"BACKGROUND_MONGO_ERROR: Failed to update summary for {item_id}. Error: {e}")
+        else:
+            print(f"BACKGROUND_MONGO_ERROR: library_collection is None. Cannot save summary.")
+# <-- END: Helper functions for AI summarization -->
+
+
 @app.route('/library/upload', methods=['POST'])
 @login_required
 def upload_library_item():
@@ -553,11 +605,14 @@ def upload_library_item():
         except Exception as e:
             print(f"Error processing image: {e}")
     elif 'pdf' in file_type:
-        extracted_text = extract_text_from_pdf(file_content)
+        extracted_text = extract_text_from_pdf(file_content) # <-- This helper is defined in /chat
     elif 'word' in file_type or file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-        extracted_text = extract_text_from_docx(file_content)
+        extracted_text = extract_text_from_docx(file_content) # <-- This helper is defined in /chat
     elif 'text' in file_type:
-        extracted_text = file_content.decode('utf-8')
+        try:
+            extracted_text = file_content.decode('utf-8')
+        except UnicodeDecodeError:
+            extracted_text = file_content.decode('latin-1', errors='ignore')
     
     library_item = {
         "user_id": ObjectId(current_user.id),
@@ -566,14 +621,30 @@ def upload_library_item():
         "file_size": file_size,
         "file_data": encoded_file_content, # Storing actual file data (base64)
         "extracted_text": extracted_text[:1000], # Store first 1000 chars of extracted text
+        "ai_summary": "Processing...", # <-- ADDED for automation
+        "ai_summary_status": "pending", # <-- ADDED for automation
         "timestamp": datetime.utcnow()
     }
 
     try:
         result = library_collection.insert_one(library_item)
+        new_id = result.inserted_id # <-- ADDED: Get the new ID
+
+        # <-- ADDED: Start background thread for AI summarization -->
+        # Only summarize if text was actually extracted
+        if extracted_text and extracted_text != "Image file.":
+            Thread(target=run_ai_summary_in_background, args=(app, new_id, extracted_text)).start()
+        else:
+            # If no text (e.g., image), mark as not applicable
+             library_collection.update_one(
+                {"_id": new_id},
+                {"$set": {"ai_summary": "Not applicable (image or empty file).", "ai_summary_status": "completed"}}
+            )
+        # <-- END: Background thread logic -->
+
         return jsonify({
             "success": True, 
-            "id": str(result.inserted_id), 
+            "id": str(new_id), # <-- MODIFIED: Use the new_id variable
             "filename": filename,
             "file_type": file_type,
             "timestamp": library_item["timestamp"].isoformat()
@@ -599,6 +670,8 @@ def get_library_items():
                 "fileType": item["file_type"],       # JS expects camelCase
                 "fileSize": item["file_size"],       # JS expects camelCase (for consistency)
                 "fileData": item["file_data"],       # JS expects full file data in the list
+                "aiSummary": item.get("ai_summary", "Not processed."), # <-- ADDED
+                "aiSummaryStatus": item.get("ai_summary_status", "unknown"), # <-- ADDED
                 "timestamp": item["timestamp"].isoformat()
             })
         return jsonify(items_list)
@@ -623,6 +696,26 @@ def delete_library_item(item_id):
         return jsonify({"error": "Could not delete library item"}), 500
 
 # --- Chat Logic ---
+
+# <-- ADDED: Moved text extraction functions here to be globally available -->
+def extract_text_from_pdf(pdf_bytes):
+    try:
+        pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+        return "".join(page.get_text() for page in pdf_document)
+    except Exception as e:
+        print(f"Error extracting PDF text: {e}")
+        return ""
+
+def extract_text_from_docx(docx_bytes):
+    try:
+        document = docx.Document(io.BytesIO(docx_bytes))
+        return "\n".join([para.text for para in document.paragraphs])
+    except Exception as e:
+        print(f"Error extracting DOCX text: {e}")
+        return ""
+# <-- END: Moved text extraction functions -->
+
+
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
@@ -656,21 +749,7 @@ def chat():
         # Increment the message count only for non-premium, non-admin users
         users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.messages': 1}})
 
-    def extract_text_from_pdf(pdf_bytes):
-        try:
-            pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
-            return "".join(page.get_text() for page in pdf_document)
-        except Exception as e:
-            print(f"Error extracting PDF text: {e}")
-            return ""
-
-    def extract_text_from_docx(docx_bytes):
-        try:
-            document = docx.Document(io.BytesIO(docx_bytes))
-            return "\n".join([para.text for para in document.paragraphs])
-        except Exception as e:
-            print(f"Error extracting DOCX text: {e}")
-            return ""
+    # <-- REMOVED: Text extraction functions were moved to be global -->
 
     def get_file_from_github(filename):
         if not all([GITHUB_USER, GITHUB_REPO]):
@@ -754,7 +833,96 @@ def chat():
             print(f"Error calling Serper API: {e}")
             return f"An error occurred during the web search: {e}"
 
-    # --- START OF MODIFIED /CHAT LOGIC ---
+    # <-- ADDED: Library Search Helper -->
+    def search_library(user_id, query):
+        """Searches the user's library for relevant text snippets."""
+        if not library_collection:
+            return None # Return None, not a string
+        
+        try:
+            # Split query into keywords to broaden search
+            keywords = re.split(r'\s+', query)
+            # Create a regex that looks for all keywords (case-insensitive)
+            # This searches for documents containing all keywords, in any order.
+            regex_pattern = '.*'.join(f'(?=.*{re.escape(k)})' for k in keywords)
+
+            items_cursor = library_collection.find({
+                "user_id": user_id,
+                "extracted_text": {"$regex": regex_pattern, "$options": "i"}
+            }).limit(3) # Get top 3 matching docs
+            
+            snippets = []
+            for item in items_cursor:
+                filename = item.get("filename", "Untitled")
+                snippet = item.get("extracted_text", "")
+                
+                # Get the start of the text as a snippet
+                context_snippet = snippet[:300] # Get first 300 chars
+                    
+                snippets.append(f"Source: {filename} (from your Library)\nSnippet: {context_snippet}...")
+            
+            if snippets:
+                print(f"Library search found {len(snippets)} items for query: {query}")
+                return "\n\n---\n\n".join(snippets)
+            else:
+                print(f"Library search found no items for query: {query}")
+                return None
+                
+        except Exception as e:
+            print(f"Error calling Library search: {e}")
+            return None
+    
+    # <-- MODIFIED: Automation Heuristic -->
+    def should_auto_search(user_message):
+        """
+        Decides if a query is informational and should trigger auto-search.
+        Returns the mode: 'code_security_scan', 'security_search', 'web_search', or None.
+        """
+        msg_lower = user_message.lower().strip()
+        
+        # Keywords that imply a security-focused search
+        security_keywords = [
+            'vulnerability', 'malware', 'cybersecurity', 'sql injection',
+            'xss', 'cross-site scripting', 'cve-', 'zero-day', 'phishing',
+            'ransomware', 'data breach', 'mitigation', 'pentest', 'exploit'
+        ]
+
+        # <-- ADDED: Keywords that imply code is being pasted -->
+        code_keywords = [
+            'def ', 'function ', 'public class', 'SELECT *', 'import ', 'require(', 
+            'const ', 'let ', 'var ', '<?php', 'public static void', 'console.log'
+        ]
+
+        # Keywords that imply a general search
+        general_search_keywords = [
+            'what is', 'who is', 'where is', 'when did', 'how to',
+            'latest', 'news', 'in 2025', 'in 2024',
+            'explain', 'summary of', 'overview of', 'compare'
+        ]
+        
+        # Simple questions that don't need search
+        chat_keywords = ['hi', 'hello', 'how are you', 'thanks', 'thank you']
+
+        if any(msg_lower.startswith(k) for k in chat_keywords):
+            return None # Just a chat
+            
+        if any(k in msg_lower for k in security_keywords):
+            return 'security_search' # Security-focused search
+            
+        # <-- ADDED: Code scan check -->
+        if any(k in user_message for k in code_keywords):
+            return 'code_security_scan' # This is a code scan request
+
+        if any(k in msg_lower for k in general_search_keywords):
+            return 'web_search' # General web search
+            
+        # If it's a longer, more complex question (e.g., > 6 words), default to general search
+        if len(user_message.split()) > 6:
+            return 'web_search'
+            
+        return None # Not a search query
+
+    # --- START OF /CHAT LOGIC ---
     try:
         data = request.json
         user_message = data.get('text', '')
@@ -762,12 +930,52 @@ def chat():
         file_type = data.get('fileType', '')
         is_temporary = data.get('isTemporary', False)
         
-        # <-- NEW: Get mode from request -->
         request_mode = data.get('mode') 
         
         ai_response, api_used, model_logged = None, "", ""
         web_search_context = None 
+        library_search_context = None # <-- ADDED
 
+        is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
+
+        # <-- MODIFIED AUTOMATION LOGIC -->
+        # Only trigger if it's a plain chat, not multimodal
+        if request_mode == 'chat' and not is_multimodal:
+            auto_mode = should_auto_search(user_message)
+            if auto_mode:
+                print(f"AUTOMATION: Auto-triggering {auto_mode} for: {user_message}")
+                request_mode = auto_mode # Upgrade the request mode
+                
+                # ALSO trigger library search, *UNLESS* it's a code scan
+                if auto_mode in ['web_search', 'security_search']:
+                    library_search_context = search_library(ObjectId(current_user.id), user_message)
+        # <-- END MODIFIED AUTOMATION LOGIC -->
+
+
+        # --- Web Search Logic (now handles manual, web_search, or security_search) ---
+        # <-- MODIFIED: Don't run web search if it's a code scan -->
+        if (request_mode == 'web_search' or request_mode == 'security_search') and not is_multimodal and user_message.strip():
+            if not SERPER_API_KEY:
+                print("Web search requested but SERPER_API_KEY not set.")
+                web_search_context = "Web search is disabled by the server administrator."
+            elif not current_user.isPremium and not current_user.isAdmin:
+                # Check web search usage limit
+                user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
+                searches_used = user_data.get('usage_counts', {}).get('webSearches', 0)
+                
+                if searches_used >= 1: # Daily limit from HTML
+                    print(f"User {current_user.id} exceeded web search limit.")
+                    web_search_context = "You have already used your daily web search. Please upgrade for unlimited searches."
+                else:
+                    print(f"Performing web search for: {user_message}")
+                    web_search_context = search_web(user_message)
+                    # Increment web search count
+                    users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.webSearches': 1}})
+            else:
+                # Premium or Admin user
+                print(f"Performing web search for: {user_message}")
+                web_search_context = search_web(user_message)
+        
         gemini_history = []
         openai_history = []
         if chat_history_collection is not None and not is_temporary:
@@ -792,49 +1000,90 @@ def chat():
 
         openai_history.append({"role": "user", "content": user_message})
 
-        is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
-
-        # --- NEW: Web Search Logic based on request_mode ---
-        if request_mode == 'web_search' and not is_multimodal and user_message.strip():
-            if not SERPER_API_KEY:
-                print("Web search requested but SERPER_API_KEY not set.")
-                web_search_context = "Web search is disabled by the server administrator."
-            elif not current_user.isPremium and not current_user.isAdmin:
-                # Check web search usage limit
-                user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
-                searches_used = user_data.get('usage_counts', {}).get('webSearches', 0)
-                
-                # HTML file checks for 1 search, so we'll match that limit (>= 1)
-                if searches_used >= 1: # Daily limit from HTML
-                    print(f"User {current_user.id} exceeded web search limit.")
-                    web_search_context = "You have already used your daily web search. Please upgrade for unlimited searches."
-                else:
-                    print(f"Performing web search for: {user_message}")
-                    web_search_context = search_web(user_message)
-                    # Increment web search count
-                    users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.webSearches': 1}})
-            else:
-                # Premium or Admin user
-                print(f"Performing web search for: {user_message}")
-                web_search_context = search_web(user_message)
-        # --- End of NEW Web Search Logic ---
 
         if not is_multimodal and user_message.strip():
             ai_response = None
             
-            # --- MODIFIED: Check if we have search context ---
-            if web_search_context:
-                print("Using Groq (with search context)...")
-                # Prepare a new history for Groq with the search context
+            # <-- MODIFIED: Handle Code Security Scan Mode -->
+            if request_mode == 'code_security_scan':
+                print(f"Using Groq (Code Security Scan) for: {user_message[:50]}...")
+                
+                # <-- MODIFIED: Upgraded Professional Prompt -->
+                CODE_SECURITY_PROMPT = (
+                    "You are 'Sofia-Sec-L-70B', a specialized AI Code Security Analyst modeled after Google's internal security review tools. "
+                    "A user (potential Google intern) has submitted a code snippet for review. Your task is to perform a rigorous security and vulnerability analysis. "
+                    "The output MUST be a professional-grade security report formatted in Markdown, suitable for a technical audience (e.g., a Google engineering team).\n\n"
+                    "**SECURITY ANALYSIS REPORT**\n\n"
+                    "**1. Executive Summary:**\n"
+                    "   - A high-level overview of the code's purpose and its primary security posture.\n\n"
+                    "**2. Vulnerability Findings:**\n"
+                    "   - (List each finding. If none, state 'No significant vulnerabilities detected.')\n"
+                    "   - **[Severity: Critical/High/Medium/Low] - [Vulnerability Type (e.g., SQL Injection)]**\n"
+                    "     - **Location:** (Quote the problematic line(s) of code.)\n"
+                    "     - **Analysis:** (Detailed explanation of the vulnerability, its attack vector, and potential business impact.)\n"
+                    "     - **CVE-ID (if applicable):** (e.g., CVE-2023-XXXXX, or 'N/A'.)\n"
+                    "     - **Recommended Mitigation:** (Provide the corrected, secure code snippet. Explain *why* the new code is secure, referencing best practices like input sanitization, parameterized queries, etc.)\n\n"
+                    "**3. Secure Coding Recommendations:**\n"
+                    "   - General advice on how to improve the overall security of this code, referencing Google's secure coding standards or OWASP Top 10.\n\n"
+                    "**4. Overall Security Rating:** (Assign one: Excellent, Good, Fair, Poor, Critical)\n\n"
+                    "--- USER SUBMITTED CODE ---\n"
+                )
+                
+                code_scan_history = [
+                    {"role": "system", "content": CODE_SECURITY_PROMPT},
+                    {"role": "user", "content": user_message}
+                ]
+                
+                ai_response = call_api(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    {"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    # Use a powerful model for this complex task
+                    {"model": "llama-3.1-70b-versatile", "messages": code_scan_history}, 
+                    "Groq (Code Security Scan)"
+                )
+                if ai_response:
+                    api_used, model_logged = "Groq (Code Security Scan)", "llama-3.1-70b-versatile"
+            
+            # <-- MODIFIED: Check for ai_response before continuing -->
+            elif (web_search_context or library_search_context) and not ai_response:
+                print(f"Using Groq (with search context) in mode: {request_mode}...")
+                
+                # <-- MODIFIED: Upgraded Professional Prompts -->
+                GENERAL_SYSTEM_PROMPT = (
+                    "You are a helpful assistant. You MUST answer the user's question "
+                    "based *only* on the provided context. "
+                    "Cite your sources using the [Source: link] or [Source: Filename] format."
+                )
+                SECURITY_SYSTEM_PROMPT = (
+                    "You are 'Sofia-Sec-L', a specialized AI Security Analyst modeled after Google's internal threat intelligence platforms. "
+                    "Your task is to answer the user's cybersecurity question. You MUST synthesize information *only* from the provided real-time internet search results and library context. "
+                    "Provide a professional, technical answer suitable for a security engineer. "
+                    "Your response should:\n"
+                    "1.  Directly answer the user's question.\n"
+                    "2.  Analyze threats, vulnerabilities, and mitigation strategies based *only* on the provided context.\n"
+                    "3.  Reference CVEs, threat actors, or TTPs if mentioned in the search results.\n"
+                    "4.  Conclude with a 'Key Takeaways' section.\n"
+                    "5.  Cite all sources meticulously using [Source: URL/Filename] for every claim made."
+                )
+                
+                if request_mode == 'security_search':
+                    system_prompt = SECURITY_SYSTEM_PROMPT
+                else:
+                    system_prompt = GENERAL_SYSTEM_PROMPT
+                # <-- END: Dynamic System Prompt -->
+
+                context_parts = []
+                if web_search_context:
+                    context_parts.append(f"--- WEB SEARCH RESULTS ---\n{web_search_context}")
+                if library_search_context:
+                    context_parts.append(f"--- YOUR LIBRARY RESULTS ---\n{library_search_context}")
+                
+                context_prompt = "\n\n".join(context_parts)
+                
                 search_augmented_history = [
-                    {"role": "system", "content": (
-                        "You are a helpful assistant. You MUST answer the user's question "
-                        "based *only* on the provided web search results. "
-                        "Cite your sources using the [Source: link] format if possible. "
-                        "If the results are not sufficient, say so."
-                    )},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": (
-                        f"--- WEB SEARCH RESULTS ---\n{web_search_context}\n\n"
+                        f"{context_prompt}\n\n"
                         f"--- USER QUESTION ---\n{user_message}"
                     )}
                 ]
@@ -843,10 +1092,10 @@ def chat():
                     "https://api.groq.com/openai/v1/chat/completions",
                     {"Authorization": f"Bearer {GROQ_API_KEY}"},
                     {"model": "llama-3.1-8b-instant", "messages": search_augmented_history},
-                    "Groq (Web Search)"
+                    "Groq (Contextual Search)"
                 )
                 if ai_response:
-                    api_used, model_logged = "Groq (Web Search)", "llama-3.1-8b-instant"
+                    api_used, model_logged = "Groq (Contextual Search)", "llama-3.1-8b-instant"
                     
             elif not ai_response and GROQ_API_KEY:
                 # Original logic: No search context, just a normal text chat
@@ -860,25 +1109,76 @@ def chat():
 
         if not ai_response:
             print("Routing to Gemini (Sofia AI)...")
-            # --- MODIFICATION: Using a current, valid model name from your list ---
             model_name = "gemini-2.5-pro" 
             api_used, model_logged = "Gemini", model_name
             model = genai.GenerativeModel(model_name)
 
             prompt_parts = [user_message] if user_message else []
 
-            # --- MODIFIED: Handle web search context for Gemini ---
-            if web_search_context:
+            # --- MODIFIED: Handle Code Scan, then Web/Library Scan, then Multimodal ---
+            if request_mode == 'code_security_scan':
+                # <-- MODIFIED: Upgraded Professional Prompt for Gemini -->
+                CODE_SECURITY_PROMPT = (
+                    "You are 'Sofia-Sec-L', a specialized AI Code Security Analyst modeled after Google's internal security review tools. "
+                    "A user (potential Google intern) has submitted a code snippet for review. Your task is to perform a rigorous security and vulnerability analysis. "
+                    "The output MUST be a professional-grade security report formatted in Markdown, suitable for a technical audience (e.g., a Google engineering team).\n\n"
+                    "**SECURITY ANALYSIS REPORT**\n\n"
+                    "**1. Executive Summary:**\n"
+                    "   - A high-level overview of the code's purpose and its primary security posture.\n\n"
+                    "**2. Vulnerability Findings:**\n"
+                    "   - (List each finding. If none, state 'No significant vulnerabilities detected.')\n"
+                    "   - **[Severity: Critical/High/Medium/Low] - [Vulnerability Type (e.g., SQL Injection)]**\n"
+                    "     - **Location:** (Quote the problematic line(s) of code.)\n"
+                    "     - **Analysis:** (Detailed explanation of the vulnerability, its attack vector, and potential business impact.)\n"
+                    "     - **CVE-ID (if applicable):** (e.g., CVE-2023-XXXXX, or 'N/A'.)\n"
+                    "     - **Recommended Mitigation:** (Provide the corrected, secure code snippet. Explain *why* the new code is secure, referencing best practices like input sanitization, parameterized queries, etc.)\n\n"
+                    "**3. Secure Coding Recommendations:**\n"
+                    "   - General advice on how to improve the overall security of this code, referencing Google's secure coding standards or OWASP Top 10.\n\n"
+                    "**4. Overall Security Rating:** (Assign one: Excellent, Good, Fair, Poor, Critical)\n\n"
+                    "--- USER SUBMITTED CODE ---\n" + user_message
+                )
+                prompt_parts = [CODE_SECURITY_PROMPT]
+                api_used = "Gemini (Code Security Scan)"
+
+            elif web_search_context or library_search_context:
+                # <-- MODIFIED: Upgraded Professional Prompts for Gemini -->
+                GENERAL_SYSTEM_PROMPT = (
+                    "You are a helpful assistant. You MUST answer the user's question "
+                    "based *only* on the provided context. "
+                    "Cite your sources using the [Source: link] or [Source: Filename] format."
+                )
+                SECURITY_SYSTEM_PROMPT = (
+                    "You are 'Sofia-Sec-L', a specialized AI Security Analyst modeled after Google's internal threat intelligence platforms. "
+                    "Your task is to answer the user's cybersecurity question. You MUST synthesize information *only* from the provided real-time internet search results and library context. "
+                    "Provide a professional, technical answer suitable for a security engineer. "
+                    "Your response should:\n"
+                    "1.  Directly answer the user's question.\n"
+                    "2.  Analyze threats, vulnerabilities, and mitigation strategies based *only* on the provided context.\n"
+                    "3.  Reference CVEs, threat actors, or TTPs if mentioned in the search results.\n"
+                    "4.  Conclude with a 'Key Takeaways' section.\n"
+                    "5.  Cite all sources meticulously using [Source: URL/Filename] for every claim made."
+                )
+                
+                if request_mode == 'security_search':
+                    system_prompt = SECURITY_SYSTEM_PROMPT
+                    api_used = "Gemini (Security Search)"
+                else:
+                    system_prompt = GENERAL_SYSTEM_PROMPT
+                    api_used = "Gemini (Contextual Search)"
+                # <-- END: Dynamic System Prompt for Gemini -->
+                
+                context_parts = []
+                if web_search_context:
+                    context_parts.append(f"--- WEB SEARCH RESULTS ---\n{web_search_context}")
+                if library_search_context:
+                    context_parts.append(f"--- YOUR LIBRARY RESULTS ---\n{library_search_context}")
+                
+                context_prompt = "\n\n".join(context_parts)
+                
                 # This will be the only prompt part. We ignore history to focus on the search task.
                 prompt_parts = [
-                    "You are a helpful assistant. You MUST answer the user's question "
-                    "based *only* on the provided web search results. "
-                    "Cite your sources using the [Source: link] format if possible. "
-                    "If the results are not sufficient, say so.\n\n"
-                    f"--- WEB SEARCH RESULTS ---\n{web_search_context}\n\n"
-                    f"--- USER QUESTION ---\n{user_message}"
+                    f"{system_prompt}\n\n{context_prompt}\n\n--- USER QUESTION ---\n{user_message}"
                 ]
-                api_used = "Gemini (Web Search)"
                 
             elif "youtube.com" in user_message or "youtu.be" in user_message:
                 video_id = get_video_id(user_message)
@@ -901,8 +1201,8 @@ def chat():
                 prompt_parts.insert(0, "Describe this image.")
             
             try:
-                # --- MODIFIED: Don't use history if we have search context ---
-                if web_search_context:
+                # --- MODIFIED: Don't use history if we have search or code scan context ---
+                if web_search_context or library_search_context or request_mode == 'code_security_scan':
                     full_prompt = prompt_parts
                 else:
                     full_prompt = gemini_history + [{'role': 'user', 'parts': prompt_parts}]
