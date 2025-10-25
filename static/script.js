@@ -1,4 +1,4 @@
-// --- Element Selectors ---
+// --- Element Selectors --- 
 const sidebarOverlay = document.getElementById('sidebar-overlay');
 const headerNewChatBtn = document.getElementById('header-new-chat-btn'); 
 const newChatBtn = document.getElementById('new-chat-btn');
@@ -1392,3 +1392,4 @@ function initializeApp() {
 }
 
 initializeApp();
+
