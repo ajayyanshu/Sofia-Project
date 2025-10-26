@@ -219,10 +219,10 @@ usageTabBtn.addEventListener('click', (e) => { e.preventDefault(); switchSetting
 let currentLang = 'en';
 const translations = {
     'en': { settings: 'Settings', general: 'General', profile: 'Profile', theme: 'Theme', light: 'Light', dark: 'Dark', system: 'System', language: 'Language', profileImage: 'Profile Image', upload: 'Upload', username: 'Username', newChat: 'New chat', library: 'Library', chatHistory: 'Chat History', chatHistoryEmpty: 'Your chat history will appear here.', help: 'Help', logOut: 'Log out', welcome: 'What can I help with?', addFiles: 'Add photos & file', askAnything: 'Ask anything', search: 'Search', sofiaTitle: 'Sofia AI' },
-    'hi': { settings: 'सेटिंग्स', general: 'सामान्य', profile: 'प्रोफ़ाइल', theme: 'थीम', light: 'लाइट', dark: 'डार्क', system: 'सिस्टम', language: 'भाषा', profileImage: 'प्रोफ़ाइल चित्र', upload: 'अपलोड', username: 'उपयोगकर्ता नाम', newChat: 'नई चैट', library: 'लाइब्रेरी', chatHistory: 'चैट इतिहास', chatHistoryEmpty: 'आपका चैट इतिहास यहां दिखाई देगा।', help: 'सहायता', logOut: 'लॉग आउट', welcome: 'मैं आपकी क्या मदद कर सकता हूँ?', addFiles: 'फ़ोटो और फ़ाइल जोड़ें', askAnything: 'कुछ भी पूछें', search: 'खोजें', sofiaTitle: 'सोफिया एआई' },
+    'es': { settings: 'Ajustes', general: 'General', profile: 'Perfil', theme: 'Tema', light: 'Claro', dark: 'Oscuro', system: 'Sistema', language: 'Idioma', profileImage: 'Imagen de perfil', upload: 'Subir', username: 'Nombre de usuario', newChat: 'Nuevo chat', library: 'Biblioteca', chatHistory: 'Historial de chat', chatHistoryEmpty: 'Tu historial de chat aparecerá aquí.', help: 'Ayuda', logOut: 'Cerrar sesión', welcome: '¿En qué puedo ayudarte?', addFiles: 'Añadir fotos y archivos', askAnything: 'Pregunta cualquier cosa', search: 'Buscar', sofiaTitle: 'Sofia AI' },
 };
 
-const languages = { "en": "English", "hi": "Hindi" };
+const languages = { "en": "English", "es": "Spanish" };
 
 function applyLanguage(lang) {
     currentLang = lang;
@@ -375,13 +375,19 @@ async function sendMessage() {
     
     const modeForThisMessage = currentMode;
     
+    // --- MODIFICATION 2: REMOVED ---
+    // Removed the frontend web search usage tracking block.
+    // Your 'app.py' backend now handles this check and increment
+    // securely when it receives the 'mode: "web_search"' key.
+    /*
     if (modeForThisMessage === 'web_search' && !isPremium && !isAdmin) {
         usageCounts.webSearches++;
          // Inform backend about usage
         fetch('/update_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'web_search' }) });
 
     }
-
+    */
+    
     const currentFileData = fileData;
     const currentFileType = fileType;
     removeFile();
@@ -397,11 +403,15 @@ async function sendMessage() {
         const response = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // --- MODIFICATION 1: ADDED 'mode' KEY ---
+            // This now tells the Python backend that the user
+            // clicked the web search button.
             body: JSON.stringify({
                 text: text,
                 fileData: currentFileData, 
                 fileType: currentFileType,
-                isTemporary: isTemporaryChatActive
+                isTemporary: isTemporaryChatActive,
+                mode: modeForThisMessage 
             })
         });
         
@@ -415,6 +425,12 @@ async function sendMessage() {
         if (!isPremium && !isAdmin) {
             usageCounts.messages++;
             // Inform backend about usage
+            // NOTE: This '/update_usage' call is for *messages*. Your backend
+            // already increments 'usage_counts.messages' in the /chat route,
+            // so this is also technically redundant, but we can leave it
+            // as it doesn't cause a conflict like the web search one did.
+            // For optimal design, this could also be removed and handled
+            // exclusively by the backend.
             fetch('/update_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'message' }) });
             updateUsageUI();
         }
@@ -646,7 +662,7 @@ function speakText(text, onEndCallback) {
         window.speechSynthesis.cancel();
         const cleanedText = text.replace(/[*_`#]/g, '');
         const utterance = new SpeechSynthesisUtterance(cleanedText);
-        utterance.lang = currentLang; // This will now use 'en' or 'hi'
+        utterance.lang = currentLang;
         utterance.onstart = () => {
             if (isVoiceConversationActive) setVoiceUIState('speaking');
         };
@@ -680,7 +696,7 @@ function startListening() {
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = currentLang; // This will now use 'en' or 'hi'
+    recognition.lang = currentLang;
 
     recognition.onstart = () => {
         if (isVoiceConversationActive) {
@@ -1178,7 +1194,7 @@ razorpayBtn.addEventListener('click', () => {
         // "order_id": "order_xyz", // IMPORTANT: This should be generated from your backend for security
         "handler": function (response){
             alert("Payment Successful! Payment ID: " + response.razorpay_payment_id);
-            // TODO: You should now send response.razoray_payment_id to your backend
+            // TODO: You should now send response.razorpay_payment_id to your backend
             // to verify the payment signature and update the user's status in your database.
             
             // For this demo, we'll just upgrade the user on the frontend
