@@ -3,7 +3,7 @@ gunicorn
 google-generativeai>=0.8.5
 PyMuPDF
 Pillow
-youtube-transcript-api
+youtube-transcript-api>=0.6.0
 requests
 python-docx
 flask_cors
