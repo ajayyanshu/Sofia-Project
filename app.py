@@ -19,8 +19,8 @@ from flask_cors import CORS
 from PIL import Image
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-# --- MODIFICATION 1: Import get_transcript directly ---
-from youtube_transcript_api import YouTubeTranscriptApi, get_transcript
+# --- MODIFICATION 1: Reverted import to its original state ---
+from youtube_transcript_api import YouTubeTranscriptApi
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 from flask_mail import Mail, Message
@@ -769,11 +769,11 @@ def chat():
         match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
         return match.group(1) if match else None
 
-    # --- MODIFICATION 2: Use the directly imported get_transcript function ---
+    # --- MODIFICATION 2: Reverted this function to its original state ---
     def get_youtube_transcript(video_id):
         try:
-            # Call the imported get_transcript function directly
-            return " ".join([d['text'] for d in get_transcript(video_id)])
+            # Call the class method
+            return " ".join([d['text'] for d in YouTubeTranscriptApi.get_transcript(video_id)])
         except Exception as e:
             print(f"Error getting YouTube transcript: {e}")
             return None
@@ -1380,3 +1380,4 @@ def save_chat_history():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
