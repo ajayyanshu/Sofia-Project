@@ -11,6 +11,7 @@ const sendBtn = document.getElementById('send-btn');
 const addBtn = document.getElementById('add-btn');
 const addMenu = document.getElementById('add-menu');
 const uploadFileBtn = document.getElementById('upload-file-btn');
+const uploadCodeBtn = document.getElementById('upload-code-btn'); // <-- ADDED THIS
 const fileInput = document.getElementById('file-input');
 const filePreviewContainer = document.getElementById('file-preview-container');
 const webSearchToggleBtn = document.getElementById('web-search-toggle-btn');
@@ -134,7 +135,23 @@ newChatBtn.addEventListener('click', () => {
 // --- Event Listeners ---
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-uploadFileBtn.addEventListener('click', () => fileInput.click());
+
+// --- MODIFIED FILE UPLOAD LISTENERS ---
+// This listener handles general files (images, docs, pdfs)
+uploadFileBtn.addEventListener('click', () => {
+    // Set the accept attribute for general files
+    fileInput.accept = "image/*,.pdf,.doc,.docx";
+    fileInput.click();
+});
+
+// This listener handles code files
+uploadCodeBtn.addEventListener('click', () => {
+    // Set the accept attribute for a wide range of code/text files
+    fileInput.accept = ".txt,.py,.js,.java,.c,.cpp,.h,.html,.css,.json,.md,.sh,.rb,.go,.php,.swift,.kt";
+    fileInput.click();
+});
+// --- END OF MODIFICATIONS ---
+
 fileInput.addEventListener('change', handleFileSelect);
 
 addBtn.addEventListener('click', (e) => {
@@ -219,10 +236,10 @@ usageTabBtn.addEventListener('click', (e) => { e.preventDefault(); switchSetting
 let currentLang = 'en';
 const translations = {
     'en': { settings: 'Settings', general: 'General', profile: 'Profile', theme: 'Theme', light: 'Light', dark: 'Dark', system: 'System', language: 'Language', profileImage: 'Profile Image', upload: 'Upload', username: 'Username', newChat: 'New chat', library: 'Library', chatHistory: 'Chat History', chatHistoryEmpty: 'Your chat history will appear here.', help: 'Help', logOut: 'Log out', welcome: 'What can I help with?', addFiles: 'Add photos & file', askAnything: 'Ask anything', search: 'Search', sofiaTitle: 'Sofia AI' },
-    'es': { settings: 'Ajustes', general: 'General', profile: 'Perfil', theme: 'Tema', light: 'Claro', dark: 'Oscuro', system: 'Sistema', language: 'Idioma', profileImage: 'Imagen de perfil', upload: 'Subir', username: 'Nombre de usuario', newChat: 'Nuevo chat', library: 'Biblioteca', chatHistory: 'Historial de chat', chatHistoryEmpty: 'Tu historial de chat aparecerá aquí.', help: 'Ayuda', logOut: 'Cerrar sesión', welcome: '¿En qué puedo ayudarte?', addFiles: 'Añadir fotos y archivos', askAnything: 'Pregunta cualquier cosa', search: 'Buscar', sofiaTitle: 'Sofia AI' },
+    'hi': { settings: 'सेटिंग्स', general: 'सामान्य', profile: 'प्रोफ़ाइल', theme: 'थीम', light: 'लाइट', dark: 'डार्क', system: 'सिस्टम', language: 'भाषा', profileImage: 'प्रोफ़ाइल छवि', upload: 'अपलोड', username: 'उपयोगकर्ता नाम', newChat: 'नई चैट', library: 'लाइब्रेरी', chatHistory: 'चैट इतिहास', chatHistoryEmpty: 'आपका चैट इतिहास यहाँ दिखाई देगा।', help: 'मदद', logOut: 'लॉग आउट', welcome: 'मैं आपकी क्या मदद कर सकता हूँ?', addFiles: 'तस्वीरें और फ़ाइलें जोड़ें', askAnything: 'कुछ भी पूछें', search: 'खोजें', sofiaTitle: 'सोफिया एआई' },
 };
 
-const languages = { "en": "English", "es": "Spanish" };
+const languages = { "en": "English", "hi": "हिंदी" };
 
 function applyLanguage(lang) {
     currentLang = lang;
@@ -1096,14 +1113,22 @@ function renderLibraryFiles(files) {
         item.className = 'relative group border rounded-lg p-2 flex flex-col items-center text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700';
         item.addEventListener('click', () => selectLibraryFile(file));
 
+        // --- MODIFIED: Use fileCategory for icons ---
         let previewHtml = '';
-        if (file.fileType.startsWith('image/')) {
+        // Use file.fileCategory which is now sent from the backend
+        if (file.fileCategory === 'image') {
             previewHtml = `<img src="data:${file.fileType};base64,${file.fileData}" alt="${file.fileName}" class="w-20 h-20 object-cover rounded-md mb-2">`;
-        } else if (file.fileType === 'application/pdf') {
-            previewHtml = `<svg class="w-20 h-20 mb-2 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`;
+        } else if (file.fileCategory === 'document') {
+             // A blue icon for documents (PDF, DOCX)
+            previewHtml = `<svg class="w-20 h-20 mb-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`;
+        } else if (file.fileCategory === 'code') {
+            // A green icon for code files
+            previewHtml = `<svg class="w-20 h-20 mb-2 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4-4M6 16l-4-4 4-4" /></svg>`;
         } else {
+            // A generic gray icon for 'other'
             previewHtml = `<svg class="w-20 h-20 mb-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>`;
         }
+        // --- END OF MODIFICATION ---
         
         item.innerHTML = `
             ${previewHtml}
