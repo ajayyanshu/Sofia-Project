@@ -47,9 +47,9 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email config
 # NOTE: Using Gmail's SMTP is recommended for cloud hosting like Render.
 # You will need to generate a Google App Password for this to work.
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', '1', 't']
-app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', '1', 't']
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 465)) # <-- MODIFIED: Use port 465 for SSL
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'false').lower() in ['true', '1', 't'] # <-- MODIFIED: Set to false
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'true').lower() in ['true', '1', 't'] # <-- MODIFIED: Set to true
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') # Use a Google App Password here
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
@@ -177,7 +177,10 @@ def login_page():
     """Renders the login page."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
-    return render_template('login.html')
+    
+    # --- MODIFICATION: Pass flash messages to the template ---
+    messages = session.pop('_flashes', [])
+    return render_template('login.html', flash_messages=messages)
 
 @app.route('/signup.html', methods=['GET'])
 def signup_page():
@@ -214,13 +217,20 @@ def api_signup():
     if users_collection.find_one({"email": email}):
         return jsonify({'success': False, 'error': 'An account with this email already exists.'}), 409
 
+    # --- MODIFICATION: Generate token and set expiry ---
+    verification_token = uuid.uuid4().hex
+    token_expiry = datetime.utcnow() + timedelta(hours=24) # Link is valid for 24 hours
+
     # Storing the password in plain text. This is NOT recommended.
     # hashed_password = generate_password_hash(password)
 
     # --- MODIFICATION: Added all usage counters and monthly reset ---
     new_user = {
         "name": name, "email": email, "password": password,
-        "isAdmin": email == ADMIN_EMAIL, "isPremium": False, "is_verified": True, # User is verified by default now
+        "isAdmin": email == ADMIN_EMAIL, "isPremium": False, 
+        "is_verified": False, # <-- MODIFICATION: User is NOT verified by default
+        "verification_token": verification_token, # <-- ADDED
+        "verification_token_expires_at": token_expiry, # <-- ADDED
         "session_id": str(uuid.uuid4()),
         # MODIFIED: Added all counters from the image
         "usage_counts": { "messages": 0, "webSearches": 0, "voiceCommands": 0, "docReads": 0 },
@@ -233,7 +243,20 @@ def api_signup():
     
     users_collection.insert_one(new_user)
 
-    return jsonify({'success': True, 'message': 'Account created successfully!'})
+    # --- MODIFICATION: Send verification email ---
+    try:
+        verify_url = url_for('verify_email', token=verification_token, _external=True)
+        msg = Message("Verify Your Email for Sofia AI", recipients=[email])
+        msg.body = f"Welcome to Sofia AI! Please click the following link to verify your email address:\n\n{verify_url}\n\nThis link will expire in 24 hours."
+        Thread(target=send_async_email, args=(app, msg)).start()
+    except Exception as e:
+        print(f"SIGNUP_EMAIL_ERROR: {e}")
+        # Don't fail the signup, but log the error
+        
+    return jsonify({
+        'success': True, 
+        'message': 'Account created! Please check your email for a verification link.'
+    })
 
 
 @app.route('/api/login', methods=['POST'])
@@ -250,19 +273,29 @@ def api_login():
         
     user_data = users_collection.find_one({"email": email})
 
-    # Plain text password comparison.
-    if user_data and user_data.get('password') == password:
-        # Removed the 'is_verified' check
-        new_session_id = str(uuid.uuid4())
-        users_collection.update_one({'_id': user_data['_id']}, {'$set': {'session_id': new_session_id}})
-        user_data['session_id'] = new_session_id
+    # --- MODIFICATION: Add verification check ---
+    if user_data:
+        # 1. Check if verified FIRST
+        if not user_data.get('is_verified', False):
+            return jsonify({
+                'success': False, 
+                'error': 'Your account is not verified. Please check your email.',
+                'unverified': True # Add a flag for the frontend
+            }), 401
 
-        user_obj = User(user_data)
-        login_user(user_obj)
-        session['session_id'] = new_session_id
-        return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
-    else:
-        return jsonify({'success': False, 'error': 'Incorrect email or password.'}), 401
+        # 2. If verified, THEN check password
+        if user_data.get('password') == password:
+            new_session_id = str(uuid.uuid4())
+            users_collection.update_one({'_id': user_data['_id']}, {'$set': {'session_id': new_session_id}})
+            user_data['session_id'] = new_session_id
+
+            user_obj = User(user_data)
+            login_user(user_obj)
+            session['session_id'] = new_session_id
+            return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
+    
+    # If user_data is None OR password check failed
+    return jsonify({'success': False, 'error': 'Incorrect email or password.'}), 401
 
 @app.route('/api/request_password_reset', methods=['POST'])
 def request_password_reset():
@@ -325,6 +358,78 @@ def reset_password():
     )
     
     return jsonify({'success': True, 'message': 'Password has been reset successfully.'})
+
+# --- NEW ROUTE: To handle the email link click ---
+@app.route('/verify_email/<token>', methods=['GET'])
+def verify_email(token):
+    if users_collection is None:
+        flash("Database error, please try again later.", "error")
+        return redirect(url_for('login_page'))
+
+    # Find user by token and check if it's expired
+    user = users_collection.find_one({
+        "verification_token": token,
+        "verification_token_expires_at": {"$gt": datetime.utcnow()}
+    })
+
+    if not user:
+        flash("Invalid or expired verification link.", "error")
+        return redirect(url_for('login_page'))
+        
+    # If token is valid, verify the user and remove the token
+    users_collection.update_one(
+        {'_id': user['_id']},
+        {
+            '$set': {'is_verified': True},
+            '$unset': {'verification_token': "", 'verification_token_expires_at': ""}
+        }
+    )
+    
+    flash("Your email has been verified! You can now log in.", "success")
+    return redirect(url_for('login_page'))
+
+
+# --- NEW ROUTE: To resend verification email ---
+@app.route('/api/resend_verification', methods=['POST'])
+def resend_verification():
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required.'}), 400
+
+    if users_collection is None:
+        return jsonify({'success': False, 'error': 'Database error.'}), 500
+
+    user = users_collection.find_one({"email": email})
+
+    # Only resend if the user exists AND is still unverified
+    if user and not user.get('is_verified', False):
+        verification_token = uuid.uuid4().hex
+        token_expiry = datetime.utcnow() + timedelta(hours=24)
+        
+        users_collection.update_one(
+            {'_id': user['_id']},
+            {'$set': {
+                'verification_token': verification_token,
+                'verification_token_expires_at': token_expiry
+            }}
+        )
+        
+        try:
+            verify_url = url_for('verify_email', token=verification_token, _external=True)
+            msg = Message("Verify Your Email for Sofia AI (New Link)", recipients=[email])
+            msg.body = f"Here is a new link to verify your email address:\n\n{verify_url}\n\nThis link will expire in 24 hours."
+            Thread(target=send_async_email, args=(app, msg)).start()
+        except Exception as e:
+            print(f"RESEND_EMAIL_ERROR: {e}")
+            return jsonify({'success': False, 'error': 'Failed to send email.'}), 500
+
+    # For security, always return a success message so we don't
+    # reveal which emails are registered.
+    return jsonify({
+        'success': True, 
+        'message': 'If an unverified account with that email exists, a new link has been sent.'
+    })
 
 @app.route('/get_user_info')
 @login_required
