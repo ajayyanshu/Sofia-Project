@@ -217,14 +217,20 @@ def api_signup():
     # Storing the password in plain text. This is NOT recommended.
     # hashed_password = generate_password_hash(password)
 
+    # --- MODIFICATION: Added all usage counters and monthly reset ---
     new_user = {
         "name": name, "email": email, "password": password,
         "isAdmin": email == ADMIN_EMAIL, "isPremium": False, "is_verified": True, # User is verified by default now
         "session_id": str(uuid.uuid4()),
-        "usage_counts": { "messages": 0, "webSearches": 0 },
+        # MODIFIED: Added all counters from the image
+        "usage_counts": { "messages": 0, "webSearches": 0, "voiceCommands": 0, "docReads": 0 },
+        # MODIFIED: Added monthly reset tracker
         "last_usage_reset": datetime.utcnow().strftime('%Y-%m-%d'),
+        "last_monthly_reset": datetime.utcnow().strftime('%Y-%m'),
         "timestamp": datetime.utcnow().isoformat()
     }
+    # --- END MODIFICATION ---
+    
     users_collection.insert_one(new_user)
 
     return jsonify({'success': True, 'message': 'Account created successfully!'})
@@ -325,7 +331,7 @@ def reset_password():
 def get_user_info():
     """Provides user information to the front-end after login."""
     user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
-    usage_counts = user_data.get('usage_counts', {"messages": 0, "webSearches": 0})
+    usage_counts = user_data.get('usage_counts', {"messages": 0, "webSearches": 0, "voiceCommands": 0, "docReads": 0})
     
     return jsonify({
         "name": current_user.name,
@@ -720,38 +726,110 @@ def extract_text_from_docx(docx_bytes):
 @app.route('/chat', methods=['POST'])
 @login_required
 def chat():
-    # --- Daily Usage Limit Check and Reset ---
-    if not current_user.isPremium and not current_user.isAdmin:
-        user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
+    # --- START OF /CHAT LOGIC ---
+    # --- MODIFICATION: This entire block replaces the old limit logic ---
+    try:
+        # --- 1. Parse Request Data FIRST ---
+        # We need this to know what limits to check (e.g., multimodal)
+        data = request.json
+        user_message = data.get('text', '')
+        file_data = data.get('fileData')
+        file_type = data.get('fileType', '')
+        is_temporary = data.get('isTemporary', False)
+        request_mode = data.get('mode') 
         
-        last_reset_str = user_data.get('last_usage_reset', '1970-01-01')
-        last_reset_date = datetime.strptime(last_reset_str, '%Y-%m-%d').date()
-        today = datetime.utcnow().date()
-
-        if last_reset_date < today:
-            users_collection.update_one(
-                {'_id': ObjectId(current_user.id)},
-                {'$set': {
-                    'usage_counts': {'messages': 0, 'webSearches': 0},
-                    'last_usage_reset': today.strftime('%Y-%m-%d')
-                }}
-            )
+        is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
+        
+        # --- 2. Daily & Monthly Usage Limit Check and Reset ---
+        if not current_user.isPremium and not current_user.isAdmin:
             user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
-        
-        usage = user_data.get('usage_counts', {})
-        messages_used = usage.get('messages', 0)
-        
-        if messages_used >= 15: # Daily message limit from HTML
-            return jsonify({
-                'error': 'You have reached your daily message limit. Please upgrade for unlimited access.',
-                'upgrade_required': True
-            }), 429
             
-        # Increment the message count only for non-premium, non-admin users
-        users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.messages': 1}})
+            # --- Get current time and last reset dates ---
+            today = datetime.utcnow().date()
+            current_month_str = today.strftime('%Y-%m')
+            
+            last_daily_reset_str = user_data.get('last_usage_reset', '1970-01-01')
+            last_daily_reset_date = datetime.strptime(last_daily_reset_str, '%Y-%m-%d').date()
+            
+            last_monthly_reset_str = user_data.get('last_monthly_reset', '1970-01')
+            
+            # --- Initialize updates ---
+            update_set = {}
+            daily_counts_to_reset = {
+                'usage_counts.messages': 0,
+                'usage_counts.webSearches': 0,
+                'usage_counts.voiceCommands': 0
+            }
+            monthly_counts_to_reset = {
+                'usage_counts.docReads': 0
+            }
 
-    # <-- REMOVED: Text extraction functions were moved to be global -->
+            # --- Monthly Reset Logic ---
+            if last_monthly_reset_str < current_month_str:
+                print(f"User {current_user.id}: Performing MONTHLY reset.")
+                update_set.update(monthly_counts_to_reset)
+                update_set['last_monthly_reset'] = current_month_str
+                # A new month *always* triggers a new daily reset too
+                update_set.update(daily_counts_to_reset)
+                update_set['last_usage_reset'] = today.strftime('%Y-%m-%d')
 
+            # --- Daily Reset Logic (only if monthly didn't run) ---
+            elif last_daily_reset_date < today:
+                print(f"User {current_user.id}: Performing DAILY reset.")
+                update_set.update(daily_counts_to_reset)
+                update_set['last_usage_reset'] = today.strftime('%Y-%m-%d')
+
+            # --- Apply updates to DB if any resets occurred ---
+            if update_set:
+                users_collection.update_one(
+                    {'_id': ObjectId(current_user.id)},
+                    {'$set': update_set}
+                )
+                user_data = users_collection.find_one({'_id': ObjectId(current_user.id)}) # Reload data
+            
+            # --- 3. Check Limits for THIS request ---
+            usage = user_data.get('usage_counts', {})
+            
+            # --- Check Message Limit (Daily: 15) ---
+            messages_used = usage.get('messages', 0)
+            if messages_used >= 15: # Daily limit from image
+                return jsonify({
+                    'error': 'You have reached your daily message limit (15). Please upgrade for unlimited access.',
+                    'upgrade_required': True
+                }), 429
+                
+            # --- Check Doc Read Limit (Monthly: 1) ---
+            if is_multimodal:
+                doc_reads_used = usage.get('docReads', 0)
+                if doc_reads_used >= 1: # Monthly limit from image
+                    return jsonify({
+                        'error': 'You have reached your monthly limit (1) for reading Images, PDFs, or Docs. Please upgrade for unlimited access.',
+                        'upgrade_required': True
+                    }), 429
+                # If limit is not hit, increment it
+                users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.docReads': 1}})
+            
+            # --- Check Voice Command Limit (Daily: 5) ---
+            # NOTE: You don't have a voice endpoint, but if you did,
+            # you would add the check here, like this:
+            # if request_mode == 'voice':
+            #     voice_used = usage.get('voiceCommands', 0)
+            #     if voice_used >= 5: 
+            #         return jsonify({'error': 'You have reached your daily voice limit (5).'}), 429
+            #     users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.voiceCommands': 1}})
+
+            # --- Increment the message count (at the end of checks) ---
+            users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.messages': 1}})
+
+        # --- 4. Initialize variables for ALL users ---
+        # These were previously parsed at line 1187, but are now needed here
+        ai_response, api_used, model_logged = None, "", ""
+        web_search_context = None 
+        library_search_context = None
+        # --- END OF NEW LIMIT LOGIC BLOCK ---
+    
+    # --- Helper functions for /chat ---
+    
     def get_file_from_github(filename):
         if not all([GITHUB_USER, GITHUB_REPO]):
             print("CRITICAL WARNING: GITHUB_USER or GITHUB_REPO is not configured.")
@@ -925,22 +1003,9 @@ def chat():
             
         return None # Not a search query
 
-    # --- START OF /CHAT LOGIC ---
-    try:
-        data = request.json
-        user_message = data.get('text', '')
-        file_data = data.get('fileData')
-        file_type = data.get('fileType', '')
-        is_temporary = data.get('isTemporary', False)
+    # --- Continue /CHAT LOGIC ---
+    # The 'try' block was started at the beginning of the new limit logic
         
-        request_mode = data.get('mode') 
-        
-        ai_response, api_used, model_logged = None, "", ""
-        web_search_context = None 
-        library_search_context = None # <-- ADDED
-
-        is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
-
         # <-- MODIFIED AUTOMATION LOGIC -->
         # Only trigger if it's a plain chat, not multimodal
         if request_mode == 'chat' and not is_multimodal:
@@ -966,9 +1031,11 @@ def chat():
                 user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
                 searches_used = user_data.get('usage_counts', {}).get('webSearches', 0)
                 
-                if searches_used >= 1: # Daily limit from HTML
+                # --- MODIFICATION: Updated error message and variable ---
+                if searches_used >= 1: # Daily limit from image
                     print(f"User {current_user.id} exceeded web search limit.")
-                    web_search_context = "You have already used your daily web search. Please upgrade for unlimited searches."
+                    web_search_context = "You have already used your daily web search limit (1). Please upgrade for unlimited searches."
+                # --- END MODIFICATION ---
                 else:
                     print(f"Performing web search for: {user_message}")
                     web_search_context = search_web(user_message)
@@ -1380,4 +1447,3 @@ def save_chat_history():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
