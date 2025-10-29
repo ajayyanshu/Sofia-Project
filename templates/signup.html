@@ -78,7 +78,8 @@
 <body class="flex items-center justify-center h-full">
 
     <div class="auth-main-container">
-        <div class="form-container">
+        <!-- MODIFICATION: Added an ID to the form container -->
+        <div class="form-container" id="form-container">
             <!-- Sign Up Form -->
             <form id="sign-up-form" autocomplete="off">
                 <h1 class="text-3xl font-bold mb-2">Create Account</h1>
@@ -116,6 +117,8 @@
         const signUpForm = document.getElementById('sign-up-form');
         const passwordInput = document.getElementById('signup-password');
         const passwordToggleIcon = document.getElementById('password-toggle-icon');
+        // MODIFICATION: Get the form container to replace its content
+        const formContainer = document.getElementById('form-container');
 
         // --- Toggle Password Visibility ---
         passwordToggleIcon.addEventListener('click', () => {
@@ -150,8 +153,20 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // On successful signup, redirect to the login page
-                    window.location.href = '/login';
+                    // MODIFICATION: On successful signup, show a success message
+                    // instead of redirecting.
+                    formContainer.innerHTML = `
+                        <div class="text-center p-12">
+                            <h1 class="text-3xl font-bold mb-4">Check Your Email</h1>
+                            <p class="text-gray-600 mb-6">
+                                We've sent a verification link to <strong>${email}</strong>.
+                                Please click the link in the email to activate your account.
+                            </p>
+                            <a href="/login" class="font-semibold text-blue-600 hover:underline">
+                                Back to Sign In
+                            </a>
+                        </div>
+                    `;
                 } else {
                     errorEl.textContent = data.error || "An unknown error occurred.";
                 }
@@ -163,4 +178,3 @@
     </script>
 </body>
 </html>
-
