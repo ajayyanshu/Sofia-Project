@@ -828,186 +828,186 @@ def chat():
         library_search_context = None
         # --- END OF NEW LIMIT LOGIC BLOCK ---
     
-    # --- Helper functions for /chat ---
-    
-    def get_file_from_github(filename):
-        if not all([GITHUB_USER, GITHUB_REPO]):
-            print("CRITICAL WARNING: GITHUB_USER or GITHUB_REPO is not configured.")
-            return None
-        url = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO.replace(' ', '%20')}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            return response.content
-        except requests.exceptions.RequestException as e:
-            print(f"Error downloading from GitHub: {e}")
-            return None
-
-    def get_video_id(video_url):
-        match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
-        return match.group(1) if match else None
-
-    # --- MODIFICATION 2: Reverted this function to its original state ---
-    def get_youtube_transcript(video_id):
-        try:
-            # Call the class method
-            return " ".join([d['text'] for d in YouTubeTranscriptApi.get_transcript(video_id)])
-        except Exception as e:
-            print(f"Error getting YouTube transcript: {e}")
-            return None
-
-    def call_api(url, headers, json_payload, api_name):
-        try:
-            print(f"Attempting to call {api_name} API at {url}...")
-            response = requests.post(url, headers=headers, json=json_payload)
-            response.raise_for_status()
-            result = response.json()
-            print(f"Successfully received response from {api_name}.")
-            # Check for valid response structure
-            if 'choices' in result and len(result['choices']) > 0 and 'message' in result['choices'][0] and 'content' in result['choices'][0]['message']:
-                 return result['choices'][0]['message']['content']
-            else:
-                print(f"Unexpected response structure from {api_name}: {result}")
-                return None
-        except Exception as e:
-            print(f"Error calling {api_name} API: {e}")
-            return None
-
-    def search_web(query):
-        """Calls Serper.dev API to get web search results."""
-        if not SERPER_API_KEY:
-            print("Web search skipped: SERPER_API_KEY not set.")
-            return "Web search is disabled because the API key is not configured."
-
-        url = "https://google.serper.dev/search"
-        payload = json.dumps({"q": query})
-        headers = {
-            'X-API-KEY': SERPER_API_KEY,
-            'Content-Type': 'application/json'
-        }
-        try:
-            print(f"Attempting web search for: {query}")
-            response = requests.post(url, headers=headers, data=payload)
-            response.raise_for_status()
-            results = response.json()
-            print("Web search successful.")
-            
-            snippets = []
-            if "organic" in results:
-                for item in results.get("organic", [])[:5]: # Get top 5 results
-                    title = item.get("title", "No Title")
-                    snippet = item.get("snippet", "No Snippet")
-                    link = item.get("link", "No Link")
-                    snippets.append(f"Title: {title}\nSnippet: {snippet}\nSource: {link}")
-            
-            if snippets:
-                return "\n\n---\n\n".join(snippets)
-            elif "answerBox" in results:
-                # Handle answer boxes (e.g., "What is the weather?")
-                answer = results["answerBox"].get("snippet") or results["answerBox"].get("answer")
-                if answer:
-                    return f"Direct Answer: {answer}"
-            
-            return "No relevant web results found."
-            
-        except Exception as e:
-            print(f"Error calling Serper API: {e}")
-            return f"An error occurred during the web search: {e}"
-
-    # <-- ADDED: Library Search Helper -->
-    def search_library(user_id, query):
-        """Searches the user's library for relevant text snippets."""
-        if not library_collection:
-            return None # Return None, not a string
+        # --- Helper functions for /chat ---
         
-        try:
-            # Split query into keywords to broaden search
-            keywords = re.split(r'\s+', query)
-            # Create a regex that looks for all keywords (case-insensitive)
-            # This searches for documents containing all keywords, in any order.
-            regex_pattern = '.*'.join(f'(?=.*{re.escape(k)})' for k in keywords)
-
-            items_cursor = library_collection.find({
-                "user_id": user_id,
-                "extracted_text": {"$regex": regex_pattern, "$options": "i"}
-            }).limit(3) # Get top 3 matching docs
-            
-            snippets = []
-            for item in items_cursor:
-                filename = item.get("filename", "Untitled")
-                snippet = item.get("extracted_text", "")
+        def get_file_from_github(filename):
+            if not all([GITHUB_USER, GITHUB_REPO]):
+                print("CRITICAL WARNING: GITHUB_USER or GITHUB_REPO is not configured.")
+                return None
+            url = f"https{':'}//raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO.replace(' ', '%20')}/main/{GITHUB_FOLDER_PATH.replace(' ', '%20')}/{filename.replace(' ', '%20')}"
+            try:
+                response = requests.get(url)
+                response.raise_for_status()
+                return response.content
+            except requests.exceptions.RequestException as e:
+                print(f"Error downloading from GitHub: {e}")
+                return None
+    
+        def get_video_id(video_url):
+            match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
+            return match.group(1) if match else None
+    
+        # --- MODIFICATION 2: Reverted this function to its original state ---
+        def get_youtube_transcript(video_id):
+            try:
+                # Call the class method
+                return " ".join([d['text'] for d in YouTubeTranscriptApi.get_transcript(video_id)])
+            except Exception as e:
+                print(f"Error getting YouTube transcript: {e}")
+                return None
+    
+        def call_api(url, headers, json_payload, api_name):
+            try:
+                print(f"Attempting to call {api_name} API at {url}...")
+                response = requests.post(url, headers=headers, json=json_payload)
+                response.raise_for_status()
+                result = response.json()
+                print(f"Successfully received response from {api_name}.")
+                # Check for valid response structure
+                if 'choices' in result and len(result['choices']) > 0 and 'message' in result['choices'][0] and 'content' in result['choices'][0]['message']:
+                     return result['choices'][0]['message']['content']
+                else:
+                    print(f"Unexpected response structure from {api_name}: {result}")
+                    return None
+            except Exception as e:
+                print(f"Error calling {api_name} API: {e}")
+                return None
+    
+        def search_web(query):
+            """Calls Serper.dev API to get web search results."""
+            if not SERPER_API_KEY:
+                print("Web search skipped: SERPER_API_KEY not set.")
+                return "Web search is disabled because the API key is not configured."
+    
+            url = "https{':'}//google.serper.dev/search"
+            payload = json.dumps({"q": query})
+            headers = {
+                'X-API-KEY': SERPER_API_KEY,
+                'Content-Type': 'application/json'
+            }
+            try:
+                print(f"Attempting web search for: {query}")
+                response = requests.post(url, headers=headers, data=payload)
+                response.raise_for_status()
+                results = response.json()
+                print("Web search successful.")
                 
-                # Get the start of the text as a snippet
-                context_snippet = snippet[:300] # Get first 300 chars
+                snippets = []
+                if "organic" in results:
+                    for item in results.get("organic", [])[:5]: # Get top 5 results
+                        title = item.get("title", "No Title")
+                        snippet = item.get("snippet", "No Snippet")
+                        link = item.get("link", "No Link")
+                        snippets.append(f"Title: {title}\nSnippet: {snippet}\nSource: {link}")
+                
+                if snippets:
+                    return "\n\n---\n\n".join(snippets)
+                elif "answerBox" in results:
+                    # Handle answer boxes (e.g., "What is the weather?")
+                    answer = results["answerBox"].get("snippet") or results["answerBox"].get("answer")
+                    if answer:
+                        return f"Direct Answer: {answer}"
+                
+                return "No relevant web results found."
+                
+            except Exception as e:
+                print(f"Error calling Serper API: {e}")
+                return f"An error occurred during the web search: {e}"
+    
+        # <-- ADDED: Library Search Helper -->
+        def search_library(user_id, query):
+            """Searches the user's library for relevant text snippets."""
+            if not library_collection:
+                return None # Return None, not a string
+            
+            try:
+                # Split query into keywords to broaden search
+                keywords = re.split(r'\s+', query)
+                # Create a regex that looks for all keywords (case-insensitive)
+                # This searches for documents containing all keywords, in any order.
+                regex_pattern = '.*'.join(f'(?=.*{re.escape(k)})' for k in keywords)
+    
+                items_cursor = library_collection.find({
+                    "user_id": user_id,
+                    "extracted_text": {"$regex": regex_pattern, "$options": "i"}
+                }).limit(3) # Get top 3 matching docs
+                
+                snippets = []
+                for item in items_cursor:
+                    filename = item.get("filename", "Untitled")
+                    snippet = item.get("extracted_text", "")
                     
-                snippets.append(f"Source: {filename} (from your Library)\nSnippet: {context_snippet}...")
-            
-            if snippets:
-                print(f"Library search found {len(snippets)} items for query: {query}")
-                return "\n\n---\n\n".join(snippets)
-            else:
-                print(f"Library search found no items for query: {query}")
-                return None
+                    # Get the start of the text as a snippet
+                    context_snippet = snippet[:300] # Get first 300 chars
+                        
+                    snippets.append(f"Source: {filename} (from your Library)\nSnippet: {context_snippet}...")
                 
-        except Exception as e:
-            print(f"Error calling Library search: {e}")
-            return None
+                if snippets:
+                    print(f"Library search found {len(snippets)} items for query: {query}")
+                    return "\n\n---\n\n".join(snippets)
+                else:
+                    print(f"Library search found no items for query: {query}")
+                    return None
+                    
+            except Exception as e:
+                print(f"Error calling Library search: {e}")
+                return None
+        
+        # <-- MODIFIED: Automation Heuristic -->
+        def should_auto_search(user_message):
+            """
+            Decides if a query is informational and should trigger auto-search.
+            Returns the mode: 'code_security_scan', 'security_search', 'web_search', or None.
+            """
+            msg_lower = user_message.lower().strip()
+            
+            # Keywords that imply a security-focused search
+            security_keywords = [
+                'vulnerability', 'malware', 'cybersecurity', 'sql injection',
+                'xss', 'cross-site scripting', 'cve-', 'zero-day', 'phishing',
+                'ransomware', 'data breach', 'mitigation', 'pentest', 'exploit'
+            ]
     
-    # <-- MODIFIED: Automation Heuristic -->
-    def should_auto_search(user_message):
-        """
-        Decides if a query is informational and should trigger auto-search.
-        Returns the mode: 'code_security_scan', 'security_search', 'web_search', or None.
-        """
-        msg_lower = user_message.lower().strip()
-        
-        # Keywords that imply a security-focused search
-        security_keywords = [
-            'vulnerability', 'malware', 'cybersecurity', 'sql injection',
-            'xss', 'cross-site scripting', 'cve-', 'zero-day', 'phishing',
-            'ransomware', 'data breach', 'mitigation', 'pentest', 'exploit'
-        ]
-
-        # <-- ADDED: Keywords that imply code is being pasted -->
-        code_keywords = [
-            'def ', 'function ', 'public class', 'SELECT *', 'import ', 'require(', 
-            'const ', 'let ', 'var ', '<?php', 'public static void', 'console.log'
-        ]
-
-        # Keywords that imply a general search
-        general_search_keywords = [
-            'what is', 'who is', 'where is', 'when did', 'how to',
-            'latest', 'news', 'in 2025', 'in 2024',
-            'explain', 'summary of', 'overview of', 'compare'
-        ]
-        
-        # Simple questions that don't need search
-        chat_keywords = ['hi', 'hello', 'how are you', 'thanks', 'thank you']
-
-        if any(msg_lower.startswith(k) for k in chat_keywords):
-            return None # Just a chat
+            # <-- ADDED: Keywords that imply code is being pasted -->
+            code_keywords = [
+                'def ', 'function ', 'public class', 'SELECT *', 'import ', 'require(', 
+                'const ', 'let ', 'var ', '<?php', 'public static void', 'console.log'
+            ]
+    
+            # Keywords that imply a general search
+            general_search_keywords = [
+                'what is', 'who is', 'where is', 'when did', 'how to',
+                'latest', 'news', 'in 2025', 'in 2024',
+                'explain', 'summary of', 'overview of', 'compare'
+            ]
             
-        if any(k in msg_lower for k in security_keywords):
-            return 'security_search' # Security-focused search
+            # Simple questions that don't need search
+            chat_keywords = ['hi', 'hello', 'how are you', 'thanks', 'thank you']
+    
+            if any(msg_lower.startswith(k) for k in chat_keywords):
+                return None # Just a chat
+                
+            if any(k in msg_lower for k in security_keywords):
+                return 'security_search' # Security-focused search
+                
+            # <-- ADDED: Code scan check -->
+            if any(k in user_message for k in code_keywords):
+                return 'code_security_scan' # This is a code scan request
+    
+            if any(k in msg_lower for k in general_search_keywords):
+                return 'web_search' # General web search
+                
+            # If it's a longer, more complex question (e.g., > 6 words), default to general search
+            if len(user_message.split()) > 6:
+                return 'web_search'
+                
+            return None # Not a search query
+    
+        # --- Continue /CHAT LOGIC ---
+        # The 'try' block was started at the beginning of the new limit logic
             
-        # <-- ADDED: Code scan check -->
-        if any(k in user_message for k in code_keywords):
-            return 'code_security_scan' # This is a code scan request
-
-        if any(k in msg_lower for k in general_search_keywords):
-            return 'web_search' # General web search
-            
-        # If it's a longer, more complex question (e.g., > 6 words), default to general search
-        if len(user_message.split()) > 6:
-            return 'web_search'
-            
-        return None # Not a search query
-
-    # --- Continue /CHAT LOGIC ---
-    # The 'try' block was started at the beginning of the new limit logic
-        
-        # <-- MODIFIED AUTOMATION LOGIC -->
-        # Only trigger if it's a plain chat, not multimodal
+            # <-- MODIFIED AUTOMATION LOGIC -->
+            # Only trigger if it's a plain chat, not multimodal
         if request_mode == 'chat' and not is_multimodal:
             auto_mode = should_auto_search(user_message)
             if auto_mode:
@@ -1105,7 +1105,7 @@ def chat():
                 ]
                 
                 ai_response = call_api(
-                    "https://api.groq.com/openai/v1/chat/completions",
+                    "https{':'}//api.groq.com/openai/v1/chat/completions",
                     {"Authorization": f"Bearer {GROQ_API_KEY}"},
                     # Use a powerful model for this complex task
                     {"model": "llama-3.1-70b-versatile", "messages": code_scan_history}, 
@@ -1159,7 +1159,7 @@ def chat():
                 ]
                 
                 ai_response = call_api(
-                    "https://api.groq.com/openai/v1/chat/completions",
+                    "https{':'}//api.groq.com/openai/v1/chat/completions",
                     {"Authorization": f"Bearer {GROQ_API_KEY}"},
                     {"model": "llama-3.1-8b-instant", "messages": search_augmented_history},
                     "Groq (Contextual Search)"
@@ -1170,7 +1170,7 @@ def chat():
             elif not ai_response and GROQ_API_KEY:
                 # Original logic: No search context, just a normal text chat
                 print("Routing to Groq (no search)...")
-                ai_response = call_api("https://api.groq.com/openai/v1/chat/completions",
+                ai_response = call_api("https{':'}//api.groq.com/openai/v1/chat/completions",
                                        {"Authorization": f"Bearer {GROQ_API_KEY}"},
                                        {"model": "llama-3.1-8b-instant", "messages": openai_history},
                                        "Groq")
@@ -1447,3 +1447,4 @@ def save_chat_history():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
