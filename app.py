@@ -8,6 +8,7 @@ from datetime import datetime, date, timedelta
 import uuid
 import random
 from threading import Thread
+import traceback # <-- ADDED: To print detailed error info
 
 import docx
 import fitz  # PyMuPDF
@@ -46,24 +47,44 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email config
 # --- Email Configuration ---
 # NOTE: Using Gmail's SMTP is recommended for cloud hosting like Render.
 # You will need to generate a Google App Password for this to work.
+# --- TRYING PORT 587 / TLS ---
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 465)) # <-- MODIFIED: Use port 465 for SSL
-app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'false').lower() in ['true', '1', 't'] # <-- MODIFIED: Set to false
-app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'true').lower() in ['true', '1', 't'] # <-- MODIFIED: Set to true
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587)) # <-- Try Port 587
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', '1', 't'] # <-- Try TLS
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', '1', 't'] # <-- Set SSL to false
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') # Use a Google App Password here
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
+# --- Add Debugging for Flask-Mail ---
+app.config['MAIL_DEBUG'] = True # <-- ADDED: Enable Flask-Mail debug output
 
 mail = Mail(app)
 
+# --- MODIFIED: Added detailed logging ---
 def send_async_email(app, msg):
-    """Sends an email in a background thread to prevent request timeouts."""
+    """Sends an email in a background thread with detailed logging."""
+    print(f"--- Attempting to send email ---")
+    print(f"Recipient(s): {msg.recipients}")
+    print(f"Subject: {msg.subject}")
+    print(f"Sender: {app.config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_USERNAME')}")
+    print(f"Using Mail Server: {app.config.get('MAIL_SERVER')}:{app.config.get('MAIL_PORT')}")
+    print(f"Using TLS: {app.config.get('MAIL_USE_TLS')}")
+    print(f"Using SSL: {app.config.get('MAIL_USE_SSL')}")
+    
     with app.app_context():
         try:
+            print("Initiating mail.send(msg)...")
             mail.send(msg)
             print("✅ Email sent successfully in background.")
         except Exception as e:
-            print(f"BACKGROUND_EMAIL_ERROR: {e}")
+            print(f"BACKGROUND_EMAIL_ERROR: An exception occurred:")
+            # Print the standard error message
+            print(f"Error Message: {e}")
+            # Print the full traceback for more details
+            print("--- Full Traceback ---")
+            traceback.print_exc()
+            print("--- End Traceback ---")
+# --- END MODIFICATION ---
 
 # --- API Services Configuration ---
 if GOOGLE_API_KEY:
@@ -1552,4 +1573,8 @@ def save_chat_history():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
+" section of the "Python Backend (Email Verification)" document.
+
+(My query is about the selected code above)
 
