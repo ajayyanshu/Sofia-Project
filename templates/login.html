@@ -89,11 +89,14 @@
                     </div>
                 </div>
 
-                 <div class="w-full">
-                   
+                <div class="w-full">
+                    <!-- "Forgot your password?" link is temporarily hidden by being "commented out" -->
+                    <!-- <a href="#" id="forgot-password-link" class="text-sm text-gray-600 hover:underline">Forgot your password?</a> -->
+                    
+                    <!-- The Sign In button will now appear right under the password field -->
                     <button type="submit" class="w-full">Sign In</button>
                     <p id="signin-error" class="text-red-500 text-sm mt-2 h-5"></p>
-                </div> 
+                </div>
 
                  <p class="pt-2 text-sm">
                     Don't have an account? 
@@ -118,15 +121,22 @@
         const forgotPasswordForm = document.getElementById('forgot-password-form');
         const passwordInput = document.getElementById('signin-password');
         const passwordToggleIcon = document.getElementById('password-toggle-icon');
-        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        
+        // We comment out the 'forgotPasswordLink' variable since the HTML element is hidden
+        // const forgotPasswordLink = document.getElementById('forgot-password-link'); 
+        
         const backToLoginLink = document.getElementById('back-to-login-link');
 
         // --- Toggle between Sign In and Forgot Password forms ---
+        
+        // The click listener for 'forgotPasswordLink' is also commented out
+        /*
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
             signInForm.style.display = 'none';
             forgotPasswordForm.style.display = 'flex';
         });
+        */
 
         backToLoginLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -203,4 +213,3 @@
     </script>
 </body>
 </html>
-
