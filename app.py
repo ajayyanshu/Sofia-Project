@@ -8,7 +8,6 @@ from datetime import datetime, date, timedelta
 import uuid
 import random
 from threading import Thread
-import traceback # <-- ADDED: To print detailed error info
 
 import docx
 import fitz  # PyMuPDF
@@ -47,44 +46,24 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "ajay@123.com") # Admin email config
 # --- Email Configuration ---
 # NOTE: Using Gmail's SMTP is recommended for cloud hosting like Render.
 # You will need to generate a Google App Password for this to work.
-# --- TRYING PORT 587 / TLS ---
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587)) # <-- Try Port 587
-app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', '1', 't'] # <-- Try TLS
-app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', '1', 't'] # <-- Set SSL to false
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 465)) # <-- MODIFIED: Use port 465 for SSL
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'false').lower() in ['true', '1', 't'] # <-- MODIFIED: Set to false
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'true').lower() in ['true', '1', 't'] # <-- MODIFIED: Set to true
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') # Use a Google App Password here
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
-# --- Add Debugging for Flask-Mail ---
-app.config['MAIL_DEBUG'] = True # <-- ADDED: Enable Flask-Mail debug output
 
 mail = Mail(app)
 
-# --- MODIFIED: Added detailed logging ---
 def send_async_email(app, msg):
-    """Sends an email in a background thread with detailed logging."""
-    print(f"--- Attempting to send email ---")
-    print(f"Recipient(s): {msg.recipients}")
-    print(f"Subject: {msg.subject}")
-    print(f"Sender: {app.config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_USERNAME')}")
-    print(f"Using Mail Server: {app.config.get('MAIL_SERVER')}:{app.config.get('MAIL_PORT')}")
-    print(f"Using TLS: {app.config.get('MAIL_USE_TLS')}")
-    print(f"Using SSL: {app.config.get('MAIL_USE_SSL')}")
-
+    """Sends an email in a background thread to prevent request timeouts."""
     with app.app_context():
         try:
-            print("Initiating mail.send(msg)...")
             mail.send(msg)
             print("✅ Email sent successfully in background.")
         except Exception as e:
-            print(f"BACKGROUND_EMAIL_ERROR: An exception occurred:")
-            # Print the standard error message
-            print(f"Error Message: {e}")
-            # Print the full traceback for more details
-            print("--- Full Traceback ---")
-            traceback.print_exc()
-            print("--- End Traceback ---")
-# --- END MODIFICATION ---
+            print(f"BACKGROUND_EMAIL_ERROR: {e}")
 
 # --- API Services Configuration ---
 if GOOGLE_API_KEY:
@@ -191,14 +170,14 @@ PDF_KEYWORDS = {
 @login_required
 def home():
     """Renders the main chat application."""
-    return render_template('index.html')
+    return render_template('index.html') 
 
 @app.route('/login.html', methods=['GET'])
 def login_page():
     """Renders the login page."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
-
+    
     # --- MODIFICATION: Pass flash messages to the template ---
     messages = session.pop('_flashes', [])
     return render_template('login.html', flash_messages=messages)
@@ -248,7 +227,7 @@ def api_signup():
     # --- MODIFICATION: Added all usage counters and monthly reset ---
     new_user = {
         "name": name, "email": email, "password": password,
-        "isAdmin": email == ADMIN_EMAIL, "isPremium": False,
+        "isAdmin": email == ADMIN_EMAIL, "isPremium": False, 
         "is_verified": False, # <-- MODIFICATION: User is NOT verified by default
         "verification_token": verification_token, # <-- ADDED
         "verification_token_expires_at": token_expiry, # <-- ADDED
@@ -261,7 +240,7 @@ def api_signup():
         "timestamp": datetime.utcnow().isoformat()
     }
     # --- END MODIFICATION ---
-
+    
     users_collection.insert_one(new_user)
 
     # --- MODIFICATION: Send verification email ---
@@ -273,9 +252,9 @@ def api_signup():
     except Exception as e:
         print(f"SIGNUP_EMAIL_ERROR: {e}")
         # Don't fail the signup, but log the error
-
+        
     return jsonify({
-        'success': True,
+        'success': True, 
         'message': 'Account created! Please check your email for a verification link.'
     })
 
@@ -291,7 +270,7 @@ def api_login():
 
     if users_collection is None:
         return jsonify({'success': False, 'error': 'Database not configured.'}), 500
-
+        
     user_data = users_collection.find_one({"email": email})
 
     # --- MODIFICATION: Add verification check ---
@@ -299,7 +278,7 @@ def api_login():
         # 1. Check if verified FIRST
         if not user_data.get('is_verified', False):
             return jsonify({
-                'success': False,
+                'success': False, 
                 'error': 'Your account is not verified. Please check your email.',
                 'unverified': True # Add a flag for the frontend
             }), 401
@@ -314,7 +293,7 @@ def api_login():
             login_user(user_obj)
             session['session_id'] = new_session_id
             return jsonify({'success': True, 'user': {'name': user_data['name'], 'email': user_data['email']}})
-
+    
     # If user_data is None OR password check failed
     return jsonify({'success': False, 'error': 'Incorrect email or password.'}), 401
 
@@ -332,15 +311,15 @@ def request_password_reset():
 
     reset_token = uuid.uuid4().hex
     token_expiry = datetime.utcnow() + timedelta(hours=1)
-
+    
     users_collection.update_one(
         {'_id': user['_id']},
         {'$set': {'password_reset_token': reset_token, 'reset_token_expires_at': token_expiry}}
     )
-
+    
     # Construct the reset URL
     reset_url = url_for('home', _external=True) + f'reset-password?token={reset_token}'
-
+    
     try:
         msg = Message("Password Reset Request", recipients=[email])
         msg.body = f"Click the following link to reset your password: {reset_url}\nThis link will expire in 1 hour."
@@ -348,7 +327,7 @@ def request_password_reset():
     except Exception as e:
         print(f"PASSWORD_RESET_EMAIL_ERROR: {e}")
         return jsonify({'success': False, 'error': 'Failed to send reset email.'}), 500
-
+        
     return jsonify({'success': True, 'message': 'If an account with that email exists, a password reset link has been sent.'})
 
 @app.route('/api/reset_password', methods=['POST'])
@@ -367,7 +346,7 @@ def reset_password():
 
     if not user:
         return jsonify({'success': False, 'error': 'Invalid or expired token.'}), 400
-
+        
     # Storing the new password in plain text.
     # hashed_password = generate_password_hash(new_password)
     users_collection.update_one(
@@ -377,7 +356,7 @@ def reset_password():
             '$unset': {'password_reset_token': "", 'reset_token_expires_at': ""}
         }
     )
-
+    
     return jsonify({'success': True, 'message': 'Password has been reset successfully.'})
 
 # --- NEW ROUTE: To handle the email link click ---
@@ -396,7 +375,7 @@ def verify_email(token):
     if not user:
         flash("Invalid or expired verification link.", "error")
         return redirect(url_for('login_page'))
-
+        
     # If token is valid, verify the user and remove the token
     users_collection.update_one(
         {'_id': user['_id']},
@@ -405,7 +384,7 @@ def verify_email(token):
             '$unset': {'verification_token': "", 'verification_token_expires_at': ""}
         }
     )
-
+    
     flash("Your email has been verified! You can now log in.", "success")
     return redirect(url_for('login_page'))
 
@@ -427,7 +406,7 @@ def resend_verification():
     if user and not user.get('is_verified', False):
         verification_token = uuid.uuid4().hex
         token_expiry = datetime.utcnow() + timedelta(hours=24)
-
+        
         users_collection.update_one(
             {'_id': user['_id']},
             {'$set': {
@@ -435,7 +414,7 @@ def resend_verification():
                 'verification_token_expires_at': token_expiry
             }}
         )
-
+        
         try:
             verify_url = url_for('verify_email', token=verification_token, _external=True)
             msg = Message("Verify Your Email for Sofia AI (New Link)", recipients=[email])
@@ -448,7 +427,7 @@ def resend_verification():
     # For security, always return a success message so we don't
     # reveal which emails are registered.
     return jsonify({
-        'success': True,
+        'success': True, 
         'message': 'If an unverified account with that email exists, a new link has been sent.'
     })
 
@@ -458,7 +437,7 @@ def get_user_info():
     """Provides user information to the front-end after login."""
     user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
     usage_counts = user_data.get('usage_counts', {"messages": 0, "webSearches": 0, "voiceCommands": 0, "docReads": 0})
-
+    
     return jsonify({
         "name": current_user.name,
         "email": current_user.email,
@@ -502,14 +481,14 @@ def delete_account():
 
     try:
         user_id = ObjectId(current_user.id)
-
+        
         # Anonymize user details by replacing personal info and removing session/name
         update_result = users_collection.update_one(
             {'_id': user_id},
             {
                 '$set': {
                     'email': f'deleted_{user_id}@anonymous.com',
-                    'password': 'deleted_password_placeholder'
+                    'password': 'deleted_password_placeholder' 
                 },
                 '$unset': {
                     'name': "",
@@ -569,7 +548,7 @@ def get_chats():
 def save_chat():
     if conversations_collection is None:
         return jsonify({"error": "Database not configured"}), 500
-
+    
     data = request.get_json()
     chat_id = data.get('id')
     messages = data.get('messages', [])
@@ -583,7 +562,7 @@ def save_chat():
         title = first_user_message[:40] if first_user_message else "Untitled Chat"
 
     user_id = ObjectId(current_user.id)
-
+    
     try:
         if chat_id:
             # Update existing chat
@@ -618,7 +597,7 @@ def save_chat():
 def rename_chat(chat_id):
     if conversations_collection is None:
         return jsonify({"error": "Database not configured"}), 500
-
+    
     data = request.get_json()
     new_title = data.get('title')
     if not new_title:
@@ -641,7 +620,7 @@ def rename_chat(chat_id):
 def delete_chat_by_id(chat_id):
     if conversations_collection is None:
         return jsonify({"error": "Database not configured"}), 500
-
+    
     try:
         result = conversations_collection.delete_one(
             {"_id": ObjectId(chat_id), "user_id": ObjectId(current_user.id)}
@@ -661,16 +640,16 @@ def get_ai_summary(text_content):
     if not GOOGLE_API_KEY:
         print("AI_SUMMARY_SKIP: GOOGLE_API_KEY not set.")
         return "Summary generation skipped: AI not configured."
-
+    
     if not text_content or text_content.isspace():
         return "No text content to summarize."
 
     try:
         # Using the same model from /chat for consistency
-        model = genai.GenerativeModel("gemini-2.5-pro")
-
+        model = genai.GenerativeModel("gemini-2.5-pro") 
+        
         # Truncate text to avoid overly long prompts (e.g., ~15k words)
-        max_length = 80000
+        max_length = 80000 
         if len(text_content) > max_length:
             text_content = text_content[:max_length]
 
@@ -679,7 +658,7 @@ def get_ai_summary(text_content):
             "of the following document. Focus on the main ideas and key takeaways.\n\n"
             f"--- DOCUMENT START ---\n{text_content}\n--- DOCUMENT END ---"
         )
-
+        
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
@@ -691,7 +670,7 @@ def run_ai_summary_in_background(app, item_id, text_content):
     with app.app_context():
         print(f"Starting background summary for item: {item_id}")
         summary = get_ai_summary(text_content)
-
+        
         if library_collection:
             try:
                 library_collection.update_one(
@@ -711,10 +690,10 @@ def run_ai_summary_in_background(app, item_id, text_content):
 def upload_library_item():
     if library_collection is None:
         return jsonify({"error": "Database not configured"}), 500
-
+    
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in the request'}), 400
-
+    
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
@@ -746,7 +725,7 @@ def upload_library_item():
             extracted_text = file_content.decode('utf-8')
         except UnicodeDecodeError:
             extracted_text = file_content.decode('latin-1', errors='ignore')
-
+    
     library_item = {
         "user_id": ObjectId(current_user.id),
         "filename": filename,
@@ -776,7 +755,7 @@ def upload_library_item():
         # <-- END: Background thread logic -->
 
         return jsonify({
-            "success": True,
+            "success": True, 
             "id": str(new_id), # <-- MODIFIED: Use the new_id variable
             "filename": filename,
             "file_type": file_type,
@@ -862,23 +841,23 @@ def chat():
         file_data = data.get('fileData')
         file_type = data.get('fileType', '')
         is_temporary = data.get('isTemporary', False)
-        request_mode = data.get('mode')
-
+        request_mode = data.get('mode') 
+        
         is_multimodal = bool(file_data) or "youtube.com" in user_message or "youtu.be" in user_message or any(k in user_message.lower() for k in PDF_KEYWORDS)
-
+        
         # --- 2. Daily & Monthly Usage Limit Check and Reset ---
         if not current_user.isPremium and not current_user.isAdmin:
             user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
-
+            
             # --- Get current time and last reset dates ---
             today = datetime.utcnow().date()
             current_month_str = today.strftime('%Y-%m')
-
+            
             last_daily_reset_str = user_data.get('last_usage_reset', '1970-01-01')
             last_daily_reset_date = datetime.strptime(last_daily_reset_str, '%Y-%m-%d').date()
-
+            
             last_monthly_reset_str = user_data.get('last_monthly_reset', '1970-01')
-
+            
             # --- Initialize updates ---
             update_set = {}
             daily_counts_to_reset = {
@@ -912,10 +891,10 @@ def chat():
                     {'$set': update_set}
                 )
                 user_data = users_collection.find_one({'_id': ObjectId(current_user.id)}) # Reload data
-
+            
             # --- 3. Check Limits for THIS request ---
             usage = user_data.get('usage_counts', {})
-
+            
             # --- Check Message Limit (Daily: 15) ---
             messages_used = usage.get('messages', 0)
             if messages_used >= 15: # Daily limit from image
@@ -923,7 +902,7 @@ def chat():
                     'error': 'You have reached your daily message limit (15). Please upgrade for unlimited access.',
                     'upgrade_required': True
                 }), 429
-
+                
             # --- Check Doc Read Limit (Monthly: 1) ---
             if is_multimodal:
                 doc_reads_used = usage.get('docReads', 0)
@@ -934,13 +913,13 @@ def chat():
                     }), 429
                 # If limit is not hit, increment it
                 users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.docReads': 1}})
-
+            
             # --- Check Voice Command Limit (Daily: 5) ---
             # NOTE: You don't have a voice endpoint, but if you did,
             # you would add the check here, like this:
             # if request_mode == 'voice':
             #     voice_used = usage.get('voiceCommands', 0)
-            #     if voice_used >= 5:
+            #     if voice_used >= 5: 
             #         return jsonify({'error': 'You have reached your daily voice limit (5).'}), 429
             #     users_collection.update_one({'_id': ObjectId(current_user.id)}, {'$inc': {'usage_counts.voiceCommands': 1}})
 
@@ -950,12 +929,12 @@ def chat():
         # --- 4. Initialize variables for ALL users ---
         # These were previously parsed at line 1187, but are now needed here
         ai_response, api_used, model_logged = None, "", ""
-        web_search_context = None
+        web_search_context = None 
         library_search_context = None
         # --- END OF NEW LIMIT LOGIC BLOCK ---
-
+    
         # --- Helper functions for /chat ---
-
+        
         def get_file_from_github(filename):
             if not all([GITHUB_USER, GITHUB_REPO]):
                 print("CRITICAL WARNING: GITHUB_USER or GITHUB_REPO is not configured.")
@@ -968,11 +947,11 @@ def chat():
             except requests.exceptions.RequestException as e:
                 print(f"Error downloading from GitHub: {e}")
                 return None
-
+    
         def get_video_id(video_url):
             match = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", video_url)
             return match.group(1) if match else None
-
+    
         # --- MODIFICATION 2: Reverted this function to its original state ---
         def get_youtube_transcript(video_id):
             try:
@@ -981,7 +960,7 @@ def chat():
             except Exception as e:
                 print(f"Error getting YouTube transcript: {e}")
                 return None
-
+    
         def call_api(url, headers, json_payload, api_name):
             try:
                 print(f"Attempting to call {api_name} API at {url}...")
@@ -998,13 +977,13 @@ def chat():
             except Exception as e:
                 print(f"Error calling {api_name} API: {e}")
                 return None
-
+    
         def search_web(query):
             """Calls Serper.dev API to get web search results."""
             if not SERPER_API_KEY:
                 print("Web search skipped: SERPER_API_KEY not set.")
                 return "Web search is disabled because the API key is not configured."
-
+    
             url = "https{':'}//google.serper.dev/search"
             payload = json.dumps({"q": query})
             headers = {
@@ -1017,7 +996,7 @@ def chat():
                 response.raise_for_status()
                 results = response.json()
                 print("Web search successful.")
-
+                
                 snippets = []
                 if "organic" in results:
                     for item in results.get("organic", [])[:5]: # Get top 5 results
@@ -1025,7 +1004,7 @@ def chat():
                         snippet = item.get("snippet", "No Snippet")
                         link = item.get("link", "No Link")
                         snippets.append(f"Title: {title}\nSnippet: {snippet}\nSource: {link}")
-
+                
                 if snippets:
                     return "\n\n---\n\n".join(snippets)
                 elif "answerBox" in results:
@@ -1033,52 +1012,52 @@ def chat():
                     answer = results["answerBox"].get("snippet") or results["answerBox"].get("answer")
                     if answer:
                         return f"Direct Answer: {answer}"
-
+                
                 return "No relevant web results found."
-
+                
             except Exception as e:
                 print(f"Error calling Serper API: {e}")
                 return f"An error occurred during the web search: {e}"
-
+    
         # <-- ADDED: Library Search Helper -->
         def search_library(user_id, query):
             """Searches the user's library for relevant text snippets."""
             if not library_collection:
                 return None # Return None, not a string
-
+            
             try:
                 # Split query into keywords to broaden search
                 keywords = re.split(r'\s+', query)
                 # Create a regex that looks for all keywords (case-insensitive)
                 # This searches for documents containing all keywords, in any order.
                 regex_pattern = '.*'.join(f'(?=.*{re.escape(k)})' for k in keywords)
-
+    
                 items_cursor = library_collection.find({
                     "user_id": user_id,
                     "extracted_text": {"$regex": regex_pattern, "$options": "i"}
                 }).limit(3) # Get top 3 matching docs
-
+                
                 snippets = []
                 for item in items_cursor:
                     filename = item.get("filename", "Untitled")
                     snippet = item.get("extracted_text", "")
-
+                    
                     # Get the start of the text as a snippet
                     context_snippet = snippet[:300] # Get first 300 chars
-
+                        
                     snippets.append(f"Source: {filename} (from your Library)\nSnippet: {context_snippet}...")
-
+                
                 if snippets:
                     print(f"Library search found {len(snippets)} items for query: {query}")
                     return "\n\n---\n\n".join(snippets)
                 else:
                     print(f"Library search found no items for query: {query}")
                     return None
-
+                    
             except Exception as e:
                 print(f"Error calling Library search: {e}")
                 return None
-
+        
         # <-- MODIFIED: Automation Heuristic -->
         def should_auto_search(user_message):
             """
@@ -1086,52 +1065,52 @@ def chat():
             Returns the mode: 'code_security_scan', 'security_search', 'web_search', or None.
             """
             msg_lower = user_message.lower().strip()
-
+            
             # Keywords that imply a security-focused search
             security_keywords = [
                 'vulnerability', 'malware', 'cybersecurity', 'sql injection',
                 'xss', 'cross-site scripting', 'cve-', 'zero-day', 'phishing',
                 'ransomware', 'data breach', 'mitigation', 'pentest', 'exploit'
             ]
-
+    
             # <-- ADDED: Keywords that imply code is being pasted -->
             code_keywords = [
-                'def ', 'function ', 'public class', 'SELECT *', 'import ', 'require(',
+                'def ', 'function ', 'public class', 'SELECT *', 'import ', 'require(', 
                 'const ', 'let ', 'var ', '<?php', 'public static void', 'console.log'
             ]
-
+    
             # Keywords that imply a general search
             general_search_keywords = [
                 'what is', 'who is', 'where is', 'when did', 'how to',
                 'latest', 'news', 'in 2025', 'in 2024',
                 'explain', 'summary of', 'overview of', 'compare'
             ]
-
+            
             # Simple questions that don't need search
             chat_keywords = ['hi', 'hello', 'how are you', 'thanks', 'thank you']
-
+    
             if any(msg_lower.startswith(k) for k in chat_keywords):
                 return None # Just a chat
-
+                
             if any(k in msg_lower for k in security_keywords):
                 return 'security_search' # Security-focused search
-
+                
             # <-- ADDED: Code scan check -->
             if any(k in user_message for k in code_keywords):
                 return 'code_security_scan' # This is a code scan request
-
+    
             if any(k in msg_lower for k in general_search_keywords):
                 return 'web_search' # General web search
-
+                
             # If it's a longer, more complex question (e.g., > 6 words), default to general search
             if len(user_message.split()) > 6:
                 return 'web_search'
-
+                
             return None # Not a search query
-
+    
         # --- Continue /CHAT LOGIC ---
         # The 'try' block was started at the beginning of the new limit logic
-
+            
             # <-- MODIFIED AUTOMATION LOGIC -->
             # Only trigger if it's a plain chat, not multimodal
         if request_mode == 'chat' and not is_multimodal:
@@ -1139,7 +1118,7 @@ def chat():
             if auto_mode:
                 print(f"AUTOMATION: Auto-triggering {auto_mode} for: {user_message}")
                 request_mode = auto_mode # Upgrade the request mode
-
+                
                 # ALSO trigger library search, *UNLESS* it's a code scan
                 if auto_mode in ['web_search', 'security_search']:
                     library_search_context = search_library(ObjectId(current_user.id), user_message)
@@ -1156,7 +1135,7 @@ def chat():
                 # Check web search usage limit
                 user_data = users_collection.find_one({'_id': ObjectId(current_user.id)})
                 searches_used = user_data.get('usage_counts', {}).get('webSearches', 0)
-
+                
                 # --- MODIFICATION: Updated error message and variable ---
                 if searches_used >= 1: # Daily limit from image
                     print(f"User {current_user.id} exceeded web search limit.")
@@ -1171,7 +1150,7 @@ def chat():
                 # Premium or Admin user
                 print(f"Performing web search for: {user_message}")
                 web_search_context = search_web(user_message)
-
+        
         gemini_history = []
         openai_history = []
         if chat_history_collection is not None and not is_temporary:
@@ -1180,14 +1159,14 @@ def chat():
                 recent_chats = chat_history_collection.find(
                     {"user_id": ObjectId(current_user.id)}
                 ).sort("timestamp", -1).limit(10)
-
+                
                 ordered_chats = list(recent_chats)[::-1]
 
                 for chat in ordered_chats:
                     gemini_history.append({'role': 'user', 'parts': [chat.get('user_message', '')]})
                     if 'ai_response' in chat:
                         gemini_history.append({'role': 'model', 'parts': [chat.get('ai_response', '')]})
-
+                    
                     openai_history.append({"role": "user", "content": chat.get('user_message', '')})
                     if 'ai_response' in chat:
                         openai_history.append({"role": "assistant", "content": chat.get('ai_response', '')})
@@ -1199,11 +1178,11 @@ def chat():
 
         if not is_multimodal and user_message.strip():
             ai_response = None
-
+            
             # <-- MODIFIED: Handle Code Security Scan Mode -->
             if request_mode == 'code_security_scan':
                 print(f"Using Groq (Code Security Scan) for: {user_message[:50]}...")
-
+                
                 # <-- MODIFIED: Upgraded Professional Prompt -->
                 CODE_SECURITY_PROMPT = (
                     "You are 'Sofia-Sec-L-70B', a specialized AI Code Security Analyst modeled after Google's internal security review tools. "
@@ -1224,26 +1203,26 @@ def chat():
                     "**4. Overall Security Rating:** (Assign one: Excellent, Good, Fair, Poor, Critical)\n\n"
                     "--- USER SUBMITTED CODE ---\n"
                 )
-
+                
                 code_scan_history = [
                     {"role": "system", "content": CODE_SECURITY_PROMPT},
                     {"role": "user", "content": user_message}
                 ]
-
+                
                 ai_response = call_api(
                     "https{':'}//api.groq.com/openai/v1/chat/completions",
                     {"Authorization": f"Bearer {GROQ_API_KEY}"},
                     # Use a powerful model for this complex task
-                    {"model": "llama-3.1-70b-versatile", "messages": code_scan_history},
+                    {"model": "llama-3.1-70b-versatile", "messages": code_scan_history}, 
                     "Groq (Code Security Scan)"
                 )
                 if ai_response:
                     api_used, model_logged = "Groq (Code Security Scan)", "llama-3.1-70b-versatile"
-
+            
             # <-- MODIFIED: Check for ai_response before continuing -->
             elif (web_search_context or library_search_context) and not ai_response:
                 print(f"Using Groq (with search context) in mode: {request_mode}...")
-
+                
                 # <-- MODIFIED: Upgraded Professional Prompts -->
                 GENERAL_SYSTEM_PROMPT = (
                     "You are a helpful assistant. You MUST answer the user's question "
@@ -1261,7 +1240,7 @@ def chat():
                     "4.  Conclude with a 'Key Takeaways' section.\n"
                     "5.  Cite all sources meticulously using [Source: URL/Filename] for every claim made."
                 )
-
+                
                 if request_mode == 'security_search':
                     system_prompt = SECURITY_SYSTEM_PROMPT
                 else:
@@ -1273,9 +1252,9 @@ def chat():
                     context_parts.append(f"--- WEB SEARCH RESULTS ---\n{web_search_context}")
                 if library_search_context:
                     context_parts.append(f"--- YOUR LIBRARY RESULTS ---\n{library_search_context}")
-
+                
                 context_prompt = "\n\n".join(context_parts)
-
+                
                 search_augmented_history = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": (
@@ -1283,7 +1262,7 @@ def chat():
                         f"--- USER QUESTION ---\n{user_message}"
                     )}
                 ]
-
+                
                 ai_response = call_api(
                     "https{':'}//api.groq.com/openai/v1/chat/completions",
                     {"Authorization": f"Bearer {GROQ_API_KEY}"},
@@ -1292,7 +1271,7 @@ def chat():
                 )
                 if ai_response:
                     api_used, model_logged = "Groq (Contextual Search)", "llama-3.1-8b-instant"
-
+                    
             elif not ai_response and GROQ_API_KEY:
                 # Original logic: No search context, just a normal text chat
                 print("Routing to Groq (no search)...")
@@ -1305,7 +1284,7 @@ def chat():
 
         if not ai_response:
             print("Routing to Gemini (Sofia AI)...")
-            model_name = "gemini-2.5-pro"
+            model_name = "gemini-2.5-pro" 
             api_used, model_logged = "Gemini", model_name
             model = genai.GenerativeModel(model_name)
 
@@ -1354,7 +1333,7 @@ def chat():
                     "4.  Conclude with a 'Key Takeaways' section.\n"
                     "5.  Cite all sources meticulously using [Source: URL/Filename] for every claim made."
                 )
-
+                
                 if request_mode == 'security_search':
                     system_prompt = SECURITY_SYSTEM_PROMPT
                     api_used = "Gemini (Security Search)"
@@ -1362,20 +1341,20 @@ def chat():
                     system_prompt = GENERAL_SYSTEM_PROMPT
                     api_used = "Gemini (Contextual Search)"
                 # <-- END: Dynamic System Prompt for Gemini -->
-
+                
                 context_parts = []
                 if web_search_context:
                     context_parts.append(f"--- WEB SEARCH RESULTS ---\n{web_search_context}")
                 if library_search_context:
                     context_parts.append(f"--- YOUR LIBRARY RESULTS ---\n{library_search_context}")
-
+                
                 context_prompt = "\n\n".join(context_parts)
-
+                
                 # This will be the only prompt part. We ignore history to focus on the search task.
                 prompt_parts = [
                     f"{system_prompt}\n\n{context_prompt}\n\n--- USER QUESTION ---\n{user_message}"
                 ]
-
+                
             elif "youtube.com" in user_message or "youtu.be" in user_message:
                 video_id = get_video_id(user_message)
                 transcript = get_youtube_transcript(video_id) if video_id else None
@@ -1395,14 +1374,14 @@ def chat():
             if not prompt_parts: return jsonify({'response': "Please ask a question or upload a file."})
             if isinstance(prompt_parts[-1], Image.Image) and not any(isinstance(p, str) and p.strip() for p in prompt_parts):
                 prompt_parts.insert(0, "Describe this image.")
-
+            
             try:
                 # --- MODIFIED: Don't use history if we have search or code scan context ---
                 if web_search_context or library_search_context or request_mode == 'code_security_scan':
                     full_prompt = prompt_parts
                 else:
                     full_prompt = gemini_history + [{'role': 'user', 'parts': prompt_parts}]
-
+                
                 response = model.generate_content(full_prompt)
                 ai_response = response.text
             except Exception as e:
