@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sofia AI - Your Personal AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff; /* White background */
+        }
+        .feature-card, .testimonial-card, .process-step, .cta-card {
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: #4f46e5; /* indigo-600 */
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.07);
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+        }
+        ::selection {
+            background-color: #4f46e5;
+            color: #ffffff;
+        }
+        /* Animation for sections fading in on scroll */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .countdown-box {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0; /* slate-200 */
+        }
+        /* Chatbot styles */
+        #chat-bubble {
+            transition: transform 0.3s ease;
+        }
+        #chat-bubble:hover {
+            transform: scale(1.1);
+        }
+        #chat-window {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #chat-notification {
+            transition: opacity 0.5s ease;
+        }
+        .message-bubble-user {
+            background-color: #4f46e5;
+            color: #ffffff;
+        }
+        .message-bubble-bot {
+            background-color: #e2e8f0;
+            color: #1e293b;
+        }
+    </style>
+</head>
+<body class="text-slate-700 antialiased">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass-header">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+                Sofia<span class="text-indigo-600">AI</span>
+            </h1>
+            <nav class="hidden md:flex space-x-8 text-slate-600">
+                <a href="#features" class="hover:text-slate-900 transition duration-300">Features</a>
+                <a href="#process" class="hover:text-slate-900 transition duration-300">Process</a>
+                <a href="#testimonials" class="hover:text-slate-900 transition duration-300">Testimonials</a>
+            </nav>
+            <a href="#signup" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-5 rounded-lg shadow-lg transition duration-300">
+                Coming Soon
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="relative pt-40 pb-24 md:pt-56 md:pb-32">
+            <div class="container mx-auto px-6 text-center">
+                <div class="max-w-4xl mx-auto reveal">
+                    <h2 class="text-4xl md:text-6xl font-bold text-slate-900 leading-tight mb-6 tracking-tight">
+                        Your Personal AI Companion, Reimagined
+                    </h2>
+                    <p class="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+                        Harness the power of next-generation AI to streamline daily tasks, understand your world, and communicate effortlessly—right in your browser.
+                    </p>
+                    <a href="#signup" class="inline-block w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-lg shadow-xl transition duration-300 text-lg transform hover:scale-105">
+                        Join The Waitlist
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-24 bg-slate-50 reveal">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <p class="text-indigo-600 font-semibold mb-2">FEATURES</p>
+                    <h3 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">A Smarter Way to Live and Work</h3>
+                    <p class="text-slate-600 max-w-2xl mx-auto">Sofia is packed with powerful features designed to integrate seamlessly into your life.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Feature Cards -->
+                    <div class="feature-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <div class="mb-5 flex items-center justify-center h-12 w-12 rounded-lg bg-indigo-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-3">Read Anything</h4>
+                        <p class="text-slate-600">Instantly extract and understand text from images, PDFs, and documents you upload.</p>
+                    </div>
+                    <!-- Updated Feature Card -->
+                    <div class="feature-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <div class="mb-5 flex items-center justify-center h-12 w-12 rounded-lg bg-indigo-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg></div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-3">Powered by Llama 3.1</h4>
+                        <p class="text-slate-600">Leveraging the state-of-the-art `llama-3.1-70b-versatile` model for unparalleled understanding and responses.</p>
+                    </div>
+                    <div class="feature-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <div class="mb-5 flex items-center justify-center h-12 w-12 rounded-lg bg-indigo-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-3">Intelligent Web Search</h4>
+                        <p class="text-slate-600">Get concise, accurate answers from the web. Sofia sifts through the noise to bring you what you need.</p>
+                    </div>
+                    <div class="feature-card bg-white p-8 rounded-2xl border border-slate-200">
+                         <div class="mb-5 flex items-center justify-center h-12 w-12 rounded-lg bg-indigo-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg></div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-3">Voice Commands</h4>
+                        <p class="text-slate-600">Communicate naturally. Speak commands and get instant voice responses for a hands-free experience.</p>
+                    </div>
+                    <div class="feature-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <div class="mb-5 flex items-center justify-center h-12 w-12 rounded-lg bg-indigo-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-3">Daily Briefings</h4>
+                        <p class="text-slate-600">Receive personalized updates, reminders, and insights delivered directly to you via text message.</p>
+                    </div>
+                    <!-- Updated Feature Card -->
+                    <div class="feature-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <div class="mb-5 flex items-center justify-center h-12 w-12 rounded-lg bg-indigo-100"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.955a11.955 11.955 0 0018 0c0-1.02-.124-2.007-.358-2.969a12.042 12.042 0 00-.97-2.986z"></path></svg></div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-3">Cybersecurity Shield</h4>
+                        <p class="text-slate-600">Protect your digital life with proactive security advice from our dedicated security LLM.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Process Section -->
+        <section id="process" class="py-24 reveal">
+             <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <p class="text-indigo-600 font-semibold mb-2">PROCESS</p>
+                    <h3 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Get Started in 3 Easy Steps</h3>
+                    <p class="text-slate-600 max-w-2xl mx-auto">Interacting with Sofia is simple and intuitive.</p>
+                </div>
+                <div class="flex flex-col md:flex-row justify-center items-start md:items-center gap-8 md:gap-16">
+                    <div class="text-center max-w-xs mx-auto process-step">
+                        <div class="mx-auto mb-4 flex items-center justify-center h-20 w-20 rounded-full bg-white border-2 border-slate-200 text-indigo-600 font-bold text-3xl">1</div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-2">Join The Waitlist</h4>
+                        <p class="text-slate-600">Be the first to know when Sofia AI goes live on launch day.</p>
+                    </div>
+                    <div class="hidden md:block text-slate-300 text-3xl mt-[-2rem]">→</div>
+                    <div class="text-center max-w-xs mx-auto process-step">
+                        <div class="mx-auto mb-4 flex items-center justify-center h-20 w-20 rounded-full bg-white border-2 border-slate-200 text-indigo-600 font-bold text-3xl">2</div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-2">Connect Your Services</h4>
+                        <p class="text-slate-600">Optionally link your accounts to give Sofia more context and capabilities.</p>
+                    </div>
+                    <div class="hidden md:block text-slate-300 text-3xl mt-[-2rem]">→</div>
+                    <div class="text-center max-w-xs mx-auto process-step">
+                        <div class="mx-auto mb-4 flex items-center justify-center h-20 w-20 rounded-full bg-white border-2 border-slate-200 text-indigo-600 font-bold text-3xl">3</div>
+                        <h4 class="text-xl font-semibold text-slate-900 mb-2">Start Interacting</h4>
+                        <p class="text-slate-600">Use your voice, camera, or text to begin your conversation with Sofia.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials Section -->
+        <section id="testimonials" class="py-24 bg-slate-50 reveal">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                     <p class="text-indigo-600 font-semibold mb-2">TESTIMONIALS</p>
+                    <h3 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Loved by Users Worldwide</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="testimonial-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <p class="text-slate-600 mb-6">"Sofia has completely changed how I manage my workflow. Reading through research papers is now a breeze. It's an indispensable tool for any academic."</p>
+                        <div class="flex items-center"><img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/100x100/4F46E5/FFFFFF?text=JD" alt="User Avatar"><div><p class="font-semibold text-slate-900">Dr. Jane Doe</p><p class="text-slate-500">University Professor</p></div></div>
+                    </div>
+                    <div class="testimonial-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <p class="text-slate-600 mb-6">"The new Llama 3.1 integration is incredible. The responses are so nuanced and helpful. It's like having a co-pilot for life, whether I'm identifying a plant or navigating a new city."</p>
+                        <div class="flex items-center"><img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/100x100/10B981/FFFFFF?text=MS" alt="User Avatar"><div><p class="font-semibold text-slate-900">Mark Smith</p><p class="text-slate-500">Travel Blogger</p></div></div>
+                    </div>
+                    <div class="testimonial-card bg-white p-8 rounded-2xl border border-slate-200">
+                        <p class="text-slate-600 mb-6">"As a busy professional, the voice commands and daily briefings are a lifesaver. It keeps me organized without constant checks."</p>
+                        <div class="flex items-center"><img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/100x100/F59E0B/FFFFFF?text=SC" alt="User Avatar"><div><p class="font-semibold text-slate-900">Sarah Chen</p><p class="text-slate-500">CEO, Tech Innovators</p></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Countdown Section -->
+        <section id="signup" class="py-24 reveal">
+            <div class="container mx-auto px-6">
+                <div class="cta-card bg-slate-100 border border-slate-200 rounded-2xl p-8 md:p-16 text-center">
+                    <h3 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
+                        ✨ Sofia AI is Coming Soon ✨
+                    </h3>
+                    <p class="text-slate-600 text-lg mb-8 max-w-2xl mx-auto">We're building the future of intelligence. Get ready for something amazing.</p>
+                    
+                    <div id="countdown-timer" class="flex justify-center items-center space-x-3 sm:space-x-4 my-8">
+                        <div class="countdown-box flex flex-col items-center justify-center p-3 rounded-lg w-20 h-20 sm:w-24 sm:h-24">
+                            <span id="days" class="text-3xl sm:text-4xl font-bold text-indigo-600 leading-none">00</span>
+                            <span class="block text-xs text-slate-500 mt-1">Days</span>
+                        </div>
+                         <div class="countdown-box flex flex-col items-center justify-center p-3 rounded-lg w-20 h-20 sm:w-24 sm:h-24">
+                            <span id="hours" class="text-3xl sm:text-4xl font-bold text-indigo-600 leading-none">00</span>
+                            <span class="block text-xs text-slate-500 mt-1">Hours</span>
+                        </div>
+                         <div class="countdown-box flex flex-col items-center justify-center p-3 rounded-lg w-20 h-20 sm:w-24 sm:h-24">
+                            <span id="minutes" class="text-3xl sm:text-4xl font-bold text-indigo-600 leading-none">00</span>
+                            <span class="block text-xs text-slate-500 mt-1">Minutes</span>
+                        </div>
+                         <div class="countdown-box flex flex-col items-center justify-center p-3 rounded-lg w-20 h-20 sm:w-24 sm:h-24">
+                            <span id="seconds" class="text-3xl sm:text-4xl font-bold text-indigo-600 leading-none">00</span>
+                            <span class="block text-xs text-slate-500 mt-1">Seconds</span>
+                        </div>
+                    </div>
+
+                    <p class="mt-4 text-sm text-slate-500">Get notified when we launch!</p>
+                     <div class="mt-4 max-w-lg mx-auto">
+                        <form id="notify-form" class="w-full flex flex-col sm:flex-row gap-4">
+                            <input id="email-input" type="email" placeholder="Enter your email address" required class="w-full px-5 py-3 text-base text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition duration-300" />
+                            <button type="submit" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-lg shadow-lg transition duration-300 transform hover:scale-105 whitespace-nowrap">
+                                Notify Me
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200">
+        <div class="container mx-auto px-6 py-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h1 class="text-xl font-bold text-slate-900">Sofia<span class="text-indigo-600">AI</span></h1>
+                </div>
+                <div class="flex space-x-6 mb-4 md:mb-0 text-slate-500">
+                    <a href="#features" class="hover:text-slate-900 transition duration-300">Features</a>
+                    <a href="#" class="hover:text-slate-900 transition duration-300">Contact</a>
+                    <a href="#" class="hover:text-slate-900 transition duration-300">Privacy Policy</a>
+                </div>
+                <div class="flex space-x-4">
+                     <a href="#" class="text-slate-400 hover:text-slate-800"><svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.71v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path></svg></a>
+                    <a href="#" class="text-slate-400 hover:text-slate-800"><svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.286 2.89 7.915 6.837 9.34.5.092.683-.217.683-.482 0-.237-.009-.868-.014-1.703-2.812.605-3.405-1.343-3.405-1.343-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.03-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.338 4.695-4.566 4.943.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.578.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" /></svg></a>
+                    <a href="#" class="text-slate-400 hover:text-slate-800"><svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.389 0-1.601 1.086-1.601 2.206v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.71zM5.337 7.433c-.945 0-1.709-.765-1.709-1.709s.764-1.709 1.709-1.709 1.709.765 1.709 1.709-.764 1.709-1.709 1.709zm1.337 8.905H4V7.727h2.674v8.611zM17.67 2H6.33C4.004 2 2 4.004 2 6.33v11.34C2 19.996 4.004 22 6.33 22h11.34C19.996 22 22 19.996 22 17.67V6.33C22 4.004 19.996 2 17.67 2z" clip-rule="evenodd" /></svg></a>
+                </div>
+            </div>
+            <div class="text-center text-slate-500 pt-8 mt-8 border-t border-slate-200">
+                &copy; 2025 Sofia AI. All Rights Reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chat-container" class="fixed bottom-5 right-5 z-50">
+        <!-- Notification Bubble -->
+        <div id="chat-notification" class="hidden absolute bottom-20 right-0 bg-white p-3 rounded-lg shadow-xl text-sm text-slate-800 w-48 text-center cursor-pointer">
+            <p class="font-semibold">Have a question?</p>
+            <p>Click me to ask a question!</p>
+        </div>
+        
+        <!-- Chat Bubble -->
+        <div id="chat-bubble" classs="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center cursor-pointer shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        </div>
+
+        <!-- Chat Window -->
+        <div id="chat-window" class="hidden absolute bottom-20 right-0 w-[calc(100vw-2.5rem)] max-w-sm sm:w-96 bg-white rounded-xl shadow-2xl flex flex-col transform origin-bottom-right max-h-[70vh]">
+            <!-- Header -->
+            <div class="bg-indigo-600 text-white p-4 rounded-t-xl flex justify-between items-center">
+                <h3 class="font-semibold text-lg">Sofia AI Support</h3>
+                <button id="close-chat" class="text-white hover:text-indigo-200 text-2xl leading-none">&times;</button>
+            </div>
+            <!-- Messages -->
+            <div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto">
+                <!-- Messages will be injected here -->
+            </div>
+            <!-- Input -->
+            <div class="p-4 border-t border-slate-200">
+                <form id="chat-form" class="flex items-center gap-2">
+                    <input id="chat-input" type="text" placeholder="Ask a question..." class="w-full px-4 py-2 text-slate-800 bg-slate-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition" autocomplete="off">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+    // Intersection Observer to reveal sections on scroll
+    const revealElements = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.1
+    });
+    revealElements.forEach(element => {
+        observer.observe(element);
+    });
+
+    // Countdown Timer Logic
+    const countdownDate = new Date("Feb 12, 2026 00:00:00").getTime();
+    const updateCountdown = setInterval(function() {
+        const now = new Date().getTime();
+        const distance = countdownDate - now;
+        const countdownTimerEl = document.getElementById("countdown-timer");
+
+        if (distance < 0) {
+            clearInterval(updateCountdown);
+            if (countdownTimerEl) {
+                 countdownTimerEl.innerHTML = "<div class='text-2xl font-bold text-indigo-600 col-span-4'>Sofia AI Has Arrived!</div>";
+            }
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById("days").innerText = String(days).padStart(2, '0');
+        document.getElementById("hours").innerText = String(hours).padStart(2, '0');
+        document.getElementById("minutes").innerText = String(minutes).padStart(2, '0');
+        document.getElementById("seconds").innerText = String(seconds).padStart(2, '0');
+
+    }, 1000);
+
+    // Notify Me form handler
+    document.getElementById('notify-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const userEmail = document.getElementById('email-input').value;
+        const recipient = 'contact@sofia-ai.com'; // Replace with your email
+        const subject = 'Please Add Me to the Sofia AI Waitlist';
+        const body = `Hi, I'd like to be notified at ${userEmail} when Sofia AI launches. Thanks!`;
+        const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = mailtoLink;
+    });
+
+    // Chatbot Logic
+    const chatBubble = document.getElementById('chat-bubble');
+    const chatWindow = document.getElementById('chat-window');
+    const closeChatBtn = document.getElementById('close-chat');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatNotification = document.getElementById('chat-notification');
+
+    let chatInitiated = false;
+
+    // Show notification to first-time visitors (per session)
+    if (!sessionStorage.getItem('sofiaChatVisited')) {
+        setTimeout(() => {
+            chatNotification.classList.remove('hidden');
+        }, 3000); // Show after 3 seconds
+    }
+    
+    function openChat() {
+        chatWindow.classList.remove('hidden');
+        chatNotification.classList.add('hidden');
+        sessionStorage.setItem('sofiaChatVisited', 'true');
+        if (!chatInitiated) {
+            addMessage('bot', "Hi there! I'm Sofia's support assistant. How can I help you today?");
+            chatInitiated = true;
+        }
+    }
+
+    function closeChat() {
+        chatWindow.classList.add('hidden');
+    }
+
+    // Toggle chat window with bubble icon
+    chatBubble.addEventListener('click', () => {
+        if (chatWindow.classList.contains('hidden')) {
+            openChat();
+        } else {
+            closeChat();
+        }
+    });
+
+    // Open chat with notification click
+    chatNotification.addEventListener('click', openChat);
+
+    // Close chat with 'x' button
+    closeChatBtn.addEventListener('click', closeChat);
+
+    // Handle message submission
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const userMessage = chatInput.value.trim();
+        if (userMessage) {
+            addMessage('user', userMessage);
+            chatInput.value = '';
+            setTimeout(() => {
+                const botResponse = getBotResponse(userMessage);
+                addMessage('bot', botResponse);
+            }, 1000);
+        }
+    });
+
+    // Add a message to the chat window
+    function addMessage(sender, text) {
+        const messageBubble = document.createElement('div');
+        messageBubble.classList.add('p-3', 'rounded-lg', 'max-w-xs', 'break-words');
+        
+        if (sender === 'user') {
+            messageBubble.classList.add('message-bubble-user', 'self-end', 'ml-auto');
+        } else {
+            messageBubble.classList.add('message-bubble-bot', 'self-start', 'mr-auto');
+        }
+        
+        messageBubble.innerText = text;
+        chatMessages.appendChild(messageBubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Generate bot response
+    function getBotResponse(userInput) {
+        const lowerInput = userInput.toLowerCase();
+        
+        if (lowerInput.includes('what is sofia') || lowerInput.includes('what are you')) {
+            return "I am a support assistant for Sofia AI. Sofia is a personal AI assistant designed to help you with tasks like reading documents, web searches, and more!";
+        } else if (lowerInput.includes('pricing') || lowerInput.includes('cost') || lowerInput.includes('paid')) {
+            return "Sofia AI offers a free tier with basic features. The full-featured paid plan is ₹99 (INR). More details on what each plan includes will be available at launch.";
+        } else if (lowerInput.includes('contact') || lowerInput.includes('email')) {
+             return "You can reach our support team by emailing ajayyanshu@gmail.com.";
+        } else if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
+            return "Hello! How can I assist you with Sofia AI?";
+        } else if (lowerInput.includes('launch') || lowerInput.includes('release')) {
+            return "Sofia AI is scheduled to launch on February 12, 2026! You can sign up for notifications on our homepage.";
+        } else if (lowerInput.includes('feature') || lowerInput.includes('what can it do')) {
+            // Updated response as requested
+            return "Sofia is powered by the Llama 3.1 model! It can read documents, search the web, take voice commands, send you daily text messages, and provide cybersecurity advice!";
+        } else if (lowerInput.includes('support') || lowerInput.includes('help')) {
+            return "You're speaking with the support bot right now! If you need to speak to a human, please email ajayyanshu@gmail.com.";
+        } else if (lowerInput.includes('bye') || lowerInput.includes('thanks')) {
+            return "You're welcome! Have a great day.";
+        } else {
+            return "I'm sorry, I didn't quite understand that. You can ask about features, pricing, or the launch date. For more complex questions, feel free to email our team at ajayyanshu@gmail.com.";
+        }
+    }
+</script>
+
+</body>
+</html>
