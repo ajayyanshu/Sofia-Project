@@ -204,7 +204,7 @@ body.initial-view #welcome-message-container { flex-grow: 0; }
 .dark #settings-modal .bg-white, .dark #library-modal .bg-white { background-color: #181818; } /* Removed #ai-live-modal */
 .dark #settings-modal h2, .dark #settings-modal h3, .dark #settings-modal label, .dark #settings-modal span, .dark #settings-modal p, .dark .settings-tab-btn { color: #f0f0f0; }
 .dark #library-modal h2, .dark #library-modal p { color: #f0f0f0; }
-.dark .sm\\:border-r { border-right-color: #292929; }
+.dark .sm\:border-r { border-right-color: #292929; }
 .dark #settings-modal .settings-tab-btn.active { background-color: #252525; color: #f0f0f0; }
 .dark #settings-modal .settings-tab-btn:hover { background-color: #333333; }
 .dark #settings-modal .theme-btn { border-color: #333333; }
@@ -218,3 +218,60 @@ body.initial-view #welcome-message-container { flex-grow: 0; }
 .dark .plan-table .text-gray-800 { color: #e5e7eb; }
 .dark .plan-table .text-gray-600 { color: #d1d5db; }
 
+/* --- ADD THIS AT THE END OF style.css --- */
+
+/*
+ * Code Block Styling (Prism.js)
+ */
+
+.ai-message pre {
+    position: relative;
+    background-color: #272822; /* Matches Okaidia theme */
+    border-radius: 0.5rem;
+    padding: 1rem;
+    padding-top: 2.5rem; /* Space for the copy button */
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.ai-message code,
+.ai-message pre[class*="language-"] {
+    font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+    text-shadow: none; /* Override Prism's default */
+}
+
+/* Custom "Copy Code" button */
+.code-copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #f0f0f0;
+    border: none;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    opacity: 0.7;
+}
+
+.code-copy-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    opacity: 1;
+}
+
+.code-copy-btn:active {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Make sure code inside the <pre> block is not styled by Prism's default */
+:not(pre) > code[class*="language-"],
+pre[class*="language-"] {
+    background: transparent; /* Makes the pre background visible */
+}
