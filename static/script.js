@@ -545,6 +545,40 @@ function addMessage({text, sender, fileInfo = null, mode = null}) {
         aiMessageContainer.appendChild(messageBubble);
         chatContainer.appendChild(aiMessageContainer);
 
+        // --- START: MODIFICATION FOR CODE BLOCKS ---
+
+        // 1. Find all <pre> blocks *within this new message*
+        const codeBlocks = messageBubble.querySelectorAll('pre');
+        codeBlocks.forEach((pre) => {
+            // 2. Create a 'Copy' button
+            const copyButton = document.createElement('button');
+            copyButton.className = 'code-copy-btn';
+            copyButton.textContent = 'Copy Code';
+
+            // 3. Add click event to copy the code
+            copyButton.addEventListener('click', () => {
+                const code = pre.querySelector('code');
+                if (code) {
+                    navigator.clipboard.writeText(code.innerText);
+                    copyButton.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyButton.textContent = 'Copy Code';
+                    }, 2000);
+                }
+            });
+
+            // 4. Add the button to the <pre> block
+            pre.appendChild(copyButton);
+        });
+
+        // 5. Highlight syntax *after* adding buttons
+        // Check if Prism is loaded before calling it
+        if (window.Prism) {
+            Prism.highlightAll();
+        }
+
+        // --- END: MODIFICATION FOR CODE BLOCKS ---
+
         messageBubble.querySelector('.copy-btn').addEventListener('click', (e) => {
             const button = e.currentTarget;
             const originalContent = button.innerHTML;
