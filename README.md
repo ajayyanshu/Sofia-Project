@@ -142,7 +142,7 @@ If you find HashCrackPro useful and would like to support its development, pleas
 
 ### 📄 License
 
-This project is open-source. Feel free to add a license file (e.g., [MIT License](https://opensource.org/licenses/MIT)).
+This project is open-source. Feel free to add a license file  [License](https://github.com/ajayyanshu/Sofia-Project/blob/main/LICENSE).
 
 ## Contact with us
 
