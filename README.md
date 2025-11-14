@@ -66,7 +66,7 @@ Follow these instructions to get a copy of the project up and running on your lo
 1.  **Clone the repository:**
     ```sh
     git clone [https://github.com/your-username/sofia-ai.git](https://github.com/your-username/sofia-ai.git)
-    cd sofia-ai
+    cd Sofia-Project
     ```
 
 2.  **Set up the project structure:**
