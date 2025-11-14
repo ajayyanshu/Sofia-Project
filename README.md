@@ -43,7 +43,6 @@ Sofia AI is a full-stack, intelligent AI chat assistant built with a Python (Fla
     * **Google Gemini API:** For primary AI generation.
     * **Groq API:** For high-speed text and code analysis.
     * **Serper.dev API:** For real-time Google Search results.
-    * **YouTube Transcript API:** For summarizing YouTube videos.
     * **Web Speech API:** For browser-based voice I/O.
 * **Python Libraries:**
     * `PyMuPDF (fitz)`: For PDF text extraction.
