@@ -290,6 +290,9 @@ function startCyberGame(level) {
     };
     addMessage(startMsg);
     
+    // We add the system intro to history for context, but don't show it as a bubble
+    // currentChat.push(introMsg); 
+    
     // Trigger the AI to start speaking
     fetch('/chat', {
         method: 'POST',
@@ -313,7 +316,6 @@ async function endCyberGame() {
     endCyberGameBtn.disabled = true;
 
     try {
-        // 1. Get and Render the Report
         const response = await fetch('/api/cyber/evaluate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -326,40 +328,9 @@ async function endCyberGame() {
         const report = await response.json();
         renderCyberReport(report);
 
-        // 2. CRITICAL FIX: Automatically reset the AI Persona
-        // We send a command to the AI forcing it to confirm it is Sofia again.
-        const resetMessage = {
-            text: "[SYSTEM COMMAND: The simulation is successfully finished. STOP roleplaying as a scammer immediately. RESET your persona to 'Sofia AI' (helpful assistant). Reply briefly confirming you are back to normal.]",
-            sender: 'user', // We send as 'user' to force the model to obey
-            mode: 'chat'
-        };
-
-        // Add to history (but we won't show this specific prompt in the UI to keep it clean)
-        currentChat.push(resetMessage);
-
-        // Call the chat API to process this reset
-        const resetResponse = await fetch('/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(resetMessage)
-        });
-
-        const resetData = await resetResponse.json();
-
-        // 3. Show Sofia's "Back to Normal" response
-        const aiResetMsg = { 
-            text: resetData.response, 
-            sender: 'ai' 
-        };
-        addMessage(aiResetMsg);
-        currentChat.push(aiResetMsg);
-        
-        // Save the updated history so the context is permanently fixed
-        saveChatSession();
-
     } catch (error) {
-        console.error("Evaluation or Reset failed", error);
-        addMessage({ text: "Error generating report. Please check console.", sender: 'system' });
+        console.error("Evaluation failed", error);
+        addMessage({ text: "Error generating report. Please check the console.", sender: 'system' });
     } finally {
         // Reset State
         isCyberGameActive = false;
@@ -408,6 +379,9 @@ function renderCyberReport(report) {
     
     // Save this report to chat history logic if needed
     currentChat.push({ text: `**Security Report:** Score ${report.score}/100 - ${report.verdict}`, sender: 'ai' });
+    
+    // Optionally save game result to DB automatically
+    // saveChatSession(); 
 }
 
 
