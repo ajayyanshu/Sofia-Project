@@ -1376,8 +1376,56 @@ def save_chat_history():
         print(f"Error generating chat history HTML: {e}")
         return jsonify({'success': False, 'error': 'Failed to generate chat history.'}), 500
 
-# --- Live AI Camera Feature (Backend) ---
-# [Code for this feature has been removed as requested]
+# --- NEW: Cyber Security Game Evaluation Route ---
+@app.route('/api/cyber/evaluate', methods=['POST'])
+@login_required
+def evaluate_cyber_game():
+    data = request.json
+    chat_history = data.get('messages', [])
+    level = data.get('level', 'Basic')
+
+    # Filter messages to just the relevant text for context
+    conversation_text = ""
+    for msg in chat_history:
+        role = "Scammer (AI)" if msg['sender'] == 'ai' else "User (Victim)"
+        conversation_text += f"{role}: {msg['text']}\n"
+
+    # Evaluation Prompt
+    evaluation_prompt = (
+        f"You are a Senior Cybersecurity Instructor. A user just completed a simulation against an AI acting as a '{level}' level scammer.\n\n"
+        f"--- TRANSCRIPT START ---\n{conversation_text}\n--- TRANSCRIPT END ---\n\n"
+        "Analyze the User's performance. Did they reveal sensitive info? Did they spot the red flags? Did they successfully shut down the scam?\n"
+        "Return the response in valid JSON format ONLY with the following structure:\n"
+        "{\n"
+        '  "score": (integer 0-100),\n'
+        '  "verdict": (string, e.g., "Safe", "Compromised", "Risky"),\n'
+        '  "analysis": "Brief paragraph explaining the result.",\n'
+        '  "tips": ["Tip 1 based on mistakes", "Tip 2", "Tip 3"]\n'
+        "}"
+    )
+
+    try:
+        # Use the same Gemini model configured for chat
+        model = genai.GenerativeModel("gemini-2.5-pro")
+        
+        # Generate content
+        response = model.generate_content(evaluation_prompt)
+        
+        # Clean response to ensure pure JSON
+        cleaned_text = response.text.replace('```json', '').replace('```', '').strip()
+        result_json = json.loads(cleaned_text)
+        
+        return jsonify(result_json)
+
+    except Exception as e:
+        print(f"Cyber Evaluation Error: {e}")
+        # Fallback if AI fails to generate JSON
+        return jsonify({
+            "score": 0,
+            "verdict": "Error",
+            "analysis": "Could not generate analysis at this time. Please try again.",
+            "tips": ["Try refreshing the page", "Check your internet connection"]
+        })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
