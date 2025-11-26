@@ -166,7 +166,7 @@ body.initial-view #welcome-message-container { flex-grow: 0; }
     border-radius: 50%;
     animation: spin 1.5s linear infinite;
 }
-#settings-modal, #library-modal { /* Removed #ai-live-modal */
+#settings-modal, #library-modal, #cyber-modal {
     background-color: rgba(0, 0, 0, 0.5);
 }
 /* Improved Dark Mode Styles */
@@ -201,7 +201,7 @@ body.initial-view #welcome-message-container { flex-grow: 0; }
 .dark .ai-message strong, .dark .ai-message b { color: #f9fafb; }
 .dark .action-btn { color: #a0a0a0; }
 .dark .action-btn:hover { background-color: #333333; }
-.dark #settings-modal .bg-white, .dark #library-modal .bg-white { background-color: #181818; } /* Removed #ai-live-modal */
+.dark #settings-modal .bg-white, .dark #library-modal .bg-white, .dark #cyber-modal .bg-white { background-color: #181818; }
 .dark #settings-modal h2, .dark #settings-modal h3, .dark #settings-modal label, .dark #settings-modal span, .dark #settings-modal p, .dark .settings-tab-btn { color: #f0f0f0; }
 .dark #library-modal h2, .dark #library-modal p { color: #f0f0f0; }
 .dark .sm\:border-r { border-right-color: #292929; }
@@ -217,8 +217,6 @@ body.initial-view #welcome-message-container { flex-grow: 0; }
 .dark .plan-table .border-b { border-color: #2d3748; }
 .dark .plan-table .text-gray-800 { color: #e5e7eb; }
 .dark .plan-table .text-gray-600 { color: #d1d5db; }
-
-/* --- ADD THIS AT THE END OF style.css --- */
 
 /*
  * Code Block Styling (Prism.js)
@@ -275,3 +273,38 @@ body.initial-view #welcome-message-container { flex-grow: 0; }
 pre[class*="language-"] {
     background: transparent; /* Makes the pre background visible */
 }
+
+/* * Cyber Security Report Card Styles 
+ */
+.cyber-report-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 100%;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+}
+
+.report-score-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 auto 1rem auto;
+    border: 6px solid;
+}
+
+.score-high { border-color: #22c55e; color: #15803d; background: #f0fdf4; }
+.score-med { border-color: #eab308; color: #a16207; background: #fefce8; }
+.score-low { border-color: #ef4444; color: #b91c1c; background: #fef2f2; }
+
+/* Dark mode support for report card */
+.dark .cyber-report-card { background: #1f2937; border-color: #374151; color: #f3f4f6; }
+.dark .score-high { background: rgba(34, 197, 94, 0.1); color: #4ade80; border-color: #22c55e; }
+.dark .score-med { background: rgba(234, 179, 8, 0.1); color: #facc15; border-color: #eab308; }
+.dark .score-low { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: #ef4444; }
