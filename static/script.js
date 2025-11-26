@@ -11,7 +11,7 @@ const sendBtn = document.getElementById('send-btn');
 const addBtn = document.getElementById('add-btn');
 const addMenu = document.getElementById('add-menu');
 const uploadFileBtn = document.getElementById('upload-file-btn');
-const uploadCodeBtn = document.getElementById('upload-code-btn'); // <-- ADDED THIS
+const uploadCodeBtn = document.getElementById('upload-code-btn');
 const fileInput = document.getElementById('file-input');
 const filePreviewContainer = document.getElementById('file-preview-container');
 const webSearchToggleBtn = document.getElementById('web-search-toggle-btn');
@@ -26,11 +26,18 @@ const endVoiceBtn = document.getElementById('end-voice-btn');
 const userMenuBtn = document.getElementById('user-menu-btn');
 const userMenu = document.getElementById('user-menu');
 const settingsMenuItem = document.getElementById('settings-menu-item');
-// Removed downloadHistoryMenuItem
 const chatHistoryContainer = document.getElementById('chat-history-container');
 const searchHistoryInput = document.getElementById('search-history-input');
 const tempChatBanner = document.getElementById('temp-chat-banner');
 const saveToDbBtn = document.getElementById('save-to-db-btn');
+
+// Cyber Training Elements
+const cyberTrainingBtn = document.getElementById('cyber-training-btn');
+const cyberModal = document.getElementById('cyber-modal');
+const closeCyberModalBtn = document.getElementById('close-cyber-modal');
+const levelBtns = document.querySelectorAll('.level-btn');
+const cyberGameControls = document.getElementById('cyber-game-controls');
+const endCyberGameBtn = document.getElementById('end-cyber-game-btn');
 
 // Settings Modal
 const settingsModal = document.getElementById('settings-modal');
@@ -58,8 +65,6 @@ const closeLibraryBtn = document.getElementById('close-library-btn');
 const libraryGrid = document.getElementById('library-grid');
 const libraryEmptyMsg = document.getElementById('library-empty-msg');
 
-// Removed AI Live Modal Elements
-
 // Plan & Usage Elements
 const upgradePlanSidebarBtn = document.getElementById('upgrade-plan-sidebar-btn');
 const menuUsername = document.getElementById('menu-username');
@@ -86,7 +91,10 @@ let isTemporaryChatActive = false;
 let chatHistory = [];
 let currentChat = [];
 let currentChatId = null;
-// Removed AI Live state variables
+
+// Cyber Game State
+let isCyberGameActive = false;
+let currentCyberLevel = 'Basic';
 
 // Plan & Usage State
 let usageCounts = {
@@ -137,20 +145,15 @@ sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
 // --- MODIFIED FILE UPLOAD LISTENERS ---
-// This listener handles general files (images, docs, pdfs)
 uploadFileBtn.addEventListener('click', () => {
-    // Set the accept attribute for general files
     fileInput.accept = "image/*,.pdf,.doc,.docx";
     fileInput.click();
 });
 
-// This listener handles code files
 uploadCodeBtn.addEventListener('click', () => {
-    // Set the accept attribute for a wide range of code/text files
     fileInput.accept = ".txt,.py,.js,.java,.c,.cpp,.h,.html,.css,.json,.md,.sh,.rb,.go,.php,.swift,.kt";
     fileInput.click();
 });
-// --- END OF MODIFICATIONS ---
 
 fileInput.addEventListener('change', handleFileSelect);
 
@@ -187,8 +190,6 @@ messageInput.addEventListener('input', () => {
 });
 
 saveToDbBtn.addEventListener('click', saveTemporaryChatToDB);
-
-// Removed Download History event listener
 
 // --- Settings Modal Logic ---
 function openSettingsModal() { settingsModal.classList.remove('hidden'); settingsModal.classList.add('flex'); }
@@ -231,6 +232,158 @@ function switchSettingsTab(tab) {
 generalTabBtn.addEventListener('click', (e) => { e.preventDefault(); switchSettingsTab('general'); });
 profileTabBtn.addEventListener('click', (e) => { e.preventDefault(); switchSettingsTab('profile'); });
 usageTabBtn.addEventListener('click', (e) => { e.preventDefault(); switchSettingsTab('usage'); });
+
+// --- Cyber Security Training Logic ---
+cyberTrainingBtn.addEventListener('click', () => {
+    // Close sidebar on mobile if open
+    if (!sidebar.classList.contains('-translate-x-full')) closeSidebar();
+    cyberModal.classList.remove('hidden');
+    cyberModal.classList.add('flex');
+});
+
+closeCyberModalBtn.addEventListener('click', () => {
+    cyberModal.classList.add('hidden');
+    cyberModal.classList.remove('flex');
+});
+
+levelBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const level = btn.getAttribute('data-level');
+        startCyberGame(level);
+    });
+});
+
+endCyberGameBtn.addEventListener('click', endCyberGame);
+
+function startCyberGame(level) {
+    // 1. Reset UI
+    cyberModal.classList.add('hidden');
+    cyberModal.classList.remove('flex');
+    startNewChat(); // Clear existing chat
+    
+    // 2. Set State
+    isCyberGameActive = true;
+    currentCyberLevel = level;
+    cyberGameControls.classList.remove('hidden');
+    
+    // 3. Define the System Persona based on level
+    let personaPrompt = "";
+    if (level === 'Basic') {
+        personaPrompt = "Act as a naive scammer (e.g., Nigerian Prince or Lottery winner). Use slightly poor grammar, make obvious demands for money or bank details. Do not break character. Keep responses short.";
+    } else if (level === 'Intermediate') {
+        personaPrompt = "Act as a somewhat convincing scammer posing as 'Amazon Support' or 'Your Bank'. Use urgent language claiming a transaction was authorized. Try to get the user to download 'AnyDesk' or give an OTP. Do not break character. Keep responses short.";
+    } else {
+        personaPrompt = "Act as a sophisticated Expert Hacker/Social Engineer. Use a Spear Phishing approach. You are posing as a 'Senior IT Administrator' from the user's company (use technical jargon). You need them to run a specific command or visit a specific 'internal' link to patch a security flaw. Be polite, professional, and very convincing. Do not break character. Keep responses short.";
+    }
+    
+    // 4. Send the hidden system prompt to Sofia
+    const introMsg = {
+        text: `[SYSTEM: SIMULATION STARTED - LEVEL: ${level}]\n${personaPrompt}\n\nStart the conversation now by greeting the victim.`,
+        sender: 'user', // We spoof this so the AI replies to it
+        mode: 'chat'
+    };
+    
+    // UI Message showing start
+    const startMsg = { 
+        text: `🏁 **Cyber Security Challenge Started: ${level} Level**\n\nThe AI is now a scammer. Defend yourself!\nWhen you think you've caught them, click **Analyze & End**.`, 
+        sender: 'system' 
+    };
+    addMessage(startMsg);
+    
+    // We add the system intro to history for context, but don't show it as a bubble
+    // currentChat.push(introMsg); 
+    
+    // Trigger the AI to start speaking
+    fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(introMsg)
+    })
+    .then(res => res.json())
+    .then(data => {
+        const aiMsg = { text: data.response, sender: 'ai' };
+        addMessage(aiMsg);
+        currentChat.push(introMsg); // Add prompt to history for context now
+        currentChat.push(aiMsg);
+    })
+    .catch(err => console.error("Game start error", err));
+}
+
+async function endCyberGame() {
+    if (!confirm("Are you sure you want to end the simulation and get your report?")) return;
+
+    endCyberGameBtn.textContent = "Analyzing...";
+    endCyberGameBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/cyber/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: currentChat,
+                level: currentCyberLevel
+            })
+        });
+
+        const report = await response.json();
+        renderCyberReport(report);
+
+    } catch (error) {
+        console.error("Evaluation failed", error);
+        addMessage({ text: "Error generating report. Please check the console.", sender: 'system' });
+    } finally {
+        // Reset State
+        isCyberGameActive = false;
+        cyberGameControls.classList.add('hidden');
+        endCyberGameBtn.textContent = "Analyze & End";
+        endCyberGameBtn.disabled = false;
+    }
+}
+
+function renderCyberReport(report) {
+    let colorClass = 'score-low';
+    if (report.score >= 80) colorClass = 'score-high';
+    else if (report.score >= 50) colorClass = 'score-med';
+
+    const tipsHtml = report.tips ? report.tips.map(tip => `<li class="mb-1">💡 ${tip}</li>`).join('') : '<li>No specific tips.</li>';
+
+    const html = `
+        <div class="cyber-report-card">
+            <h3 class="text-xl font-bold text-center mb-4 border-b pb-2">🛡️ Security Analysis Report</h3>
+            
+            <div class="report-score-circle ${colorClass}">
+                ${report.score}
+            </div>
+            
+            <div class="text-center font-bold text-lg mb-4">Verdict: ${report.verdict}</div>
+            
+            <div class="mb-4">
+                <h4 class="font-semibold text-gray-700 dark:text-gray-300">Analysis:</h4>
+                <p class="text-sm text-gray-600 dark:text-gray-400">${report.analysis}</p>
+            </div>
+            
+            <div>
+                <h4 class="font-semibold text-gray-700 dark:text-gray-300">How to Improve:</h4>
+                <ul class="text-sm text-gray-600 dark:text-gray-400 list-none pl-0 mt-2">
+                    ${tipsHtml}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    const messageBubble = document.createElement('div');
+    messageBubble.innerHTML = html;
+    messageBubble.className = 'message-bubble ai-message w-full'; // Full width for report
+    chatContainer.appendChild(messageBubble);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Save this report to chat history logic if needed
+    currentChat.push({ text: `**Security Report:** Score ${report.score}/100 - ${report.verdict}`, sender: 'ai' });
+    
+    // Optionally save game result to DB automatically
+    // saveChatSession(); 
+}
+
 
 // --- Language and Theme Logic ---
 let currentLang = 'en';
@@ -392,19 +545,6 @@ async function sendMessage() {
     
     const modeForThisMessage = currentMode;
     
-    // --- MODIFICATION 2: REMOVED ---
-    // Removed the frontend web search usage tracking block.
-    // Your 'app.py' backend now handles this check and increment
-    // securely when it receives the 'mode: "web_search"' key.
-    /*
-    if (modeForThisMessage === 'web_search' && !isPremium && !isAdmin) {
-        usageCounts.webSearches++;
-         // Inform backend about usage
-        fetch('/update_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'web_search' }) });
-
-    }
-    */
-    
     const currentFileData = fileData;
     const currentFileType = fileType;
     removeFile();
@@ -420,9 +560,6 @@ async function sendMessage() {
         const response = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // --- MODIFICATION 1: ADDED 'mode' KEY ---
-            // This now tells the Python backend that the user
-            // clicked the web search button.
             body: JSON.stringify({
                 text: text,
                 fileData: currentFileData, 
@@ -441,13 +578,6 @@ async function sendMessage() {
         
         if (!isPremium && !isAdmin) {
             usageCounts.messages++;
-            // Inform backend about usage
-            // NOTE: This '/update_usage' call is for *messages*. Your backend
-            // already increments 'usage_counts.messages' in the /chat route,
-            // so this is also technically redundant, but we can leave it
-            // as it doesn't cause a conflict like the web search one did.
-            // For optimal design, this could also be removed and handled
-            // exclusively by the backend.
             fetch('/update_usage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'message' }) });
             updateUsageUI();
         }
@@ -545,17 +675,13 @@ function addMessage({text, sender, fileInfo = null, mode = null}) {
         aiMessageContainer.appendChild(messageBubble);
         chatContainer.appendChild(aiMessageContainer);
 
-        // --- START: MODIFICATION FOR CODE BLOCKS ---
-
-        // 1. Find all <pre> blocks *within this new message*
+        // Code Block Highlight
         const codeBlocks = messageBubble.querySelectorAll('pre');
         codeBlocks.forEach((pre) => {
-            // 2. Create a 'Copy' button
             const copyButton = document.createElement('button');
             copyButton.className = 'code-copy-btn';
             copyButton.textContent = 'Copy Code';
 
-            // 3. Add click event to copy the code
             copyButton.addEventListener('click', () => {
                 const code = pre.querySelector('code');
                 if (code) {
@@ -567,17 +693,12 @@ function addMessage({text, sender, fileInfo = null, mode = null}) {
                 }
             });
 
-            // 4. Add the button to the <pre> block
             pre.appendChild(copyButton);
         });
 
-        // 5. Highlight syntax *after* adding buttons
-        // Check if Prism is loaded before calling it
         if (window.Prism) {
             Prism.highlightAll();
         }
-
-        // --- END: MODIFICATION FOR CODE BLOCKS ---
 
         messageBubble.querySelector('.copy-btn').addEventListener('click', (e) => {
             const button = e.currentTarget;
@@ -1147,22 +1268,16 @@ function renderLibraryFiles(files) {
         item.className = 'relative group border rounded-lg p-2 flex flex-col items-center text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700';
         item.addEventListener('click', () => selectLibraryFile(file));
 
-        // --- MODIFIED: Use fileCategory for icons ---
         let previewHtml = '';
-        // Use file.fileCategory which is now sent from the backend
         if (file.fileCategory === 'image') {
             previewHtml = `<img src="data:${file.fileType};base64,${file.fileData}" alt="${file.fileName}" class="w-20 h-20 object-cover rounded-md mb-2">`;
         } else if (file.fileCategory === 'document') {
-             // A blue icon for documents (PDF, DOCX)
             previewHtml = `<svg class="w-20 h-20 mb-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`;
         } else if (file.fileCategory === 'code') {
-            // A green icon for code files
             previewHtml = `<svg class="w-20 h-20 mb-2 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4-4M6 16l-4-4 4-4" /></svg>`;
         } else {
-            // A generic gray icon for 'other'
             previewHtml = `<svg class="w-20 h-20 mb-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>`;
         }
-        // --- END OF MODIFICATION ---
         
         item.innerHTML = `
             ${previewHtml}
@@ -1207,7 +1322,6 @@ function selectLibraryFile(file) {
 libraryBtn.addEventListener('click', openLibraryModal);
 closeLibraryBtn.addEventListener('click', closeLibraryModal);
 
-// Removed AI Live Functions
 
 // --- Plan, Usage & Payment Functions ---
 upgradePlanSidebarBtn.addEventListener('click', (e) => {
@@ -1258,7 +1372,6 @@ razorpayBtn.addEventListener('click', () => {
             
             // For this demo, we'll just upgrade the user on the frontend
             isPremium = true;
-            // You would save this to your user's database record.
             updateUsageUI();
             closeSettingsModal();
         },
@@ -1281,12 +1394,9 @@ razorpayBtn.addEventListener('click', () => {
 // --- Initializations ---
 async function fetchAndDisplayUserInfo() {
     try {
-        // In a real app, your backend would provide user data including their plan
         const response = await fetch('/get_user_info');
          if (!response.ok) {
-            // This handles cases where the user is not logged in
-            // and the backend returns a 401 or similar error.
-            window.location.href = '/login.html'; // Or your actual login page
+            window.location.href = '/login.html'; 
             return;
         }
         const userData = await response.json();
@@ -1294,7 +1404,6 @@ async function fetchAndDisplayUserInfo() {
         isAdmin = userData.isAdmin || false;
         isPremium = userData.isPremium || false;
 
-        // Set usage counts from server data
         usageCounts = userData.usageCounts || { messages: 0, webSearches: 0 };
         
         updateUsageUI();
@@ -1322,7 +1431,6 @@ async function fetchAndDisplayUserInfo() {
 
         if(userData.email) {
              document.getElementById('profile-email').textContent = userData.email;
-             // Display email verification status
              if (userData.emailVerified) {
                  emailVerificationStatusText.textContent = 'Your email has been verified.';
                  emailVerificationStatusText.classList.remove('text-yellow-600', 'text-gray-500');
@@ -1368,15 +1476,11 @@ function initializeApp() {
 
     populateLanguages();
     applyLanguage(currentLang);
-    loadChatsFromDB(); // <-- Changed from loadChatHistory()
+    loadChatsFromDB();
     
     fetchAndDisplayUserInfo();
     
-    // --- START: MODIFIED LOGOUT BLOCK ---
-
-    // This function handles the REGULAR logout (from the sidebar menu)
     const handleLogout = async () => {
-        console.log('Logout initiated');
         try {
             const response = await fetch('/logout', { method: 'POST' });
             if(response.ok) {
@@ -1391,14 +1495,11 @@ function initializeApp() {
         }
     };
 
-    // This new function handles LOGOUT FROM ALL DEVICES (from the Settings modal)
     const handleLogoutAll = async () => {
         if (!confirm('This will log you out from all other devices and this one. Are you sure?')) {
             return;
         }
-        console.log('Logout all devices initiated');
         try {
-            // Call the correct endpoint
             const response = await fetch('/logout-all', { method: 'POST' });
             if(response.ok) {
                 alert('Successfully logged out of all devices.');
@@ -1412,21 +1513,16 @@ function initializeApp() {
         }
     };
     
-    // Attach the correct functions to the correct buttons
-    logoutBtn.addEventListener('click', handleLogoutAll); // <-- FIX: Calls handleLogoutAll
+    logoutBtn.addEventListener('click', handleLogoutAll);
     logoutMenuItem.addEventListener('click', (e) => {
         e.preventDefault();
-        handleLogout(); // <-- This one correctly calls handleLogout
+        handleLogout();
     });
-    
-    // --- END: MODIFIED LOGOUT BLOCK ---
-
     
     verifyEmailBtn.addEventListener('click', async () => {
         verifyEmailBtn.disabled = true;
         verifyEmailBtn.textContent = 'Sending...';
         try {
-            // This is a placeholder for a backend call
             const response = await fetch('/send_verification_email', { method: 'POST' });
             if (response.ok) {
                 alert('A new verification email has been sent to your address.');
@@ -1462,8 +1558,6 @@ function initializeApp() {
             }
         }
     });
-    
-    // Removed AI Live Event Listeners
 }
 
 initializeApp();
