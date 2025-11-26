@@ -570,7 +570,6 @@ async function sendMessage() {
     }
     
     const modeForThisMessage = currentMode;
-    
     const currentFileData = fileData;
     const currentFileType = fileType;
     removeFile();
@@ -582,12 +581,19 @@ async function sendMessage() {
     
     const typingIndicator = addTypingIndicator();
 
+    // --- CRITICAL FIX FOR CYBER GAME: REMIND THE AI OF ITS ROLE ---
+    let textToSend = text;
+    if (isCyberGameActive) {
+        textToSend = `[SYSTEM: The Cyber Security Simulation is STILL ACTIVE. You are NOT Sofia AI. You MUST continue acting as the ${currentCyberLevel} Level Scammer defined previously. Do not break character. Do not help the user. Try to trick them.]\n\nUser says: "${text}"`;
+    }
+    // -------------------------------------------------------------
+
     try {
         const response = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                text: text,
+                text: textToSend, // <--- Use the modified text here
                 fileData: currentFileData, 
                 fileType: currentFileType,
                 isTemporary: isTemporaryChatActive,
