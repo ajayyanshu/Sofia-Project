@@ -447,7 +447,14 @@ const translations = {
         upgrade: 'Upgrade',
         verify: 'Verify',
         verified: 'Verified',
-        delete: 'Delete'
+        delete: 'Delete',
+        // New translations for Profile & General
+        emailVerification: 'Email Verification',
+        logoutAllDevices: 'Log out of all devices',
+        deleteAccountLabel: 'Delete account',
+        themeLabel: 'Theme',
+        emailNotVerifiedMsg: 'Your email is not verified.',
+        emailVerifiedMsg: 'Your email has been verified.'
     },
     'hi': { 
         settings: 'सेटिंग्स', 
@@ -479,7 +486,14 @@ const translations = {
         upgrade: 'अपग्रेड करें',
         verify: 'सत्यापित करें',
         verified: 'सत्यापित',
-        delete: 'हटाएं'
+        delete: 'हटाएं',
+         // New translations for Profile & General
+        emailVerification: 'ईमेल सत्यापन',
+        logoutAllDevices: 'सभी उपकरणों से लॉग आउट करें',
+        deleteAccountLabel: 'खाता हटाएं',
+        themeLabel: 'थीम',
+        emailNotVerifiedMsg: 'आपका ईमेल सत्यापित नहीं है।',
+        emailVerifiedMsg: 'आपका ईमेल सत्यापित हो गया है।'
     },
     'bn': { 
         settings: 'সেটিংস', 
@@ -511,7 +525,14 @@ const translations = {
         upgrade: 'আপগ্রেড করুন',
         verify: 'যাচাই করুন',
         verified: 'যাচাইকৃত',
-        delete: 'মুছুন'
+        delete: 'মুছুন',
+        // New translations for Profile & General
+        emailVerification: 'ইমেল যাচাইকরণ',
+        logoutAllDevices: 'সমস্ত ডিভাইস থেকে লগ আউট করুন',
+        deleteAccountLabel: 'অ্যাকাউন্ট মুছুন',
+        themeLabel: 'থিম',
+        emailNotVerifiedMsg: 'আপনার ইমেল যাচাই করা হয়নি।',
+        emailVerifiedMsg: 'আপনার ইমেল যাচাই করা হয়েছে।'
     }
 };
 
@@ -536,28 +557,59 @@ function applyLanguage(lang) {
     const currentTab = settingsContentTitle.getAttribute('data-current-tab') || 'general';
     settingsContentTitle.textContent = translations[lang][currentTab] || translations['en'][currentTab];
 
-    // Manual updates for elements missing data-lang in HTML
+    // --- MANUAL UPDATES FOR ELEMENTS MISSING data-lang TAGS ---
+    
+    // 1. Sidebar & Menu Buttons
     const uploadCodeSpan = document.querySelector('#upload-code-btn span');
-    if (uploadCodeSpan && translations[lang]['uploadCode']) {
-        uploadCodeSpan.textContent = translations[lang]['uploadCode'];
-    }
+    if (uploadCodeSpan) uploadCodeSpan.textContent = translations[lang]['uploadCode'];
 
     const usageTabSpan = document.querySelector('#usage-tab-btn span');
-    if (usageTabSpan && translations[lang]['usagePlan']) {
-        usageTabSpan.textContent = translations[lang]['usagePlan'];
-    }
+    if (usageTabSpan) usageTabSpan.textContent = translations[lang]['usagePlan'];
 
     const upgradeSidebarSpan = document.querySelector('#upgrade-plan-sidebar-btn span');
-    if (upgradeSidebarSpan && translations[lang]['upgradePlan']) {
-        upgradeSidebarSpan.textContent = translations[lang]['upgradePlan'];
-    }
+    if (upgradeSidebarSpan) upgradeSidebarSpan.textContent = translations[lang]['upgradePlan'];
 
     const cyberTrainingSpan = document.querySelector('#cyber-training-btn span');
-    if (cyberTrainingSpan && translations[lang]['cyberTraining']) {
-        cyberTrainingSpan.textContent = translations[lang]['cyberTraining'];
-    }
+    if (cyberTrainingSpan) cyberTrainingSpan.textContent = translations[lang]['cyberTraining'];
     
-    // Update Verify/Delete buttons manually if needed
+    // 2. Settings - General Tab (Theme Buttons & Label)
+    const themeLabel = document.querySelector('#general-settings-content label');
+    if (themeLabel) themeLabel.textContent = translations[lang]['themeLabel'];
+
+    const lightSpan = document.querySelector('#theme-light span');
+    if (lightSpan) lightSpan.textContent = translations[lang]['light'];
+
+    const darkSpan = document.querySelector('#theme-dark span');
+    if (darkSpan) darkSpan.textContent = translations[lang]['dark'];
+
+    const systemSpan = document.querySelector('#theme-system span');
+    if (systemSpan) systemSpan.textContent = translations[lang]['system'];
+
+    // 3. Settings - Profile Tab Labels
+    const profileContent = document.getElementById('profile-settings-content');
+    if (profileContent) {
+        // Find specific labels by hierarchy
+        const emailVerLabel = profileContent.querySelector('div.space-y-6 > div:nth-child(3) > div > p.font-medium');
+        if (emailVerLabel) emailVerLabel.textContent = translations[lang]['emailVerification'];
+
+        const logoutLabel = profileContent.querySelector('div.space-y-6 > div:nth-child(4) > p');
+        if (logoutLabel) logoutLabel.textContent = translations[lang]['logoutAllDevices'];
+
+        const deleteAccountLabel = profileContent.querySelector('div.space-y-6 > div:nth-child(5) > p');
+        if (deleteAccountLabel) deleteAccountLabel.textContent = translations[lang]['deleteAccountLabel'];
+
+        // Dynamic Status Text for Email
+        if (emailVerificationStatusText) {
+             // If verify btn is disabled, it means email is already verified
+            if (verifyEmailBtn && verifyEmailBtn.disabled) {
+                emailVerificationStatusText.textContent = translations[lang]['emailVerifiedMsg'];
+            } else {
+                emailVerificationStatusText.textContent = translations[lang]['emailNotVerifiedMsg'];
+            }
+        }
+    }
+
+    // 4. Update Verify/Delete buttons manually if needed
     if (verifyEmailBtn) {
         // preserve disabled state logic text slightly
         if (!verifyEmailBtn.disabled) verifyEmailBtn.textContent = translations[lang]['verify'];
