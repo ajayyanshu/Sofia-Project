@@ -209,24 +209,27 @@ function switchSettingsTab(tab) {
     const contents = document.querySelectorAll('#general-settings-content, #profile-settings-content, #usage-settings-content');
     contents.forEach(c => c.classList.add('hidden'));
 
-    let title = "Settings";
+    let titleKey = 'settings'; // Default
     if (tab === 'general') {
         generalTabBtn.classList.add('active', 'bg-gray-100', 'text-gray-800', 'font-semibold');
         generalTabBtn.classList.remove('text-gray-600', 'hover:bg-gray-100');
         generalSettingsContent.classList.remove('hidden');
-        title = "General";
+        titleKey = 'general';
     } else if (tab === 'profile') {
         profileTabBtn.classList.add('active', 'bg-gray-100', 'text-gray-800', 'font-semibold');
         profileTabBtn.classList.remove('text-gray-600', 'hover:bg-gray-100');
         profileSettingsContent.classList.remove('hidden');
-        title = "Profile";
+        titleKey = 'profile';
     } else if (tab === 'usage') {
         usageTabBtn.classList.add('active', 'bg-gray-100', 'text-gray-800', 'font-semibold');
         usageTabBtn.classList.remove('text-gray-600', 'hover:bg-gray-100');
         usageSettingsContent.classList.remove('hidden');
-        title = "Usage & Plan";
+        titleKey = 'usagePlan';
     }
-    settingsContentTitle.textContent = title;
+    
+    // Update title using current language
+    settingsContentTitle.textContent = translations[currentLang][titleKey] || translations['en'][titleKey];
+    settingsContentTitle.setAttribute('data-current-tab', titleKey); // Store for language switching
 }
 
 generalTabBtn.addEventListener('click', (e) => { e.preventDefault(); switchSettingsTab('general'); });
@@ -414,11 +417,105 @@ function renderCyberReport(report) {
 // --- Language and Theme Logic ---
 let currentLang = 'en';
 const translations = {
-    'en': { settings: 'Settings', general: 'General', profile: 'Profile', theme: 'Theme', light: 'Light', dark: 'Dark', system: 'System', language: 'Language', profileImage: 'Profile Image', upload: 'Upload', username: 'Username', newChat: 'New chat', library: 'Library', chatHistory: 'Chat History', chatHistoryEmpty: 'Your chat history will appear here.', help: 'Help', logOut: 'Log out', welcome: 'What can I help with?', addFiles: 'Add photos & file', askAnything: 'Ask anything', search: 'Search', sofiaTitle: 'Sofia AI' },
-    'hi': { settings: 'सेटिंग्स', general: 'सामान्य', profile: 'प्रोफ़ाइल', theme: 'थीम', light: 'लाइट', dark: 'डार्क', system: 'सिस्टम', language: 'भाषा', profileImage: 'प्रोफ़ाइल छवि', upload: 'अपलोड', username: 'उपयोगकर्ता नाम', newChat: 'नई चैट', library: 'लाइब्रेरी', chatHistory: 'चैट इतिहास', chatHistoryEmpty: 'आपका चैट इतिहास यहाँ दिखाई देगा।', help: 'मदद', logOut: 'लॉग आउट', welcome: 'मैं आपकी क्या मदद कर सकता हूँ?', addFiles: 'तस्वीरें और फ़ाइलें जोड़ें', askAnything: 'कुछ भी पूछें', search: 'खोजें', sofiaTitle: 'सोफिया एआई' },
+    'en': { 
+        settings: 'Settings', 
+        general: 'General', 
+        profile: 'Profile', 
+        theme: 'Theme', 
+        light: 'Light', 
+        dark: 'Dark', 
+        system: 'System', 
+        language: 'Language', 
+        profileImage: 'Profile Image', 
+        upload: 'Upload', 
+        username: 'Username', 
+        newChat: 'New chat', 
+        library: 'Library', 
+        chatHistory: 'Chat History', 
+        chatHistoryEmpty: 'Your chat history will appear here.', 
+        help: 'Help', 
+        logOut: 'Log out', 
+        welcome: 'What can I help with?', 
+        addFiles: 'Add photos & file', 
+        askAnything: 'Ask anything', 
+        search: 'Search', 
+        sofiaTitle: 'Sofia AI',
+        uploadCode: 'Upload code',
+        usagePlan: 'Usage & Plan',
+        upgradePlan: 'Upgrade your plan',
+        cyberTraining: 'Cyber Training',
+        upgrade: 'Upgrade',
+        verify: 'Verify',
+        verified: 'Verified',
+        delete: 'Delete'
+    },
+    'hi': { 
+        settings: 'सेटिंग्स', 
+        general: 'सामान्य', 
+        profile: 'प्रोफ़ाइल', 
+        theme: 'थीम', 
+        light: 'लाइट', 
+        dark: 'डार्क', 
+        system: 'सिस्टम', 
+        language: 'भाषा', 
+        profileImage: 'प्रोफ़ाइल छवि', 
+        upload: 'अपलोड', 
+        username: 'उपयोगकर्ता नाम', 
+        newChat: 'नई चैट', 
+        library: 'लाइब्रेरी', 
+        chatHistory: 'चैट इतिहास', 
+        chatHistoryEmpty: 'आपका चैट इतिहास यहाँ दिखाई देगा।', 
+        help: 'मदद', 
+        logOut: 'लॉग आउट', 
+        welcome: 'मैं आपकी क्या मदद कर सकता हूँ?', 
+        addFiles: 'तस्वीरें और फ़ाइलें जोड़ें', 
+        askAnything: 'कुछ भी पूछें', 
+        search: 'खोजें', 
+        sofiaTitle: 'सोफिया एआई',
+        uploadCode: 'कोड अपलोड करें',
+        usagePlan: 'उपयोग और योजना',
+        upgradePlan: 'अपना प्लान अपग्रेड करें',
+        cyberTraining: 'साइबर प्रशिक्षण',
+        upgrade: 'अपग्रेड करें',
+        verify: 'सत्यापित करें',
+        verified: 'सत्यापित',
+        delete: 'हटाएं'
+    },
+    'bn': { 
+        settings: 'সেটিংস', 
+        general: 'সাধারণ', 
+        profile: 'প্রোফাইল', 
+        theme: 'থিম', 
+        light: 'লাইট', 
+        dark: 'ডার্ক', 
+        system: 'সিস্টেম', 
+        language: 'ভাষা', 
+        profileImage: 'প্রোফাইল ছবি', 
+        upload: 'আপলোড', 
+        username: 'ব্যবহারকারীর নাম', 
+        newChat: 'নতুন চ্যাট', 
+        library: 'লাইব্রেরি', 
+        chatHistory: 'চ্যাট ইতিহাস', 
+        chatHistoryEmpty: 'আপনার চ্যাট ইতিহাস এখানে প্রদর্শিত হবে।', 
+        help: 'সাহায্য', 
+        logOut: 'লগ আউট', 
+        welcome: 'আমি আপনাকে কীভাবে সাহায্য করতে পারি?', 
+        addFiles: 'ছবি এবং ফাইল যোগ করুন', 
+        askAnything: 'যা খুশি জিজ্ঞাসা করুন', 
+        search: 'অনুসন্ধান', 
+        sofiaTitle: 'সোফিয়া এআই',
+        uploadCode: 'কোড আপলোড করুন',
+        usagePlan: 'ব্যবহার এবং পরিকল্পনা',
+        upgradePlan: 'আপনার পরিকল্পনা আপগ্রেড করুন',
+        cyberTraining: 'সাইবার প্রশিক্ষণ',
+        upgrade: 'আপগ্রেড করুন',
+        verify: 'যাচাই করুন',
+        verified: 'যাচাইকৃত',
+        delete: 'মুছুন'
+    }
 };
 
-const languages = { "en": "English", "hi": "हिंदी" };
+const languages = { "en": "English", "hi": "हिंदी", "bn": "বাংলা" };
 
 function applyLanguage(lang) {
     currentLang = lang;
@@ -434,6 +531,41 @@ function applyLanguage(lang) {
             el.placeholder = translations[lang][key];
         }
     });
+
+    // Handle settings title specifically since it changes with tabs
+    const currentTab = settingsContentTitle.getAttribute('data-current-tab') || 'general';
+    settingsContentTitle.textContent = translations[lang][currentTab] || translations['en'][currentTab];
+
+    // Manual updates for elements missing data-lang in HTML
+    const uploadCodeSpan = document.querySelector('#upload-code-btn span');
+    if (uploadCodeSpan && translations[lang]['uploadCode']) {
+        uploadCodeSpan.textContent = translations[lang]['uploadCode'];
+    }
+
+    const usageTabSpan = document.querySelector('#usage-tab-btn span');
+    if (usageTabSpan && translations[lang]['usagePlan']) {
+        usageTabSpan.textContent = translations[lang]['usagePlan'];
+    }
+
+    const upgradeSidebarSpan = document.querySelector('#upgrade-plan-sidebar-btn span');
+    if (upgradeSidebarSpan && translations[lang]['upgradePlan']) {
+        upgradeSidebarSpan.textContent = translations[lang]['upgradePlan'];
+    }
+
+    const cyberTrainingSpan = document.querySelector('#cyber-training-btn span');
+    if (cyberTrainingSpan && translations[lang]['cyberTraining']) {
+        cyberTrainingSpan.textContent = translations[lang]['cyberTraining'];
+    }
+    
+    // Update Verify/Delete buttons manually if needed
+    if (verifyEmailBtn) {
+        // preserve disabled state logic text slightly
+        if (!verifyEmailBtn.disabled) verifyEmailBtn.textContent = translations[lang]['verify'];
+        else if (verifyEmailBtn.textContent !== 'Sending...') verifyEmailBtn.textContent = translations[lang]['verified'];
+    }
+    if (deleteAccountBtn) deleteAccountBtn.textContent = translations[lang]['delete'];
+    if (logoutBtn) logoutBtn.textContent = translations[lang]['logOut'];
+
     document.documentElement.lang = lang;
 }
 
