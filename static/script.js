@@ -448,13 +448,29 @@ const translations = {
         verify: 'Verify',
         verified: 'Verified',
         delete: 'Delete',
-        // New translations for Profile & General
         emailVerification: 'Email Verification',
         logoutAllDevices: 'Log out of all devices',
         deleteAccountLabel: 'Delete account',
         themeLabel: 'Theme',
         emailNotVerifiedMsg: 'Your email is not verified.',
-        emailVerifiedMsg: 'Your email has been verified.'
+        emailVerifiedMsg: 'Your email has been verified.',
+        // --- NEW KEYS FOR USAGE TABLE ---
+        feature: 'Feature',
+        dailyTextMessages: 'Daily Text Messages',
+        voiceCommands: 'Voice-to-Voice Commands',
+        readDocs: 'Read Image/PDF/Docs',
+        webSearchLimit: 'Web Search',
+        saveHistory: 'Save & Search History',
+        messages: 'messages',
+        unlimited: 'Unlimited',
+        perDay: 'per day',
+        perMonth: '1 per month (5 pages)',
+        yesForever: '✔ Yes, Forever',
+        msgsUsedMonth: 'messages used this month',
+        freePlanTitle: 'Free Plan',
+        premiumPlanTitle: 'Sofia AI Pro',
+        upgradeBtnText: 'Upgrade for ₹99/month',
+        used: 'Used'
     },
     'hi': { 
         settings: 'सेटिंग्स', 
@@ -487,13 +503,29 @@ const translations = {
         verify: 'सत्यापित करें',
         verified: 'सत्यापित',
         delete: 'हटाएं',
-         // New translations for Profile & General
         emailVerification: 'ईमेल सत्यापन',
         logoutAllDevices: 'सभी उपकरणों से लॉग आउट करें',
         deleteAccountLabel: 'खाता हटाएं',
         themeLabel: 'थीम',
         emailNotVerifiedMsg: 'आपका ईमेल सत्यापित नहीं है।',
-        emailVerifiedMsg: 'आपका ईमेल सत्यापित हो गया है।'
+        emailVerifiedMsg: 'आपका ईमेल सत्यापित हो गया है।',
+        // --- NEW KEYS FOR USAGE TABLE ---
+        feature: 'सुविधा',
+        dailyTextMessages: 'दैनिक टेक्स्ट संदेश',
+        voiceCommands: 'वॉयस-टू-वॉयस कमांड',
+        readDocs: 'छवि/पीडीएफ/दस्तावेज़ पढ़ें',
+        webSearchLimit: 'वेब खोज',
+        saveHistory: 'इतिहास सहेजें और खोजें',
+        messages: 'संदेश',
+        unlimited: 'असीमित',
+        perDay: 'प्रति दिन',
+        perMonth: '1 प्रति माह (5 पृष्ठ)',
+        yesForever: '✔ हाँ, हमेशा के लिए',
+        msgsUsedMonth: 'इस महीने उपयोग किए गए संदेश',
+        freePlanTitle: 'फ्री प्लान',
+        premiumPlanTitle: 'सोफिया एआई प्रो',
+        upgradeBtnText: '₹99/माह में अपग्रेड करें',
+        used: 'उपयोग किया गया'
     },
     'bn': { 
         settings: 'সেটিংস', 
@@ -526,13 +558,29 @@ const translations = {
         verify: 'যাচাই করুন',
         verified: 'যাচাইকৃত',
         delete: 'মুছুন',
-        // New translations for Profile & General
         emailVerification: 'ইমেল যাচাইকরণ',
         logoutAllDevices: 'সমস্ত ডিভাইস থেকে লগ আউট করুন',
         deleteAccountLabel: 'অ্যাকাউন্ট মুছুন',
         themeLabel: 'থিম',
         emailNotVerifiedMsg: 'আপনার ইমেল যাচাই করা হয়নি।',
-        emailVerifiedMsg: 'আপনার ইমেল যাচাই করা হয়েছে।'
+        emailVerifiedMsg: 'আপনার ইমেল যাচাই করা হয়েছে।',
+        // --- NEW KEYS FOR USAGE TABLE ---
+        feature: 'বৈশিষ্ট্য',
+        dailyTextMessages: 'দৈনিক টেক্সট বার্তা',
+        voiceCommands: 'ভয়েস-টু-ভয়েস কমান্ড',
+        readDocs: 'ছবি/পিডিএফ/ডক্স পড়ুন',
+        webSearchLimit: 'ওয়েব অনুসন্ধান',
+        saveHistory: 'ইতিহাস সংরক্ষণ ও অনুসন্ধান',
+        messages: 'বার্তা',
+        unlimited: 'সীমাহীন',
+        perDay: 'প্রতিদিন',
+        perMonth: 'মাসে ১টি (৫ পৃষ্ঠা)',
+        yesForever: '✔ হ্যাঁ, চিরকাল',
+        msgsUsedMonth: 'এই মাসে ব্যবহৃত বার্তা',
+        freePlanTitle: 'ফ্রি প্ল্যান',
+        premiumPlanTitle: 'সোফিয়া এআই প্রো',
+        upgradeBtnText: '৯৯ টাকা/মাসে আপগ্রেড করুন',
+        used: 'ব্যবহৃত'
     }
 };
 
@@ -585,7 +633,65 @@ function applyLanguage(lang) {
     const systemSpan = document.querySelector('#theme-system span');
     if (systemSpan) systemSpan.textContent = translations[lang]['system'];
 
-    // 3. Settings - Profile Tab Labels
+    // 2.5 Settings Tabs - General & Profile
+    const generalTabSpan = document.querySelector('#general-tab-btn span');
+    if (generalTabSpan) generalTabSpan.textContent = translations[lang]['general'];
+
+    const profileTabSpan = document.querySelector('#profile-tab-btn span');
+    if (profileTabSpan) profileTabSpan.textContent = translations[lang]['profile'];
+
+    // 3. Settings - Usage & Plan Table (The Fix for your Screenshot)
+    const planTable = document.querySelector('.plan-table');
+    if (planTable) {
+        // Table Headers
+        const headerRow = planTable.querySelector('.flex.justify-between.items-end');
+        if (headerRow) {
+            headerRow.children[0].textContent = translations[lang]['feature'];
+            headerRow.children[1].textContent = translations[lang]['freePlanTitle'];
+            // For Pro plan, we keep the price part hardcoded or simple for now, mostly updating title
+            headerRow.children[2].innerHTML = `${translations[lang]['premiumPlanTitle']} <span class="text-sm font-normal">(₹99/month)</span>`;
+        }
+
+        // Table Rows (targeting by structure since there are no IDs)
+        const rows = planTable.querySelectorAll('.bg-gray-50 > div, .dark\\:bg-gray-800 > div'); // Handles bg-gray-50 container
+        
+        if (rows.length >= 5) {
+            // Row 1: Daily Text Messages
+            rows[0].children[0].textContent = translations[lang]['dailyTextMessages'];
+            rows[0].children[1].textContent = `15 ${translations[lang]['messages']}`;
+            rows[0].children[2].textContent = translations[lang]['unlimited'];
+
+            // Row 2: Voice Commands
+            rows[1].children[0].textContent = translations[lang]['voiceCommands'];
+            rows[1].children[1].textContent = `5 ${translations[lang]['perDay']}`;
+            rows[1].children[2].textContent = translations[lang]['unlimited'];
+
+            // Row 3: Read Docs
+            rows[2].children[0].textContent = translations[lang]['readDocs'];
+            rows[2].children[1].textContent = translations[lang]['perMonth'];
+            rows[2].children[2].textContent = translations[lang]['unlimited'];
+
+            // Row 4: Web Search
+            rows[3].children[0].textContent = translations[lang]['webSearchLimit'];
+            rows[3].children[1].textContent = `1 ${translations[lang]['perDay']}`;
+            rows[3].children[2].textContent = `${translations[lang]['unlimited']}*`;
+
+            // Row 5: Save History
+            rows[4].children[0].textContent = translations[lang]['saveHistory'];
+            rows[4].children[1].textContent = translations[lang]['yesForever'];
+            rows[4].children[2].textContent = translations[lang]['yesForever'];
+        }
+    }
+
+    // Usage Section Titles and Buttons
+    if (planTitle) planTitle.textContent = translations[lang]['freePlanTitle'];
+    if (razorpayBtn) razorpayBtn.textContent = translations[lang]['upgradeBtnText'];
+
+    // Update dynamic usage text immediately
+    updateUsageUI();
+
+
+    // 4. Settings - Profile Tab Labels
     const profileContent = document.getElementById('profile-settings-content');
     if (profileContent) {
         // Find specific labels by hierarchy
@@ -609,7 +715,7 @@ function applyLanguage(lang) {
         }
     }
 
-    // 4. Update Verify/Delete buttons manually if needed
+    // 5. Update Verify/Delete buttons manually if needed
     if (verifyEmailBtn) {
         // preserve disabled state logic text slightly
         if (!verifyEmailBtn.disabled) verifyEmailBtn.textContent = translations[lang]['verify'];
@@ -1565,9 +1671,17 @@ function updateUsageUI() {
         upgradePlanSidebarBtn.classList.remove('hidden');
         usageTabBtn.classList.remove('hidden');
         sidebarUsageDisplay.classList.remove('hidden');
+        
         const percentage = Math.min((usageCounts.messages / usageLimits.messages) * 100, 100);
-        sidebarUsageDisplay.textContent = `${usageCounts.messages} / ${usageLimits.messages} Used`;
-        usageCounter.textContent = `${usageCounts.messages} / ${usageLimits.messages} messages used this month`;
+        
+        // --- TRANSLATION FIX HERE ---
+        const usedWord = translations[currentLang]['used'] || 'Used';
+        const msgsUsedWord = translations[currentLang]['msgsUsedMonth'] || 'messages used this month';
+        
+        sidebarUsageDisplay.textContent = `${usageCounts.messages} / ${usageLimits.messages} ${usedWord}`;
+        usageCounter.textContent = `${usageCounts.messages} / ${usageLimits.messages} ${msgsUsedWord}`;
+        // ----------------------------
+        
         usageProgressBar.style.width = `${percentage}%`;
     }
 }
