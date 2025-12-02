@@ -1511,6 +1511,14 @@ function startNewChat() {
     removeFile();
     messageInput.value = '';
     renderChatHistorySidebar();
+    
+    // Trigger typewriter animation on the welcome message
+    const welcomeH1 = welcomeMessageContainer.querySelector('h1');
+    if (welcomeH1) {
+        welcomeH1.id = 'welcome-text-animated';
+        const textToType = translations[currentLang]['welcome'] || "What can I help with?";
+        typeWriterEffect('welcome-text-animated', textToType);
+    }
 }
 
 // --- Library Functions ---
@@ -1810,6 +1818,14 @@ function initializeApp() {
     
     fetchAndDisplayUserInfo();
     
+    // Trigger typewriter animation on initial load
+    const welcomeH1 = document.querySelector('#welcome-message-container h1');
+    if (welcomeH1) {
+        welcomeH1.id = 'welcome-text-animated';
+        const textToType = translations[currentLang]['welcome'] || "What can I help with?";
+        typeWriterEffect('welcome-text-animated', textToType);
+    }
+    
     const handleLogout = async () => {
         try {
             const response = await fetch('/logout', { method: 'POST' });
@@ -1888,6 +1904,27 @@ function initializeApp() {
             }
         }
     });
+}
+
+// --- Animation Helper: Typewriter Effect ---
+function typeWriterEffect(elementId, text, speed = 40) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    element.innerHTML = ''; // Clear text
+    element.classList.add('typing-cursor'); // Add blinking cursor
+    
+    let i = 0;
+    function type() {
+        if (i < text.length) {
+            element.innerHTML += text.charAt(i);
+            i++;
+            setTimeout(type, speed);
+        } else {
+             // Animation done
+        }
+    }
+    type();
 }
 
 initializeApp();
