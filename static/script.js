@@ -1826,6 +1826,9 @@ function initializeApp() {
         typeWriterEffect('welcome-text-animated', textToType);
     }
     
+    // Trigger placeholder typing animation
+    startPlaceholderAnimation();
+
     const handleLogout = async () => {
         try {
             const response = await fetch('/logout', { method: 'POST' });
@@ -1924,6 +1927,59 @@ function typeWriterEffect(elementId, text, speed = 40) {
              // Animation done
         }
     }
+    type();
+}
+
+// --- Dynamic Placeholder Animation ("The Thinking Input") ---
+function startPlaceholderAnimation() {
+    const input = document.getElementById('message-input');
+    if (!input) return;
+
+    // List of "Funny/Compelling" prompts to show the user
+    const prompts = [
+        "Ask me to write Python code...",
+        "How do I hack a secure server? (Just kidding)",
+        "Plan a budget trip to Goa...",
+        "Explain Quantum Physics like I'm 5...",
+        "Write a love letter to my keyboard...",
+        "Check this code for bugs...",
+        "What is the best food in Bihar?"
+    ];
+
+    let promptIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    let typeSpeed = 100;
+
+    function type() {
+        const currentPrompt = prompts[promptIndex];
+        
+        if (isDeleting) {
+            // Deleting text
+            input.setAttribute('placeholder', currentPrompt.substring(0, charIndex - 1) + "|");
+            charIndex--;
+            typeSpeed = 50; // Delete faster
+        } else {
+            // Typing text
+            input.setAttribute('placeholder', currentPrompt.substring(0, charIndex + 1) + "|");
+            charIndex++;
+            typeSpeed = 100; // Type normal speed
+        }
+
+        if (!isDeleting && charIndex === currentPrompt.length) {
+            // Finished typing sentence, wait a bit then delete
+            isDeleting = true;
+            typeSpeed = 2000; // Wait 2 seconds before deleting
+        } else if (isDeleting && charIndex === 0) {
+            // Finished deleting, move to next sentence
+            isDeleting = false;
+            promptIndex = (promptIndex + 1) % prompts.length;
+            typeSpeed = 500;
+        }
+
+        setTimeout(type, typeSpeed);
+    }
+
     type();
 }
 
