@@ -466,7 +466,7 @@ const translations = {
         perDay: 'per day',
         perMonth: '1 per month (5 pages)',
         yesForever: '✔ Yes, Forever',
-        msgsUsedMonth: 'messages used this month',
+        msgsUsedMonth: 'messages used this day',
         freePlanTitle: 'Free Plan',
         premiumPlanTitle: 'Sofia AI Pro',
         upgradeBtnText: 'Upgrade for ₹99/month',
@@ -1928,3 +1928,4 @@ function typeWriterEffect(elementId, text, speed = 40) {
 }
 
 initializeApp();
+
