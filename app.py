@@ -535,7 +535,7 @@ def get_ai_summary(text_content):
 
     try:
         # Using the same model from /chat for consistency
-        model = genai.GenerativeModel("gemini-2.5-pro") 
+        model = genai.GenerativeModel("gemini-2.5-flash-lite") 
         
         # Truncate text to avoid overly long prompts (e.g., ~15k words)
         max_length = 80000 
@@ -1122,7 +1122,7 @@ def chat():
 
         if not ai_response:
             print("Routing to Gemini (Sofia AI)...")
-            model_name = "gemini-2.5-pro" 
+            model_name = "gemini-2.5-flash-lite" 
             api_used, model_logged = "Gemini", model_name
             model = genai.GenerativeModel(model_name)
 
