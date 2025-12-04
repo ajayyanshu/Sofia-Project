@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sofia AI - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-indigo-800">🛡️ Admin Dashboard (Read Only)</h1>
+            <a href="/" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Back to App</a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow mb-8">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">👥 User Logs & Feature Usage</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="p-2">Name</th>
+                            <th class="p-2">Email</th>
+                            <th class="p-2">Last Login Time</th>
+                            <th class="p-2">Feature: Msgs Used</th>
+                            <th class="p-2">Feature: Web Search Used</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-medium">{{ user.name }}</td>
+                            <td class="p-2 text-blue-600">{{ user.email }}</td>
+                            <td class="p-2 text-gray-500">
+                                {% if user.last_login %}
+                                    {{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </td>
+                            <td class="p-2">{{ user.usage_counts.get('messages', 0) }}</td>
+                            <td class="p-2">{{ user.usage_counts.get('webSearches', 0) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow mb-8">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">Cc Recent User Uploads (Images)</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for file in files %}
+                <div class="border p-2 rounded text-center">
+                    {% if 'image' in file.file_type %}
+                        <img src="data:{{ file.file_type }};base64,{{ file.file_data }}" class="h-32 mx-auto object-contain mb-2">
+                    {% else %}
+                        <div class="h-32 flex items-center justify-center bg-gray-100 text-gray-500 mb-2">
+                            Document
+                        </div>
+                    {% endif %}
+                    <p class="text-xs text-gray-600 truncate">{{ file.filename }}</p>
+                    <p class="text-xs text-gray-400">{{ file.timestamp.strftime('%Y-%m-%d') }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">💬 Recent Chat History</h2>
+            <div class="space-y-4 h-96 overflow-y-auto">
+                {% for chat in chats %}
+                <div class="border p-4 rounded bg-gray-50">
+                    <div class="flex justify-between text-xs text-gray-500 mb-2">
+                        <span>Chat ID: {{ chat._id }}</span>
+                        <span>{{ chat.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <h3 class="font-bold text-indigo-600 mb-2">{{ chat.title }}</h3>
+                    <div class="text-sm text-gray-700 bg-white p-2 border rounded max-h-32 overflow-y-auto">
+                        {% for msg in chat.messages %}
+                            <div class="mb-1">
+                                <span class="font-bold {{ 'text-blue-600' if msg.sender == 'user' else 'text-green-600' }}">
+                                    {{ msg.sender|upper }}:
+                                </span>
+                                {{ msg.text[:100] }}...
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
